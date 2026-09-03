@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { collection, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, deleteField, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
 import {
@@ -559,7 +559,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       beds,
     };
 
-    setDoc(ref, newRoom);
+    setDoc(ref, newRoom).catch((e) => console.warn('addRoom failed', e));
   };
 
   const updateRoom = (roomId: string, updates: Partial<Room>) => {
@@ -573,10 +573,17 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   };
 
   const deleteRoom = (roomId: string) => {
+    // Firestore's updateDoc() rejects a literal `undefined` field value -
+    // deleteField() is the correct way to clear a field via a partial update.
     tenants
       .filter((t) => t.roomId === roomId)
       .forEach((t) =>
-        saveTenant(t.id, { roomId: undefined, roomNumber: undefined, bedId: undefined, bedLabel: undefined })
+        saveTenant(t.id, {
+          roomId: deleteField(),
+          roomNumber: deleteField(),
+          bedId: deleteField(),
+          bedLabel: deleteField(),
+        } as unknown as Partial<Tenant>).catch((e) => console.warn('deleteRoom(tenant) failed', e))
       );
     removeRoom(roomId).catch((e) => console.warn('deleteRoom failed', e));
   };
@@ -626,21 +633,25 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     if (!room || !bed) return;
     const tenantId = bed.tenantId;
 
-    const updatedBeds = room.beds.map((b) =>
-      b.id === bedId
-        ? { ...b, status: 'vacant' as const, tenantId: undefined, tenantName: undefined, tenantPhone: undefined, lastUpdated: nowIso() }
-        : b
-    );
+    // Rebuilding the bed without the tenant fields entirely (rather than
+    // setting them to `undefined`) - these live inside the `beds` array
+    // being overwritten wholesale, where Firestore's deleteField() sentinel
+    // doesn't apply (that only works on a direct top-level update field).
+    const updatedBeds = room.beds.map((b): typeof b => {
+      if (b.id !== bedId) return b;
+      const { tenantId: _t, tenantName: _n, tenantPhone: _p, ...rest } = b;
+      return { ...rest, status: 'vacant', lastUpdated: nowIso() };
+    });
     saveRoom(roomId, { beds: updatedBeds }).catch((e) => console.warn('vacateBed(room) failed', e));
 
     if (tenantId) {
       saveTenant(tenantId, {
-        roomId: undefined,
-        roomNumber: undefined,
-        bedId: undefined,
-        bedLabel: undefined,
+        roomId: deleteField(),
+        roomNumber: deleteField(),
+        bedId: deleteField(),
+        bedLabel: deleteField(),
         checkOutDate: nowIso().split('T')[0],
-      }).catch((e) => console.warn('vacateBed(tenant) failed', e));
+      } as unknown as Partial<Tenant>).catch((e) => console.warn('vacateBed(tenant) failed', e));
     }
   };
 
@@ -680,10 +691,11 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       email: tenantData.email || `${tenantData.name.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
       phone: normalizePhone(tenantData.phone),
       photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-      roomId: targetRoom?.id,
-      roomNumber: targetRoom?.roomNumber,
-      bedId: targetBed?.id,
-      bedLabel: targetBed?.bedLabel,
+      // Firestore rejects a literal `undefined` field value - only include
+      // room/bed fields when a room was actually assigned (an unassigned
+      // walk-in registration is a normal, common case, not an edge case).
+      ...(targetRoom ? { roomId: targetRoom.id, roomNumber: targetRoom.roomNumber } : {}),
+      ...(targetBed ? { bedId: targetBed.id, bedLabel: targetBed.bedLabel } : {}),
       floor,
       monthlyRent: rent,
       securityDeposit: deposit,
@@ -697,7 +709,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       updatedAt: nowIso(),
     };
 
-    setDoc(ref, newTenant);
+    setDoc(ref, newTenant).catch((e) => console.warn('addTenant failed', e));
 
     if (targetRoom && targetBed) {
       const updatedBeds = targetRoom.beds.map((b) =>
@@ -875,7 +887,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     if (!activePropertyId) return;
     const ref = doc(collection(db, 'notices'));
     const newNotice: Notice = { id: ref.id, propertyId: activePropertyId, ...notice, date: nowIso().split('T')[0] };
-    setDoc(ref, newNotice);
+    setDoc(ref, newNotice).catch((e) => console.warn('addNotice failed', e));
   };
 
   const deleteNotice = (id: string) => {
@@ -892,7 +904,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       status: 'Open',
       createdAt: nowIso().split('T')[0],
     };
-    setDoc(ref, newTicket);
+    setDoc(ref, newTicket).catch((e) => console.warn('raiseTicket failed', e));
   };
 
   const updateTicketStatus = (id: string, status: MaintenanceTicket['status'], adminNote?: string) => {
