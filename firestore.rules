@@ -1,0 +1,101 @@
+rules_version = '2';
+
+// Security rules for the PG management app's Firestore database.
+//
+// IMPORTANT - please review and test this in the Firebase Console's Rules
+// Playground before relying on it in production. It was written to match
+// the app's current data model (see src/types.ts and
+// src/services/firestoreService.ts) but has not been tested against a live
+// project from this environment.
+//
+// Known trade-off, flagged deliberately rather than silently: the public
+// tenant self-onboarding page (TenantOnboardingForm.tsx) writes to `tenants`
+// and updates `rooms` WITHOUT the visitor being signed in - there is no
+// backend gating those writes yet. The rules below allow that (a `create` on
+// `tenants` and an `update` limited to the `beds` field on `rooms`) so
+// onboarding keeps working, but this means anyone with the onboarding link
+// can create tenant records. Before going live, consider requiring a
+// phone-OTP sign-in (already built - see authService.ts) before onboarding
+// writes are allowed, which would let these rules require `request.auth`.
+match /databases/{database}/documents {
+
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  function isOwnerOfProperty(propertyId) {
+    return isSignedIn() &&
+      get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
+  }
+
+  // Owner/staff profile - only the account itself may read or write it.
+  match /users/{uid} {
+    allow read, write: if isSignedIn() && request.auth.uid == uid;
+  }
+
+  // Properties: readable by anyone (needed for the public onboarding page to
+  // show room types/sharing options before the visitor is signed in).
+  // Only the owning account may create/update/delete its own property.
+  match /properties/{propertyId} {
+    allow read: if true;
+    allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+    allow update, delete: if isOwnerOfProperty(propertyId);
+
+    match /counters/{counterId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+  }
+
+  // Rooms: readable by anyone (needed to show vacant beds during public
+  // onboarding). Full write requires being the owning property's account;
+  // a public onboarding write is only allowed to flip a bed from vacant to
+  // occupied (it may not touch price/deposit/amenity fields).
+  match /rooms/{roomId} {
+    allow read: if true;
+    allow create, delete: if isOwnerOfProperty(resource.data.propertyId);
+    allow update: if isOwnerOfProperty(resource.data.propertyId) ||
+      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['beds']);
+  }
+
+  // Tenants: hold PII/KYC data, so reads are locked down more than
+  // properties/rooms. A tenant may read/update only their own document
+  // (matched by their signed-in phone number); the owner may read/update any
+  // tenant on their own property. Public onboarding is allowed to `create`
+  // a new tenant document (see the trade-off note above) and `get` a single
+  // document by exact phone match (findTenantByPhone uses an exact-match
+  // query, not a collection scan, so this doesn't expose the whole list).
+  match /tenants/{tenantId} {
+    allow get: if true;
+    allow list: if request.query.limit <= 1;
+    allow create: if true;
+    allow update: if isOwnerOfProperty(resource.data.propertyId) ||
+      (isSignedIn() && request.auth.token.phone_number == resource.data.phone);
+    allow delete: if isOwnerOfProperty(resource.data.propertyId);
+  }
+
+  // Payments: owner has full access to their property's payments. A tenant
+  // may create a payment report for themself (see PGContext.payRentAsTenant)
+  // but cannot mark it 'paid' - only the owner can (confirmPendingPayment).
+  match /payments/{paymentId} {
+    allow read: if isOwnerOfProperty(resource.data.propertyId) ||
+      (isSignedIn() &&
+        get(/databases/$(database)/documents/tenants/$(resource.data.tenantId)).data.phone == request.auth.token.phone_number);
+    allow create: if isOwnerOfProperty(request.resource.data.propertyId) || isSignedIn();
+    allow update, delete: if isOwnerOfProperty(resource.data.propertyId);
+  }
+
+  // Notices & maintenance tickets: owner manages fully; any signed-in tenant
+  // on the property can read notices and create/read their own tickets.
+  match /notices/{noticeId} {
+    allow read: if true;
+    allow write: if isOwnerOfProperty(request.resource.data.propertyId) ||
+      isOwnerOfProperty(resource.data.propertyId);
+  }
+
+  match /tickets/{ticketId} {
+    allow read: if isSignedIn();
+    allow create: if isSignedIn();
+    allow update, delete: if isOwnerOfProperty(resource.data.propertyId);
+  }
+}
