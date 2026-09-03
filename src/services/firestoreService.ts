@@ -53,10 +53,14 @@ export async function getOwnerProfile(uid: string): Promise<OwnerProfile | null>
   return snap.exists() ? ({ uid, ...snap.data() } as OwnerProfile) : null;
 }
 
-export async function addPropertyToProfile(uid: string, propertyId: string): Promise<void> {
-  const profile = await getOwnerProfile(uid);
-  const propertyIds = Array.from(new Set([...(profile?.propertyIds || []), propertyId]));
-  await updateDoc(doc(db, 'users', uid), { propertyIds });
+// Used to load properties an invited team member has access to (their own
+// users/{uid}.propertyIds, set server-side at invite time - see
+// server/app.ts POST /api/admin/create-team-member). The property creator
+// doesn't need this: isOwnerOfProperty in firestore.rules also matches a
+// property's own `ownerId` field directly.
+export async function getPropertiesByIds(ids: string[]): Promise<Property[]> {
+  const results = await Promise.all(ids.map((id) => getProperty(id)));
+  return results.filter((p): p is Property => p !== null);
 }
 
 // ---------------------------------------------------------------------------

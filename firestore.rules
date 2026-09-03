@@ -34,8 +34,17 @@ match /databases/{database}/documents {
     return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
   }
 
+  // A property is accessible either to the account that directly created it
+  // (its own `ownerId` field - checked here so the creator's access never
+  // depends on their users/{uid} profile being separately kept in sync,
+  // which the client is intentionally not allowed to do - see the users/{uid}
+  // rule below) or to an invited team member listed in their own profile's
+  // `propertyIds` (set server-side only, at invite time).
   function isOwnerOfProperty(propertyId) {
-    return isSignedIn() && propertyId in callerProfile().propertyIds;
+    return isSignedIn() && (
+      get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid ||
+      propertyId in callerProfile().propertyIds
+    );
   }
 
   // Owner/staff profile. The account may read/update its own profile, but

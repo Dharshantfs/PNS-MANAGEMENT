@@ -38,7 +38,7 @@ import {
   createTicket,
   saveTicket,
   getOwnerProfile,
-  addPropertyToProfile,
+  getPropertiesByIds,
   findTenantByPhone,
   normalizePhone,
   nowIso,
@@ -286,19 +286,50 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   }, []);
 
   // --- Owner's properties -----------------------------------------------------
+  // Two sources merged: properties this account directly created (ownerId
+  // match - live-updating subscription) plus properties an existing owner
+  // invited this account to (users/{uid}.propertyIds, set server-side at
+  // invite time - see server/app.ts). A team member's own uid never becomes
+  // a property's `ownerId`, so without this second source they'd see no
+  // properties at all despite firestore.rules granting them access.
   useEffect(() => {
     if (!authUser || role !== 'owner') return;
-    const unsub = subscribeOwnerProperties(authUser.uid, (props) => {
-      setProperties(props);
-      setActivePropertyId((prev) => {
-        if (prev && props.some((p) => p.id === prev)) return prev;
-        const saved = localStorage.getItem(ACTIVE_PROPERTY_KEY(authUser.uid));
-        if (saved && props.some((p) => p.id === saved)) return saved;
-        return props[0]?.id || null;
+    let ownedProps: Property[] = [];
+    let memberProps: Property[] = [];
+    let cancelled = false;
+
+    const applyMerged = () => {
+      const merged = [...ownedProps];
+      memberProps.forEach((p) => {
+        if (!merged.some((m) => m.id === p.id)) merged.push(p);
       });
+      setProperties(merged);
+      setActivePropertyId((prev) => {
+        if (prev && merged.some((p) => p.id === prev)) return prev;
+        const saved = localStorage.getItem(ACTIVE_PROPERTY_KEY(authUser.uid));
+        if (saved && merged.some((p) => p.id === saved)) return saved;
+        return merged[0]?.id || null;
+      });
+    };
+
+    const unsub = subscribeOwnerProperties(authUser.uid, (props) => {
+      ownedProps = props;
+      applyMerged();
     });
-    return unsub;
-  }, [authUser, role]);
+
+    if (ownerProfile?.propertyIds?.length) {
+      getPropertiesByIds(ownerProfile.propertyIds).then((props) => {
+        if (cancelled) return;
+        memberProps = props;
+        applyMerged();
+      });
+    }
+
+    return () => {
+      unsub();
+      cancelled = true;
+    };
+  }, [authUser, role, ownerProfile]);
 
   // --- Tenant: find their own tenant record + property by phone --------------
   useEffect(() => {
@@ -399,7 +430,10 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       roomTypes: DEFAULT_ROOM_TYPES,
       sharingOptions: DEFAULT_SHARING_OPTIONS,
     });
-    await addPropertyToProfile(authUser.uid, id);
+    // No need to also record this on the profile's propertyIds - the
+    // creator is granted access via the property's own `ownerId` field
+    // (see isOwnerOfProperty in firestore.rules). propertyIds is only for
+    // invited team members, set server-side at invite time.
     setActivePropertyId(id);
     return id;
   };
