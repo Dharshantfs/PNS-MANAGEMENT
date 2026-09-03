@@ -38,7 +38,6 @@ import {
   createTicket,
   saveTicket,
   getOwnerProfile,
-  createOwnerProfile,
   addPropertyToProfile,
   findTenantByPhone,
   normalizePhone,
@@ -114,6 +113,9 @@ interface PGContextType {
   setCurrentTenantId: (id: string) => void;
   activeTenant: Tenant | undefined;
   logout: () => Promise<void>;
+  ownerProfile: OwnerProfile | null;
+  mustChangePassword: boolean;
+  clearMustChangePassword: () => void;
 
   // Multi-property
   properties: Property[];
@@ -272,17 +274,12 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
       // Owner / staff sign-in (email + password).
       setRole('owner');
-      let profile = await getOwnerProfile(user.uid);
-      if (!profile) {
-        profile = {
-          uid: user.uid,
-          name: user.displayName || user.email || 'Owner',
-          email: user.email || '',
-          role: 'owner',
-          propertyIds: [],
-        };
-        await createOwnerProfile(profile);
-      }
+      // Profiles are never created from the client (see firestore.rules -
+      // `users/{uid}` create is Admin-SDK-only) so a signed-in email/password
+      // account can't just self-grant an owner profile. The very first owner
+      // is bootstrapped by running `npm run bootstrap-owner` (scripts/bootstrapFirstOwner.ts);
+      // every account after that comes from Settings > Team Access.
+      const profile = await getOwnerProfile(user.uid);
       setOwnerProfile(profile);
     });
     return unsub;
@@ -366,6 +363,15 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const activeTenant = tenants.find((t) => t.id === currentTenantId);
   const isAuthenticated = !!authUser;
+  const mustChangePassword = !!ownerProfile?.mustChangePassword;
+
+  const clearMustChangePassword = () => {
+    if (!authUser) return;
+    updateDoc(doc(db, 'users', authUser.uid), { mustChangePassword: false }).catch((e) =>
+      console.warn('clearMustChangePassword failed', e)
+    );
+    setOwnerProfile((prev) => (prev ? { ...prev, mustChangePassword: false } : prev));
+  };
 
   // --- Multi-property management ----------------------------------------------
 
@@ -947,6 +953,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         setCurrentTenantId,
         activeTenant,
         logout,
+        ownerProfile,
+        mustChangePassword,
+        clearMustChangePassword,
         properties,
         activePropertyId,
         activeProperty,

@@ -53,17 +53,6 @@ export async function getOwnerProfile(uid: string): Promise<OwnerProfile | null>
   return snap.exists() ? ({ uid, ...snap.data() } as OwnerProfile) : null;
 }
 
-export async function createOwnerProfile(profile: OwnerProfile): Promise<void> {
-  await setDoc(doc(db, 'users', profile.uid), {
-    name: profile.name,
-    email: profile.email,
-    phone: profile.phone || '',
-    role: profile.role,
-    propertyIds: profile.propertyIds,
-    createdAt: nowIso(),
-  });
-}
-
 export async function addPropertyToProfile(uid: string, propertyId: string): Promise<void> {
   const profile = await getOwnerProfile(uid);
   const propertyIds = Array.from(new Set([...(profile?.propertyIds || []), propertyId]));

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PGProvider, usePG } from './context/PGContext';
 import { Navbar } from './components/Navbar';
 import { LoginScreen } from './components/auth/LoginScreen';
+import { ChangePasswordScreen } from './components/auth/ChangePasswordScreen';
 import { TenantOnboardingForm } from './components/tenant/TenantOnboardingForm';
 import { OwnerDashboard } from './components/owner/OwnerDashboard';
 import { FloorBedMatrix } from './components/owner/FloorBedMatrix';
@@ -41,6 +42,9 @@ const AppContent: React.FC = () => {
     getStats,
     isAuthenticated,
     authLoading,
+    mustChangePassword,
+    ownerProfile,
+    logout,
     properties,
     activePropertyId,
   } = usePG();
@@ -110,6 +114,37 @@ const AppContent: React.FC = () => {
   // Login Screen
   if (!isAuthenticated) {
     return <LoginScreen onOpenKYCOnboarding={(phone?: string) => handleOpenOnboarding(phone)} />;
+  }
+
+  // Invited admin/staff accounts must replace their shared temp password
+  // before doing anything else - see ChangePasswordScreen.tsx.
+  if (mustChangePassword) {
+    return <ChangePasswordScreen />;
+  }
+
+  // Signed in with a valid Firebase account, but no users/{uid} Firestore
+  // profile exists - profiles are only ever created server-side (see
+  // firestore.rules), by either the bootstrap script (first owner) or
+  // Settings > Team Access (everyone after). This is a setup problem, not
+  // something to silently paper over with a fake owner profile.
+  if (role === 'owner' && !ownerProfile) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center space-y-3">
+        <p className="text-sm font-bold text-slate-900">No profile found for this account.</p>
+        <p className="text-xs text-slate-500 max-w-sm">
+          This login exists in Firebase Auth but has no matching profile in the database. If this is meant to be
+          the first owner account, run <code className="font-mono">npm run bootstrap-owner</code>. Otherwise, ask
+          an existing owner to add you under Settings &gt; Team Access.
+        </p>
+        <button
+          type="button"
+          onClick={() => logout()}
+          className="mt-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-xl"
+        >
+          Sign Out
+        </button>
+      </div>
+    );
   }
 
   // Signed in as owner but hasn't created a property yet - force Settings so

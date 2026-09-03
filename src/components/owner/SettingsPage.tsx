@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { usePG } from '../../context/PGContext';
-import { Building2, Plus, Trash2, Save, Home, Users2, IndianRupee, MapPin } from 'lucide-react';
+import { createTeamMember } from '../../services/authService';
+import { Building2, Plus, Trash2, Save, Home, Users2, IndianRupee, MapPin, UserPlus, Copy, Check } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const {
@@ -215,6 +216,8 @@ export const SettingsPage: React.FC = () => {
           </div>
         </>
       )}
+
+      <TeamAccessCard />
     </div>
   );
 };
@@ -283,5 +286,111 @@ const PropertyBasicsCard: React.FC = () => {
         <span>{saved ? 'Saved!' : 'Save Settings'}</span>
       </button>
     </form>
+  );
+};
+
+// Invite-only admin/staff access - there is no public sign-up (see
+// LoginScreen.tsx). Only an existing owner can add another account here;
+// the backend (server/app.ts) re-checks this independently of the UI.
+const TeamAccessCard: React.FC = () => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<'owner' | 'staff'>('staff');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<{ email: string; tempPassword: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setResult(null);
+    if (!name.trim() || !email.trim()) return;
+    setLoading(true);
+    try {
+      const res = await createTeamMember(name.trim(), email.trim(), role);
+      setResult(res);
+      setName('');
+      setEmail('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to add team member.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopy = () => {
+    if (!result) return;
+    navigator.clipboard.writeText(`Email: ${result.email}\nTemporary password: ${result.tempPassword}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+      <div>
+        <h2 className="text-sm font-black text-slate-900 flex items-center space-x-2">
+          <UserPlus className="w-4 h-4 text-blue-700" />
+          <span>Team Access</span>
+        </h2>
+        <p className="text-[11px] text-slate-500 mt-1">
+          Admin login is invite-only - there's no public sign-up. Add a co-owner or staff account here; they'll get a
+          one-time temporary password to log in with, then set their own.
+        </p>
+      </div>
+
+      <form onSubmit={handleInvite} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Full name"
+          required
+          className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600"
+        />
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          required
+          className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600"
+        />
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value as 'owner' | 'staff')}
+          className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600"
+        >
+          <option value="staff">Staff</option>
+          <option value="owner">Co-Owner</option>
+        </select>
+        <button
+          type="submit"
+          disabled={loading}
+          className="px-4 py-2 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5"
+        >
+          <UserPlus className="w-3.5 h-3.5" />
+          <span>{loading ? 'Adding...' : 'Add'}</span>
+        </button>
+      </form>
+
+      {error && <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">{error}</div>}
+
+      {result && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs space-y-2">
+          <p className="font-bold text-amber-900">
+            Account created. Share this password with them now - it won't be shown again:
+          </p>
+          <div className="flex items-center justify-between bg-white border border-amber-200 rounded-xl px-3 py-2 font-mono">
+            <span>
+              {result.email} / <strong>{result.tempPassword}</strong>
+            </span>
+            <button type="button" onClick={handleCopy} className="text-amber-700 hover:text-amber-900 shrink-0 ml-2">
+              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+          <p className="text-amber-700">They'll be asked to set their own password the first time they sign in.</p>
+        </div>
+      )}
+    </div>
   );
 };

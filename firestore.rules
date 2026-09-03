@@ -17,20 +17,37 @@ rules_version = '2';
 // can create tenant records. Before going live, consider requiring a
 // phone-OTP sign-in (already built - see authService.ts) before onboarding
 // writes are allowed, which would let these rules require `request.auth`.
+//
+// Admin/staff accounts are invite-only (see server/app.ts
+// POST /api/admin/create-team-member) - there is no public sign-up. An
+// invited account's users/{uid} profile lists which properties it can
+// access (`propertyIds`), which is what "owns" a property for rules
+// purposes below, not just the original creator's uid.
 match /databases/{database}/documents {
 
   function isSignedIn() {
     return request.auth != null;
   }
 
-  function isOwnerOfProperty(propertyId) {
-    return isSignedIn() &&
-      get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
+  function callerProfile() {
+    return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
   }
 
-  // Owner/staff profile - only the account itself may read or write it.
+  function isOwnerOfProperty(propertyId) {
+    return isSignedIn() && propertyId in callerProfile().propertyIds;
+  }
+
+  // Owner/staff profile. The account may read/update its own profile, but
+  // NOT its own `role` or `propertyIds` - those are only ever set by the
+  // Admin SDK (server/app.ts, which bypasses rules), preventing a staff
+  // account from self-promoting to owner or granting itself other
+  // properties. `mustChangePassword` and `name` remain self-editable.
   match /users/{uid} {
-    allow read, write: if isSignedIn() && request.auth.uid == uid;
+    allow read: if isSignedIn() && request.auth.uid == uid;
+    allow create: if false; // only the Admin SDK creates profiles
+    allow update: if isSignedIn() && request.auth.uid == uid &&
+      request.resource.data.role == resource.data.role &&
+      request.resource.data.propertyIds == resource.data.propertyIds;
   }
 
   // Properties: readable by anyone (needed for the public onboarding page to

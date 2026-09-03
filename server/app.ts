@@ -75,6 +75,17 @@ function normalizePhone(phone: string): string {
   return `+91${digits.slice(-10)}`;
 }
 
+// A one-time password shared out-of-band (WhatsApp/SMS/in person) with a
+// newly invited admin/staff account - not meant to be memorable, just to get
+// them logged in once before they're forced to set their own (see
+// mustChangePassword in types.ts / ChangePasswordScreen.tsx).
+function generateTempPassword(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  let out = "";
+  for (let i = 0; i < 12; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
 function emptyKyc(overrides: Record<string, any>) {
   return {
     status: "pending", // Always owner-reviewed, even for a fully self-reported bulk import - see types.ts KYCVerificationMethod
@@ -165,6 +176,58 @@ export function createApiApp() {
     }
     return db;
   };
+
+  // ----------------------------------------------------
+  // Admin/staff account provisioning. Owner accounts are never publicly
+  // self-service (the login screen only signs in, it doesn't sign up) - an
+  // existing owner invites a new admin/staff account from Settings, which
+  // calls this endpoint. It creates the Firebase Auth user + Firestore
+  // profile server-side (via Admin SDK, which the browser SDK can't do
+  // without switching the current session to the new user) and returns a
+  // one-time temporary password for the owner to share out-of-band.
+  // ----------------------------------------------------
+
+  app.post("/api/admin/create-team-member", async (req, res) => {
+    const db = requireAdminDb(res);
+    if (!db) return;
+    try {
+      const authHeader = req.headers.authorization || "";
+      const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+      if (!idToken) {
+        return res.status(401).json({ success: false, error: "Missing Authorization bearer token." });
+      }
+
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      const callerProfileSnap = await db.collection("users").doc(decoded.uid).get();
+      const callerProfile = callerProfileSnap.data();
+      if (!callerProfile || callerProfile.role !== "owner") {
+        return res.status(403).json({ success: false, error: "Only an existing owner can add admin/staff accounts." });
+      }
+
+      const { name, email, role } = req.body;
+      if (!name || !email || (role !== "owner" && role !== "staff")) {
+        return res.status(400).json({ success: false, error: "name, email, and role ('owner' or 'staff') are required." });
+      }
+
+      const tempPassword = generateTempPassword();
+      const newUser = await admin.auth().createUser({ email, password: tempPassword, displayName: name });
+
+      await db.collection("users").doc(newUser.uid).set({
+        name,
+        email,
+        role,
+        propertyIds: callerProfile.propertyIds || [],
+        mustChangePassword: true,
+        createdAt: nowIso(),
+      });
+
+      res.json({ success: true, email, tempPassword });
+    } catch (err: any) {
+      console.error("create-team-member error:", err);
+      const message = err.code === "auth/email-already-exists" ? "That email is already registered." : err.message;
+      res.status(500).json({ success: false, error: message });
+    }
+  });
 
   // ----------------------------------------------------
   // Google Forms bulk-admission (single response, batch import, webhook sim)

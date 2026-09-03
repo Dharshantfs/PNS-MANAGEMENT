@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ConfirmationResult } from 'firebase/auth';
 import { Building2, Users, ArrowRight, ShieldCheck, Lock, Mail, MessageSquare, FileCheck2 } from 'lucide-react';
-import { ownerSignIn, ownerSignUp, sendTenantOtp, confirmTenantOtp } from '../../services/authService';
+import { ownerSignIn, sendTenantOtp, confirmTenantOtp } from '../../services/authService';
 
 interface LoginScreenProps {
   onLoginSuccess?: () => void;
@@ -13,10 +13,12 @@ const RECAPTCHA_CONTAINER_ID = 'tenant-otp-recaptcha';
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onOpenKYCOnboarding }) => {
   const [loginMode, setLoginMode] = useState<'tenant' | 'owner'>('tenant');
 
-  // Owner state
+  // Owner state - sign-in only. There is no public sign-up: the first owner
+  // account is created in the Firebase Console, and every account after that
+  // is invited by an existing owner from Settings > Team Access (see
+  // authService.createTeamMember / server/app.ts).
   const [ownerEmail, setOwnerEmail] = useState('');
   const [ownerPassword, setOwnerPassword] = useState('');
-  const [ownerIsNewAccount, setOwnerIsNewAccount] = useState(false);
 
   // Tenant state
   const [tenantPhone, setTenantPhone] = useState('');
@@ -32,11 +34,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onOpenKYCOnboarding })
     setError('');
     setLoading(true);
     try {
-      if (ownerIsNewAccount) {
-        await ownerSignUp(ownerEmail.trim(), ownerPassword);
-      } else {
-        await ownerSignIn(ownerEmail.trim(), ownerPassword);
-      }
+      await ownerSignIn(ownerEmail.trim(), ownerPassword);
       // Firebase's onAuthStateChanged listener (in PGContext) picks up the
       // signed-in user automatically - no manual "success" callback needed.
     } catch (err: any) {
@@ -244,21 +242,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onOpenKYCOnboarding })
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>{ownerIsNewAccount ? 'Create Owner Account' : 'Sign In'}</span>
+                  <span>Sign In</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
 
-            <div className="text-center pt-1">
-              <button
-                type="button"
-                onClick={() => { setOwnerIsNewAccount((v) => !v); setError(''); }}
-                className="text-xs text-blue-700 hover:text-blue-900 font-medium"
-              >
-                {ownerIsNewAccount ? 'Already have an account? Sign in' : "First time? Create your owner account"}
-              </button>
-            </div>
+            <p className="text-center text-[11px] text-slate-500 pt-1">
+              Admin access is invite-only. Ask your PG owner to add you under Settings &gt; Team Access.
+            </p>
           </form>
         )}
       </div>
