@@ -24,14 +24,23 @@ function initFirebaseAdmin() {
 
   if (!projectId || !clientEmail || !privateKey) {
     console.warn(
-      "FIREBASE_ADMIN_* env vars not set - Google Forms bulk-admission endpoints will be disabled."
+      "FIREBASE_ADMIN_* env vars not set - Google Forms bulk-admission / Team Access endpoints will be disabled."
     );
     return null;
   }
 
-  return admin.initializeApp({
-    credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
-  });
+  // Never let a malformed env var (extra quotes, truncated key, mangled
+  // newlines from copy-paste into a hosting dashboard) crash the whole
+  // serverless function at cold start - that takes down every /api/* route
+  // with the platform's generic error page instead of a useful JSON error.
+  try {
+    return admin.initializeApp({
+      credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
+    });
+  } catch (err) {
+    console.error("Failed to initialize Firebase Admin - check FIREBASE_ADMIN_PRIVATE_KEY formatting:", err);
+    return null;
+  }
 }
 
 const adminApp = initFirebaseAdmin();
@@ -384,6 +393,17 @@ export function createApiApp() {
     } else {
       res.json({ success: true, warning: "Twilio WhatsApp keys missing - simulation mode.", previewMessage: messageBody });
     }
+  });
+
+  // Safety nets so a client always gets JSON back, never a hosting
+  // platform's generic HTML error page (which broke `res.json()` parsing
+  // on the frontend - see PostToolUse note above).
+  app.use((req, res) => {
+    res.status(404).json({ success: false, error: `No route for ${req.method} ${req.path}` });
+  });
+  app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error("Unhandled API error:", err);
+    res.status(500).json({ success: false, error: err?.message || "Internal server error" });
   });
 
   return app;
