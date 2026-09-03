@@ -23,6 +23,7 @@ rules_version = '2';
 // invited account's users/{uid} profile lists which properties it can
 // access (`propertyIds`), which is what "owns" a property for rules
 // purposes below, not just the original creator's uid.
+service cloud.firestore {
 match /databases/{database}/documents {
 
   function isSignedIn() {
@@ -115,4 +116,5 @@ match /databases/{database}/documents {
     allow create: if isSignedIn();
     allow update, delete: if isOwnerOfProperty(resource.data.propertyId);
   }
+}
 }
