@@ -450,7 +450,10 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const addRoomType = (name: string, description?: string) => {
     if (!activeProperty) return Promise.reject(new Error('No active property'));
     const id = `rt-${Date.now()}`;
-    return updatePropertySettings({ roomTypes: [...activeProperty.roomTypes, { id, name, description }] });
+    // Firestore rejects a field whose value is `undefined` outright - only
+    // include `description` when one was actually given.
+    const newType: RoomTypeConfig = description ? { id, name, description } : { id, name };
+    return updatePropertySettings({ roomTypes: [...activeProperty.roomTypes, newType] });
   };
 
   const updateRoomType = (id: string, updates: Partial<RoomTypeConfig>) => {
