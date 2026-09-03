@@ -130,13 +130,13 @@ interface PGContextType {
     pincode: string;
     totalFloors: number;
   }) => Promise<string>;
-  updatePropertySettings: (updates: Partial<Property>) => void;
-  addRoomType: (name: string, description?: string) => void;
-  updateRoomType: (id: string, updates: Partial<RoomTypeConfig>) => void;
-  deleteRoomType: (id: string) => void;
-  addSharingOption: (occupancy: number, defaultRent: number, label?: string) => void;
-  updateSharingOption: (id: string, updates: Partial<SharingConfig>) => void;
-  deleteSharingOption: (id: string) => void;
+  updatePropertySettings: (updates: Partial<Property>) => Promise<void>;
+  addRoomType: (name: string, description?: string) => Promise<void>;
+  updateRoomType: (id: string, updates: Partial<RoomTypeConfig>) => Promise<void>;
+  deleteRoomType: (id: string) => Promise<void>;
+  addSharingOption: (occupancy: number, defaultRent: number, label?: string) => Promise<void>;
+  updateSharingOption: (id: string, updates: Partial<SharingConfig>) => Promise<void>;
+  deleteSharingOption: (id: string) => Promise<void>;
 
   // Backward-compatible flattened settings (derived from activeProperty)
   settings: PGSettings;
@@ -438,34 +438,38 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     return id;
   };
 
-  const updatePropertySettings = (updates: Partial<Property>) => {
-    if (!activePropertyId) return;
-    fsUpdateProperty(activePropertyId, updates).catch((e) => console.warn('updateProperty failed', e));
+  // Returns a Promise (instead of the old fire-and-forget-with-console.warn)
+  // so the Settings UI can actually show the user when a write is rejected
+  // (e.g. by firestore.rules) rather than the button just silently doing
+  // nothing, which is impossible to tell apart from "it worked."
+  const updatePropertySettings = (updates: Partial<Property>): Promise<void> => {
+    if (!activePropertyId) return Promise.reject(new Error('No active property selected'));
+    return fsUpdateProperty(activePropertyId, updates);
   };
 
   const addRoomType = (name: string, description?: string) => {
-    if (!activeProperty) return;
+    if (!activeProperty) return Promise.reject(new Error('No active property'));
     const id = `rt-${Date.now()}`;
-    updatePropertySettings({ roomTypes: [...activeProperty.roomTypes, { id, name, description }] });
+    return updatePropertySettings({ roomTypes: [...activeProperty.roomTypes, { id, name, description }] });
   };
 
   const updateRoomType = (id: string, updates: Partial<RoomTypeConfig>) => {
-    if (!activeProperty) return;
-    updatePropertySettings({
+    if (!activeProperty) return Promise.reject(new Error('No active property'));
+    return updatePropertySettings({
       roomTypes: activeProperty.roomTypes.map((rt) => (rt.id === id ? { ...rt, ...updates } : rt)),
     });
   };
 
   const deleteRoomType = (id: string) => {
-    if (!activeProperty) return;
-    updatePropertySettings({ roomTypes: activeProperty.roomTypes.filter((rt) => rt.id !== id) });
+    if (!activeProperty) return Promise.reject(new Error('No active property'));
+    return updatePropertySettings({ roomTypes: activeProperty.roomTypes.filter((rt) => rt.id !== id) });
   };
 
   const addSharingOption = (occupancy: number, defaultRent: number, label?: string) => {
-    if (!activeProperty) return;
+    if (!activeProperty) return Promise.reject(new Error('No active property'));
     const clamped = Math.min(6, Math.max(1, occupancy));
     const id = `sh-${Date.now()}`;
-    updatePropertySettings({
+    return updatePropertySettings({
       sharingOptions: [
         ...activeProperty.sharingOptions,
         { id, occupancy: clamped, label: label || SHARING_LABELS[clamped] || `${clamped}-Sharing`, defaultRent },
@@ -474,15 +478,15 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   };
 
   const updateSharingOption = (id: string, updates: Partial<SharingConfig>) => {
-    if (!activeProperty) return;
-    updatePropertySettings({
+    if (!activeProperty) return Promise.reject(new Error('No active property'));
+    return updatePropertySettings({
       sharingOptions: activeProperty.sharingOptions.map((s) => (s.id === id ? { ...s, ...updates } : s)),
     });
   };
 
   const deleteSharingOption = (id: string) => {
-    if (!activeProperty) return;
-    updatePropertySettings({ sharingOptions: activeProperty.sharingOptions.filter((s) => s.id !== id) });
+    if (!activeProperty) return Promise.reject(new Error('No active property'));
+    return updatePropertySettings({ sharingOptions: activeProperty.sharingOptions.filter((s) => s.id !== id) });
   };
 
   // --- Backward-compatible flattened settings ---------------------------------

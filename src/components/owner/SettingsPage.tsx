@@ -30,6 +30,15 @@ export const SettingsPage: React.FC = () => {
   const [newRoomTypeName, setNewRoomTypeName] = useState('');
   const [newSharingOccupancy, setNewSharingOccupancy] = useState(2);
   const [newSharingRent, setNewSharingRent] = useState(8000);
+  const [settingsError, setSettingsError] = useState('');
+
+  // Room-type/sharing writes are Firestore calls that can be rejected (e.g.
+  // by firestore.rules) - surface that instead of the button silently doing
+  // nothing, which looks identical to "it worked" otherwise.
+  const runOrShowError = (promise: Promise<void>) => {
+    setSettingsError('');
+    promise.catch((e: any) => setSettingsError(e?.message || 'That change was rejected by the database. Check Firestore rules / your sign-in.'));
+  };
 
   const handleCreateProperty = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,10 +135,10 @@ export const SettingsPage: React.FC = () => {
                 <div key={rt.id} className="flex items-center justify-between px-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200">
                   <input
                     value={rt.name}
-                    onChange={(e) => updateRoomType(rt.id, { name: e.target.value })}
+                    onChange={(e) => runOrShowError(updateRoomType(rt.id, { name: e.target.value }))}
                     className="text-xs font-bold text-slate-900 bg-transparent focus:outline-none"
                   />
-                  <button type="button" onClick={() => deleteRoomType(rt.id)} className="text-rose-500 hover:text-rose-700">
+                  <button type="button" onClick={() => runOrShowError(deleteRoomType(rt.id))} className="text-rose-500 hover:text-rose-700">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -144,13 +153,16 @@ export const SettingsPage: React.FC = () => {
               />
               <button
                 type="button"
-                onClick={() => { if (newRoomTypeName.trim()) { addRoomType(newRoomTypeName.trim()); setNewRoomTypeName(''); } }}
+                onClick={() => { if (newRoomTypeName.trim()) { runOrShowError(addRoomType(newRoomTypeName.trim())); setNewRoomTypeName(''); } }}
                 className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add</span>
               </button>
             </div>
+            {settingsError && (
+              <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">{settingsError}</div>
+            )}
           </div>
 
           {/* Sharing options / rent packages */}
@@ -173,12 +185,12 @@ export const SettingsPage: React.FC = () => {
                       <input
                         type="number"
                         value={s.defaultRent}
-                        onChange={(e) => updateSharingOption(s.id, { defaultRent: Number(e.target.value) })}
+                        onChange={(e) => runOrShowError(updateSharingOption(s.id, { defaultRent: Number(e.target.value) }))}
                         className="w-24 text-xs font-mono font-bold text-slate-900 bg-transparent focus:outline-none border-b border-transparent focus:border-blue-600"
                       />
                       <span className="text-[10px] text-slate-500 ml-1">/ month</span>
                     </div>
-                    <button type="button" onClick={() => deleteSharingOption(s.id)} className="text-rose-500 hover:text-rose-700">
+                    <button type="button" onClick={() => runOrShowError(deleteSharingOption(s.id))} className="text-rose-500 hover:text-rose-700">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -206,7 +218,7 @@ export const SettingsPage: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => addSharingOption(newSharingOccupancy, newSharingRent)}
+                onClick={() => runOrShowError(addSharingOption(newSharingOccupancy, newSharingRent))}
                 className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -233,14 +245,20 @@ const PropertyBasicsCard: React.FC = () => {
     rentDueDay: activeProperty?.rentDueDay || 5,
   });
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
 
   if (!activeProperty) return null;
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    updatePropertySettings(form);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    setError('');
+    try {
+      await updatePropertySettings(form);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+    } catch (err: any) {
+      setError(err?.message || 'Save was rejected by the database.');
+    }
   };
 
   return (
@@ -281,6 +299,7 @@ const PropertyBasicsCard: React.FC = () => {
             className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600" />
         </div>
       </div>
+      {error && <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">{error}</div>}
       <button type="submit" className="px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5">
         <Save className="w-3.5 h-3.5" />
         <span>{saved ? 'Saved!' : 'Save Settings'}</span>
