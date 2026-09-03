@@ -1,11 +1,11 @@
 {
-  "projectId": "ageless-woodland-ft3g1",
-  "appId": "1:305347813487:web:e5398905a6f5ff3cee6d9a",
-  "apiKey": "AIzaSyBu7HLBreffPmvcofkbmHiLNl-3YhmqP0Y",
-  "authDomain": "ageless-woodland-ft3g1.firebaseapp.com",
-  "storageBucket": "ageless-woodland-ft3g1.firebasestorage.app",
-  "messagingSenderId": "305347813487",
-  "measurementId": "",
-  "oAuthClientId": "305347813487-h4i3i4q1va1avin044d63gsvt7fgdcbj.apps.googleusercontent.com",
+  "projectId": "pns-db-771c1",
+  "appId": "1:542287942567:web:b8938945356775ee7d1c82",
+  "apiKey": "AIzaSyBxUVzuDNQG62TdODZr5qt6XZx1nFsqItU",
+  "authDomain": "pns-db-771c1.firebaseapp.com",
+  "storageBucket": "pns-db-771c1.firebasestorage.app",
+  "messagingSenderId": "542287942567",
+  "measurementId": "G-26MNFD3H0M",
+  "oAuthClientId": "",
   "recaptchaSiteKey": ""
 }
