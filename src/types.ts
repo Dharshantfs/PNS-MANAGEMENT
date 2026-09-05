@@ -104,6 +104,11 @@ export interface SharingConfig {
   defaultRent: number;
 }
 
+// A flexible amenity checklist (AC, TV, Geyser, CCTV, ...) instead of a fixed
+// set of booleans - see FACILITY_OPTIONS in FloorBedMatrix.tsx for the full
+// catalog. Stores the `key` of each facility the room actually has.
+export type FacilityKey = string;
+
 export interface Room {
   id: string; // e.g. "room-101"
   propertyId: string;
@@ -112,14 +117,10 @@ export interface Room {
   roomTypeId: string; // references Property.roomTypes[].id
   sharingId: string; // references Property.sharingOptions[].id (occupancy 1-6)
   totalBeds: number;
-  acType: 'AC' | 'Non-AC';
-  washroomType: 'Attached' | 'Common';
-  hasBalcony: boolean;
-  hasGeyser: boolean;
-  hasWifi: boolean;
-  hasCupboard: boolean;
+  facilities: FacilityKey[];
   pricePerBed: number;
   securityDeposit: number;
+  availableForRent: boolean; // owner can mark a room not-for-rent (e.g. personal/storage use)
   beds: Bed[];
   notes?: string;
 }

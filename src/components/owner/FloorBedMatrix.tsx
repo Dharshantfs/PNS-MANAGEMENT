@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { usePG } from '../../context/PGContext';
 import { Room, Bed, Tenant } from '../../types';
+import { FACILITY_OPTIONS, facilityLabel } from '../../lib/facilities';
 import {
   Layers,
   BedDouble,
@@ -10,18 +11,34 @@ import {
   UserCheck,
   UserX,
   ArrowRightLeft,
-  CheckCircle2,
-  X,
-  Wind,
-  Wifi,
   Sparkles,
-  Bath,
-  Sun,
   IndianRupee,
-  ShieldAlert,
   Search,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+
+// Shared facilities checkbox grid - used in both the Add Room and Edit Room
+// modals so the list only needs to be maintained in one place.
+const FacilitiesChecklist: React.FC<{ selected: string[]; onToggle: (key: string) => void }> = ({ selected, onToggle }) => (
+  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+    {FACILITY_OPTIONS.map((f) => (
+      <label
+        key={f.key}
+        className={`flex items-center space-x-1.5 px-2.5 py-2 rounded-xl border text-[11px] font-semibold cursor-pointer transition ${
+          selected.includes(f.key) ? 'bg-brand-50 border-brand-300 text-brand-800' : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
+        }`}
+      >
+        <input
+          type="checkbox"
+          checked={selected.includes(f.key)}
+          onChange={() => onToggle(f.key)}
+          className="w-3.5 h-3.5 accent-current"
+        />
+        <span className="truncate">{f.label}</span>
+      </label>
+    ))}
+  </div>
+);
 
 export const FloorBedMatrix: React.FC = () => {
   const {
@@ -42,6 +59,11 @@ export const FloorBedMatrix: React.FC = () => {
   const roomTypeLabel = (id: string) => roomTypes.find((rt) => rt.id === id)?.name || 'Room';
   const sharingLabel = (id: string) => sharingOptions.find((s) => s.id === id)?.label || 'Sharing';
 
+  // The room's default deposit follows the "Deposit" dues category set up
+  // under Settings > Dues Packages, instead of a number unrelated to it.
+  const depositCategory = (activeProperty?.duesCategories || []).find((c) => c.categoryType === 'deposit' && c.active);
+  const defaultDeposit = depositCategory?.amountType === 'fixed' ? depositCategory.fixedAmount || 0 : 15000;
+
   const [selectedFloor, setSelectedFloor] = useState<number | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterVacancy, setFilterVacancy] = useState<'all' | 'has-vacant' | 'fully-occupied'>('all');
@@ -55,7 +77,7 @@ export const FloorBedMatrix: React.FC = () => {
   // New room form state
   const [newFloor, setNewFloor] = useState<number>(1);
   const [newRoomNum, setNewRoomNum] = useState('');
-  
+
   React.useEffect(() => {
     // Auto-generate Room ID based on floor
     const floorRooms = rooms.filter(r => r.floor === newFloor);
@@ -72,14 +94,14 @@ export const FloorBedMatrix: React.FC = () => {
 
   const [newRoomTypeId, setNewRoomTypeId] = useState<string>(roomTypes[0]?.id || '');
   const [newSharingId, setNewSharingId] = useState<string>(sharingOptions[0]?.id || '');
-  const [newAcType, setNewAcType] = useState<'AC' | 'Non-AC'>('AC');
-  const [newWashroom, setNewWashroom] = useState<'Attached' | 'Common'>('Attached');
-  const [newBalcony, setNewBalcony] = useState(true);
+  const [newFacilities, setNewFacilities] = useState<string[]>([]);
+  const [newAvailableForRent, setNewAvailableForRent] = useState(true);
+  const [newNotes, setNewNotes] = useState('');
   const [newPrice, setNewPrice] = useState(sharingOptions[0]?.defaultRent || 8500);
-  const [newDeposit, setNewDeposit] = useState(15000);
+  const [newDeposit, setNewDeposit] = useState(defaultDeposit);
 
   // Keep room-type/sharing selections valid as the property's config changes,
-  // and default the price to the chosen sharing option's rent package.
+  // and default the price/deposit to the configured rent package / dues category.
   React.useEffect(() => {
     if (!newRoomTypeId && roomTypes[0]) setNewRoomTypeId(roomTypes[0].id);
   }, [roomTypes, newRoomTypeId]);
@@ -92,6 +114,24 @@ export const FloorBedMatrix: React.FC = () => {
     const sharing = sharingOptions.find((s) => s.id === newSharingId);
     if (sharing) setNewPrice(sharing.defaultRent);
   }, [newSharingId]);
+
+  React.useEffect(() => {
+    if (isAddRoomOpen) setNewDeposit(defaultDeposit);
+  }, [isAddRoomOpen, defaultDeposit]);
+
+  const toggleNewFacility = (key: string) => {
+    setNewFacilities((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  };
+
+  const toggleEditFacility = (key: string) => {
+    if (!editingRoom) return;
+    setEditingRoom({
+      ...editingRoom,
+      facilities: editingRoom.facilities.includes(key)
+        ? editingRoom.facilities.filter((k) => k !== key)
+        : [...editingRoom.facilities, key],
+    });
+  };
 
   // Assign bed state
   const [selectedTenantIdToAssign, setSelectedTenantIdToAssign] = useState<string>('');
@@ -119,18 +159,18 @@ export const FloorBedMatrix: React.FC = () => {
       floor: Number(newFloor),
       roomTypeId: newRoomTypeId,
       sharingId: newSharingId,
-      acType: newAcType,
-      washroomType: newWashroom,
-      hasBalcony: newBalcony,
-      hasGeyser: true,
-      hasWifi: true,
-      hasCupboard: true,
+      facilities: newFacilities,
       pricePerBed: Number(newPrice),
       securityDeposit: Number(newDeposit),
+      availableForRent: newAvailableForRent,
+      notes: newNotes.trim() || undefined,
     });
 
     setIsAddRoomOpen(false);
     setNewRoomNum('');
+    setNewFacilities([]);
+    setNewNotes('');
+    setNewAvailableForRent(true);
     confetti({ particleCount: 30, spread: 60, origin: { y: 0.7 } });
   };
 
@@ -141,9 +181,8 @@ export const FloorBedMatrix: React.FC = () => {
     updateRoom(editingRoom.id, {
       pricePerBed: Number(editingRoom.pricePerBed),
       securityDeposit: Number(editingRoom.securityDeposit),
-      acType: editingRoom.acType,
-      washroomType: editingRoom.washroomType,
-      hasBalcony: editingRoom.hasBalcony,
+      facilities: editingRoom.facilities,
+      availableForRent: editingRoom.availableForRent,
     });
 
     setEditingRoom(null);
@@ -181,14 +220,13 @@ export const FloorBedMatrix: React.FC = () => {
         bedId: b.id,
         bedLabel: b.bedLabel,
         price: b.pricePerMonth || r.pricePerBed,
-        acType: r.acType,
       }))
   );
 
   return (
     <div id="floor-bed-matrix-view" className="space-y-6 animate-in fade-in text-slate-900">
-      
-      {/* Top Header & Floor Switcher Bar - Royal Blue & White */}
+
+      {/* Top Header & Floor Switcher Bar */}
       <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -212,9 +250,8 @@ export const FloorBedMatrix: React.FC = () => {
           </button>
         </div>
 
-        {/* 4 Floors Tab Switcher + Filters */}
+        {/* Floors Tab Switcher + Filters */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
-          {/* Floors Switcher */}
           <div className="flex items-center space-x-1.5 bg-slate-100 p-1.5 rounded-2xl overflow-x-auto whitespace-nowrap scrollbar-hide max-w-full">
             <button
               type="button"
@@ -256,7 +293,6 @@ export const FloorBedMatrix: React.FC = () => {
             })}
           </div>
 
-          {/* Search and Vacancy Filter */}
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <div className="relative flex-1 sm:flex-none">
               <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
@@ -305,9 +341,14 @@ export const FloorBedMatrix: React.FC = () => {
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-800 font-bold border border-brand-200">
                           Floor {room.floor}
                         </span>
+                        {!room.availableForRent && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 font-bold">
+                            Not for Rent
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-slate-500 font-medium mt-0.5">
-                        {roomTypeLabel(room.roomTypeId)} • {sharingLabel(room.sharingId)} • {room.acType}
+                        {roomTypeLabel(room.roomTypeId)} • {sharingLabel(room.sharingId)}
                       </p>
                     </div>
                   </div>
@@ -345,28 +386,18 @@ export const FloorBedMatrix: React.FC = () => {
                 {/* Amenities Badges & Price */}
                 <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 text-xs py-2.5 px-3.5 bg-slate-50 rounded-2xl border border-slate-200">
                   <div className="flex flex-wrap items-center gap-2 text-slate-500 font-medium">
-                    {room.acType === 'AC' && (
-                      <span className="flex items-center space-x-1 text-brand-700" title="Air Conditioned">
-                        <Wind className="w-3.5 h-3.5" />
-                        <span className="text-[10px] font-bold">AC</span>
-                      </span>
+                    {room.facilities.length === 0 ? (
+                      <span className="text-[10px] text-slate-400">No facilities listed</span>
+                    ) : (
+                      room.facilities.slice(0, 5).map((key) => (
+                        <span key={key} className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white border border-slate-200">
+                          {facilityLabel(key)}
+                        </span>
+                      ))
                     )}
-                    {room.washroomType === 'Attached' && (
-                      <span className="flex items-center space-x-1 text-brand-700" title="Attached Washroom">
-                        <Bath className="w-3.5 h-3.5" />
-                        <span className="text-[10px] font-bold">Attach</span>
-                      </span>
+                    {room.facilities.length > 5 && (
+                      <span className="text-[10px] text-slate-400">+{room.facilities.length - 5} more</span>
                     )}
-                    {room.hasBalcony && (
-                      <span className="flex items-center space-x-1 text-amber-600" title="Private Balcony">
-                        <Sun className="w-3.5 h-3.5" />
-                        <span className="text-[10px] font-bold">Balcony</span>
-                      </span>
-                    )}
-                    <span className="flex items-center space-x-1 text-emerald-600" title="High-Speed Wi-Fi">
-                      <Wifi className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-bold">Wi-Fi</span>
-                    </span>
                   </div>
 
                   <div className="text-right">
@@ -483,8 +514,8 @@ export const FloorBedMatrix: React.FC = () => {
 
       {/* MODAL 1: CONFIGURE NEW ROOM */}
       {isAddRoomOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-brand-100 text-slate-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-brand-100 text-slate-900 my-8">
             <div className="flex items-center justify-between px-6 py-4 bg-brand-700 text-white shadow-sm">
               <h2 className="font-bold text-white text-sm flex items-center space-x-2">
                 <Plus className="w-4 h-4" />
@@ -495,20 +526,20 @@ export const FloorBedMatrix: React.FC = () => {
                 onClick={() => setIsAddRoomOpen(false)}
                 className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
               >
-                <X className="w-5 h-5" />
+                ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateRoom} className="p-6 space-y-4 text-xs">
+            <form onSubmit={handleCreateRoom} className="p-6 space-y-4 text-xs max-h-[75vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Room ID (Auto-Generated)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Room Name (Auto-Generated)</label>
                   <input
                     type="text"
                     required
-                    readOnly
                     value={newRoomNum}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-brand-800 font-bold focus:outline-none cursor-not-allowed"
+                    onChange={(e) => setNewRoomNum(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-brand-800 font-bold focus:outline-none"
                   />
                 </div>
                 <div>
@@ -527,7 +558,7 @@ export const FloorBedMatrix: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Room Type *</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Unit Type *</label>
                   <select
                     value={newRoomTypeId}
                     onChange={(e) => setNewRoomTypeId(e.target.value)}
@@ -539,7 +570,7 @@ export const FloorBedMatrix: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Sharing *</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Sharing Type *</label>
                   <select
                     value={newSharingId}
                     onChange={(e) => setNewSharingId(e.target.value)}
@@ -554,21 +585,7 @@ export const FloorBedMatrix: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">AC Type *</label>
-                  <select
-                    value={newAcType}
-                    onChange={(e) => setNewAcType(e.target.value as any)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
-                  >
-                    <option value="AC">Air Conditioned (AC)</option>
-                    <option value="Non-AC">Non-AC</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Price per Bed (₹/mo) *</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Amount Per Bed (₹/mo) *</label>
                   <input
                     type="number"
                     required
@@ -578,41 +595,47 @@ export const FloorBedMatrix: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Security Deposit (₹) *</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Security Deposit (₹)</label>
                   <input
                     type="number"
-                    required
                     value={newDeposit}
                     onChange={(e) => setNewDeposit(Number(e.target.value))}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold font-mono text-slate-900 focus:outline-none focus:border-brand-600"
                   />
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Defaults from Settings &gt; Dues Packages &gt; Deposit category - editable per room.
+                  </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Washroom</label>
-                  <select
-                    value={newWashroom}
-                    onChange={(e) => setNewWashroom(e.target.value as any)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
-                  >
-                    <option value="Attached">Attached</option>
-                    <option value="Common">Common</option>
-                  </select>
-                </div>
-                <div className="flex items-center space-x-2 pt-6">
-                  <input
-                    type="checkbox"
-                    id="hasBalcony"
-                    checked={newBalcony}
-                    onChange={(e) => setNewBalcony(e.target.checked)}
-                    className="w-4 h-4 text-brand-700 rounded border-slate-300 focus:ring-brand-600"
-                  />
-                  <label htmlFor="hasBalcony" className="text-xs font-bold text-slate-700 cursor-pointer">
-                    Private Balcony Included
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Room Remarks</label>
+                <input
+                  type="text"
+                  value={newNotes}
+                  onChange={(e) => setNewNotes(e.target.value)}
+                  placeholder="Optional notes about this room"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Is this room available to rent? *</label>
+                <div className="flex items-center space-x-4">
+                  <label className="flex items-center space-x-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input type="radio" checked={newAvailableForRent} onChange={() => setNewAvailableForRent(true)} />
+                    <span>Yes</span>
+                  </label>
+                  <label className="flex items-center space-x-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input type="radio" checked={!newAvailableForRent} onChange={() => setNewAvailableForRent(false)} />
+                    <span>No</span>
                   </label>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">Room Facilities</label>
+                <FacilitiesChecklist selected={newFacilities} onToggle={toggleNewFacility} />
               </div>
 
               <div className="pt-3">
@@ -630,8 +653,8 @@ export const FloorBedMatrix: React.FC = () => {
 
       {/* MODAL 2: EDIT ROOM PRICING & AMENITIES */}
       {editingRoom && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-brand-100 text-slate-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-brand-100 text-slate-900 my-8">
             <div className="flex items-center justify-between px-6 py-4 bg-brand-700 text-white shadow-sm">
               <h2 className="font-bold text-white text-sm">Edit Room {editingRoom.roomNumber}</h2>
               <button
@@ -639,56 +662,59 @@ export const FloorBedMatrix: React.FC = () => {
                 onClick={() => setEditingRoom(null)}
                 className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
               >
-                <X className="w-5 h-5" />
+                ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveEditRoom} className="p-6 space-y-4 text-xs">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Monthly Price per Bed (₹)</label>
-                <input
-                  type="number"
-                  required
-                  value={editingRoom.pricePerBed}
-                  onChange={(e) => setEditingRoom({ ...editingRoom, pricePerBed: Number(e.target.value) })}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-brand-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Security Deposit (₹)</label>
-                <input
-                  type="number"
-                  required
-                  value={editingRoom.securityDeposit}
-                  onChange={(e) => setEditingRoom({ ...editingRoom, securityDeposit: Number(e.target.value) })}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-brand-600"
-                />
-              </div>
-
+            <form onSubmit={handleSaveEditRoom} className="p-6 space-y-4 text-xs max-h-[75vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">AC Type</label>
-                  <select
-                    value={editingRoom.acType}
-                    onChange={(e) => setEditingRoom({ ...editingRoom, acType: e.target.value as any })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
-                  >
-                    <option value="AC">AC</option>
-                    <option value="Non-AC">Non-AC</option>
-                  </select>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Monthly Price per Bed (₹)</label>
+                  <input
+                    type="number"
+                    required
+                    value={editingRoom.pricePerBed}
+                    onChange={(e) => setEditingRoom({ ...editingRoom, pricePerBed: Number(e.target.value) })}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-brand-600"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Washroom</label>
-                  <select
-                    value={editingRoom.washroomType}
-                    onChange={(e) => setEditingRoom({ ...editingRoom, washroomType: e.target.value as any })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
-                  >
-                    <option value="Attached">Attached</option>
-                    <option value="Common">Common</option>
-                  </select>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Security Deposit (₹)</label>
+                  <input
+                    type="number"
+                    required
+                    value={editingRoom.securityDeposit}
+                    onChange={(e) => setEditingRoom({ ...editingRoom, securityDeposit: Number(e.target.value) })}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-brand-600"
+                  />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Available to rent?</label>
+                <div className="flex items-center space-x-4">
+                  <label className="flex items-center space-x-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={editingRoom.availableForRent}
+                      onChange={() => setEditingRoom({ ...editingRoom, availableForRent: true })}
+                    />
+                    <span>Yes</span>
+                  </label>
+                  <label className="flex items-center space-x-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={!editingRoom.availableForRent}
+                      onChange={() => setEditingRoom({ ...editingRoom, availableForRent: false })}
+                    />
+                    <span>No</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">Room Facilities</label>
+                <FacilitiesChecklist selected={editingRoom.facilities} onToggle={toggleEditFacility} />
               </div>
 
               <div className="pt-2">
@@ -722,7 +748,7 @@ export const FloorBedMatrix: React.FC = () => {
                 onClick={() => setAssigningBedInfo(null)}
                 className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
               >
-                <X className="w-5 h-5" />
+                ✕
               </button>
             </div>
 
@@ -804,7 +830,7 @@ export const FloorBedMatrix: React.FC = () => {
                 onClick={() => setTransferringTenant(null)}
                 className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
               >
-                <X className="w-5 h-5" />
+                ✕
               </button>
             </div>
 
@@ -825,7 +851,7 @@ export const FloorBedMatrix: React.FC = () => {
                   <option value="">-- Choose Vacant Room & Bed --</option>
                   {allVacantBeds.map((v, vIndex) => (
                     <option key={`${v.roomId}-${v.bedId}-${vIndex}`} value={`${v.roomId}::${v.bedId}`}>
-                      Floor {v.floor} - Room {v.roomNumber} ({v.bedLabel}) - {v.acType} - ₹{v.price}/mo
+                      Floor {v.floor} - Room {v.roomNumber} ({v.bedLabel}) - ₹{v.price}/mo
                     </option>
                   ))}
                 </select>

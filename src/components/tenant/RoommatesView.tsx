@@ -48,7 +48,8 @@ export const RoommatesView: React.FC = () => {
                 Room {activeTenant.roomNumber || 'N/A'} • Floor {activeTenant.floor}
               </span>
               <span className="text-xs text-slate-500 font-semibold">
-                {getSharingLabel(activeProperty, currentRoom?.sharingId)} ({currentRoom?.acType || 'AC'})
+                {getSharingLabel(activeProperty, currentRoom?.sharingId)}
+                {currentRoom?.facilities?.includes('ac') ? ' (AC)' : ''}
               </span>
             </div>
             <h1 className="text-xl font-black text-slate-900 mt-1.5 flex items-center space-x-2">

@@ -175,7 +175,7 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
               </button>
             </div>
             {room && (
-              <p className="text-[11px] text-slate-500">{getSharingLabel(activeProperty, room.sharingId)} • Floor {room.floor} • {room.acType}</p>
+              <p className="text-[11px] text-slate-500">{getSharingLabel(activeProperty, room.sharingId)} • Floor {room.floor}</p>
             )}
             {changingRoom && (
               <select

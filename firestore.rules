@@ -80,7 +80,11 @@ match /databases/{database}/documents {
   // occupied (it may not touch price/deposit/amenity fields).
   match /rooms/{roomId} {
     allow read: if true;
-    allow create, delete: if isOwnerOfProperty(resource.data.propertyId);
+    // `resource` doesn't exist yet on a create - it must be checked against
+    // `request.resource` (the incoming document), not `resource` (the prior
+    // one), otherwise every create is silently denied.
+    allow create: if isOwnerOfProperty(request.resource.data.propertyId);
+    allow delete: if isOwnerOfProperty(resource.data.propertyId);
     allow update: if isOwnerOfProperty(resource.data.propertyId) ||
       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['beds']);
   }

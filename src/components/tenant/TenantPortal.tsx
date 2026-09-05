@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { usePG } from '../../context/PGContext';
 import { PaymentModal } from './PaymentModal';
 import { getSharingLabel } from '../../lib/roomLabels';
+import { facilityLabel } from '../../lib/facilities';
 import {
   Building2,
   BedDouble,
@@ -179,20 +180,13 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
             </div>
 
             {/* Room Features */}
-            {currentRoom && (
+            {currentRoom && currentRoom.facilities.length > 0 && (
               <div className="pt-3 border-t border-brand-200 flex flex-wrap gap-2 text-xs">
-                <span className="px-2.5 py-1 rounded-lg bg-white border border-brand-200 text-brand-900 font-medium flex items-center space-x-1">
-                  <Wind className="w-3.5 h-3.5 text-brand-600" />
-                  <span>{currentRoom.acType}</span>
-                </span>
-                <span className="px-2.5 py-1 rounded-lg bg-white border border-brand-200 text-brand-900 font-medium flex items-center space-x-1">
-                  <Bath className="w-3.5 h-3.5 text-brand-600" />
-                  <span>{currentRoom.washroomType}</span>
-                </span>
-                <span className="px-2.5 py-1 rounded-lg bg-white border border-brand-200 text-brand-900 font-medium flex items-center space-x-1">
-                  <Wifi className="w-3.5 h-3.5 text-brand-600" />
-                  <span>High-Speed WiFi</span>
-                </span>
+                {currentRoom.facilities.map((key) => (
+                  <span key={key} className="px-2.5 py-1 rounded-lg bg-white border border-brand-200 text-brand-900 font-medium">
+                    {facilityLabel(key)}
+                  </span>
+                ))}
               </div>
             )}
           </div>

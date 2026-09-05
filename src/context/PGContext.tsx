@@ -173,14 +173,11 @@ interface PGContextType {
     floor: number;
     roomTypeId: string;
     sharingId: string;
-    acType: 'AC' | 'Non-AC';
-    washroomType: 'Attached' | 'Common';
-    hasBalcony: boolean;
-    hasGeyser: boolean;
-    hasWifi: boolean;
-    hasCupboard: boolean;
+    facilities: string[];
     pricePerBed: number;
     securityDeposit: number;
+    availableForRent: boolean;
+    notes?: string;
   }) => void;
   updateRoom: (roomId: string, updates: Partial<Room>) => void;
   deleteRoom: (roomId: string) => void;
@@ -606,14 +603,11 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     floor: number;
     roomTypeId: string;
     sharingId: string;
-    acType: 'AC' | 'Non-AC';
-    washroomType: 'Attached' | 'Common';
-    hasBalcony: boolean;
-    hasGeyser: boolean;
-    hasWifi: boolean;
-    hasCupboard: boolean;
+    facilities: string[];
     pricePerBed: number;
     securityDeposit: number;
+    availableForRent: boolean;
+    notes?: string;
   }) => {
     if (!activePropertyId) return;
     const sharing = activeProperty?.sharingOptions.find((s) => s.id === roomData.sharingId);
@@ -634,9 +628,19 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const newRoom: Room = {
       id: ref.id,
       propertyId: activePropertyId,
-      ...roomData,
+      roomNumber: roomData.roomNumber,
+      floor: roomData.floor,
+      roomTypeId: roomData.roomTypeId,
+      sharingId: roomData.sharingId,
+      facilities: roomData.facilities,
+      pricePerBed: roomData.pricePerBed,
+      securityDeposit: roomData.securityDeposit,
+      availableForRent: roomData.availableForRent,
       totalBeds: bedCount,
       beds,
+      // Firestore rejects a literal `undefined` field value - only include
+      // notes when something was actually typed.
+      ...(roomData.notes ? { notes: roomData.notes } : {}),
     };
 
     setDoc(ref, newRoom).catch((e) => console.warn('addRoom failed', e));
