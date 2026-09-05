@@ -3,6 +3,7 @@ import { usePG } from '../../context/PGContext';
 import { createTeamMember } from '../../services/authService';
 import { DuesCategoryConfig } from '../../types';
 import { AGREEMENT_FIELD_GROUPS, DEFAULT_AGREEMENT_BODY, fillSampleTemplate } from '../../lib/agreementFill';
+import { NumberField } from '../common/NumberField';
 import { Building2, Plus, Trash2, Save, Home, Users2, IndianRupee, MapPin, UserPlus, Copy, Check, Receipt, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
@@ -119,7 +120,7 @@ export const SettingsPage: React.FC = () => {
               className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
             <input value={newPincode} onChange={(e) => setNewPincode(e.target.value)} placeholder="Pincode"
               className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
-            <input type="number" min={1} max={20} value={newFloors} onChange={(e) => setNewFloors(Number(e.target.value))} placeholder="Total floors"
+            <NumberField min={1} max={20} value={newFloors} onChange={setNewFloors} placeholder="Total floors"
               className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
             <button type="submit" className="col-span-2 py-2.5 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-xl">
               Create Property
@@ -191,10 +192,9 @@ export const SettingsPage: React.FC = () => {
                     <span className="text-[10px] text-slate-500 w-20 shrink-0">{s.occupancy} occupant{s.occupancy > 1 ? 's' : ''}</span>
                     <div className="flex items-center flex-1">
                       <IndianRupee className="w-3 h-3 text-slate-400 mr-1" />
-                      <input
-                        type="number"
+                      <NumberField
                         value={s.defaultRent}
-                        onChange={(e) => runOrShowError(updateSharingOption(s.id, { defaultRent: Number(e.target.value) }))}
+                        onChange={(n) => runOrShowError(updateSharingOption(s.id, { defaultRent: n }))}
                         className="w-24 text-xs font-mono font-bold text-slate-900 bg-transparent focus:outline-none border-b border-transparent focus:border-brand-600"
                       />
                       <span className="text-[10px] text-slate-500 ml-1">/ month</span>
@@ -217,10 +217,9 @@ export const SettingsPage: React.FC = () => {
               </select>
               <div className="flex items-center px-3 py-2 rounded-xl border border-slate-300">
                 <IndianRupee className="w-3.5 h-3.5 text-slate-400 mr-1" />
-                <input
-                  type="number"
+                <NumberField
                   value={newSharingRent}
-                  onChange={(e) => setNewSharingRent(Number(e.target.value))}
+                  onChange={setNewSharingRent}
                   placeholder="Default rent"
                   className="w-24 text-xs font-mono focus:outline-none"
                 />
@@ -269,10 +268,9 @@ export const SettingsPage: React.FC = () => {
                   {c.amountType === 'fixed' ? (
                     <div className="flex items-center">
                       <IndianRupee className="w-3 h-3 text-slate-400 mr-0.5" />
-                      <input
-                        type="number"
+                      <NumberField
                         value={c.fixedAmount || 0}
-                        onChange={(e) => runOrShowError(updateDuesCategory(c.id, { fixedAmount: Number(e.target.value) }))}
+                        onChange={(n) => runOrShowError(updateDuesCategory(c.id, { fixedAmount: n }))}
                         className="w-20 text-xs font-mono font-bold text-slate-900 bg-transparent focus:outline-none border-b border-transparent focus:border-brand-600"
                       />
                       <span className="text-[10px] text-slate-500 ml-1">fixed</span>
@@ -317,10 +315,9 @@ export const SettingsPage: React.FC = () => {
               {newDuesAmountType === 'fixed' && (
                 <div className="flex items-center px-3 py-2 rounded-xl border border-slate-300">
                   <IndianRupee className="w-3.5 h-3.5 text-slate-400 mr-1" />
-                  <input
-                    type="number"
+                  <NumberField
                     value={newDuesFixedAmount}
-                    onChange={(e) => setNewDuesFixedAmount(Number(e.target.value))}
+                    onChange={setNewDuesFixedAmount}
                     className="w-20 text-xs font-mono focus:outline-none"
                   />
                 </div>
@@ -403,7 +400,7 @@ const PropertyBasicsCard: React.FC = () => {
         </div>
         <div>
           <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Total Floors</label>
-          <input type="number" min={1} max={20} value={form.totalFloors} onChange={(e) => setForm({ ...form, totalFloors: Number(e.target.value) })}
+          <NumberField min={1} max={20} value={form.totalFloors} onChange={(n) => setForm({ ...form, totalFloors: n })}
             className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
         </div>
         <div>
@@ -413,7 +410,7 @@ const PropertyBasicsCard: React.FC = () => {
         </div>
         <div>
           <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Rent Due Day (of month)</label>
-          <input type="number" min={1} max={28} value={form.rentDueDay} onChange={(e) => setForm({ ...form, rentDueDay: Number(e.target.value) })}
+          <NumberField min={1} max={28} value={form.rentDueDay} onChange={(n) => setForm({ ...form, rentDueDay: n })}
             className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
         </div>
       </div>

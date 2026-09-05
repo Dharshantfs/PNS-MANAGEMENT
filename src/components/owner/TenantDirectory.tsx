@@ -4,6 +4,7 @@ import { Tenant } from '../../types';
 import { TenantInviteModal } from './TenantInviteModal';
 import { TenantProfilePanel } from './TenantProfilePanel';
 import { getSharingLabel } from '../../lib/roomLabels';
+import { NumberField } from '../common/NumberField';
 import {
   Users,
   Search,
@@ -515,10 +516,9 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Monthly Rent (₹)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     value={customRent}
-                    onChange={(e) => setCustomRent(Number(e.target.value))}
+                    onChange={setCustomRent}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-brand-900 focus:outline-none focus:border-brand-600 shadow-sm"
                   />
                 </div>
@@ -527,10 +527,9 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Security Deposit (₹)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     value={customDeposit}
-                    onChange={(e) => setCustomDeposit(Number(e.target.value))}
+                    onChange={setCustomDeposit}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-brand-900 focus:outline-none focus:border-brand-600 shadow-sm"
                   />
                 </div>

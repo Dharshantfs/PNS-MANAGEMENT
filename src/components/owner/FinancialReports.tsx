@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { ReceiptModal } from '../common/ReceiptModal';
+import { NumberField } from '../common/NumberField';
 
 export const FinancialReports: React.FC = () => {
   const { payments, tenants, settings, activeProperty, getStats, recordPayment, confirmPendingPayment, addDueCharge, charges } = usePG();
@@ -456,11 +457,10 @@ export const FinancialReports: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Amount (₹) *</label>
-                  <input
-                    type="number"
+                  <NumberField
                     required
                     value={payAmount}
-                    onChange={(e) => setPayAmount(Number(e.target.value))}
+                    onChange={setPayAmount}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                   />
                 </div>
@@ -555,11 +555,10 @@ export const FinancialReports: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Amount (₹) *</label>
-                <input
-                  type="number"
+                <NumberField
                   required
                   value={dueAmount}
-                  onChange={(e) => setDueAmount(Number(e.target.value))}
+                  onChange={setDueAmount}
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>

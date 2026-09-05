@@ -3,6 +3,7 @@ import { usePG } from '../../context/PGContext';
 import { Tenant } from '../../types';
 import { getSharingLabel } from '../../lib/roomLabels';
 import { AgreementModal } from './AgreementModal';
+import { NumberField } from '../common/NumberField';
 import {
   X,
   Phone,
@@ -197,10 +198,9 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
             {showPayForm && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <input
-                    type="number"
+                  <NumberField
                     value={payAmount}
-                    onChange={(e) => setPayAmount(Number(e.target.value))}
+                    onChange={setPayAmount}
                     className="flex-1 px-2.5 py-1.5 text-xs rounded-lg border border-emerald-300 focus:outline-none focus:border-emerald-600"
                   />
                   <select
