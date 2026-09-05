@@ -5,7 +5,7 @@ import { usePG } from '../../context/PGContext';
 
 // Shown once, immediately after an invited admin/staff account's first
 // login with the temporary password an owner shared with them (see
-// SettingsPage.tsx Team Access / server/app.ts create-team-member).
+// SettingsPage.tsx Team Access / api/_lib/app.ts create-team-member).
 export const ChangePasswordScreen: React.FC = () => {
   const { clearMustChangePassword, logout } = usePG();
   const [password, setPassword] = useState('');

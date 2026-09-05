@@ -56,7 +56,7 @@ export async function getOwnerProfile(uid: string): Promise<OwnerProfile | null>
 
 // Used to load properties an invited team member has access to (their own
 // users/{uid}.propertyIds, set server-side at invite time - see
-// server/app.ts POST /api/admin/create-team-member). The property creator
+// api/_lib/app.ts POST /api/admin/create-team-member). The property creator
 // doesn't need this: isOwnerOfProperty in firestore.rules also matches a
 // property's own `ownerId` field directly.
 export async function getPropertiesByIds(ids: string[]): Promise<Property[]> {

@@ -428,7 +428,7 @@ const PropertyBasicsCard: React.FC = () => {
 
 // Invite-only admin/staff access - there is no public sign-up (see
 // LoginScreen.tsx). Only an existing owner can add another account here;
-// the backend (server/app.ts) re-checks this independently of the UI.
+// the backend (api/_lib/app.ts) re-checks this independently of the UI.
 const TeamAccessCard: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

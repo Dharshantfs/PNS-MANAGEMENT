@@ -16,7 +16,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onOpenKYCOnboarding })
   // Owner state - sign-in only. There is no public sign-up: the first owner
   // account is created in the Firebase Console, and every account after that
   // is invited by an existing owner from Settings > Team Access (see
-  // authService.createTeamMember / server/app.ts).
+  // authService.createTeamMember / api/_lib/app.ts).
   const [ownerEmail, setOwnerEmail] = useState('');
   const [ownerPassword, setOwnerPassword] = useState('');
 

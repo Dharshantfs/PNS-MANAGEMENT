@@ -315,7 +315,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   // Two sources merged: properties this account directly created (ownerId
   // match - live-updating subscription) plus properties an existing owner
   // invited this account to (users/{uid}.propertyIds, set server-side at
-  // invite time - see server/app.ts). A team member's own uid never becomes
+  // invite time - see api/_lib/app.ts). A team member's own uid never becomes
   // a property's `ownerId`, so without this second source they'd see no
   // properties at all despite firestore.rules granting them access.
   useEffect(() => {

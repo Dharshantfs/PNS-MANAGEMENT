@@ -165,7 +165,7 @@ const AppContent: React.FC = () => {
   // Staff accounts (ownerProfile.role === 'staff') get day-to-day operational
   // tabs only - Money, Google Forms config, and Settings are owner-only, both
   // hidden here AND enforced server-side (firestore.rules restricts property
-  // settings writes to role 'owner'; server/app.ts already requires 'owner'
+  // settings writes to role 'owner'; api/_lib/app.ts already requires 'owner'
   // for inviting more team members).
   const isOwnerRole = ownerProfile?.role !== 'staff';
   const OWNER_ONLY_TABS: OwnerTab[] = ['finance', 'googleforms', 'settings'];

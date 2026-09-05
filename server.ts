@@ -1,11 +1,13 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { createApiApp } from "./server/app";
+import { createApiApp } from "./api/_lib/app";
 
 // Traditional long-running Node server (Render/Railway/a VM, or local `npm
-// run dev`). The API routes themselves live in server/app.ts so they can be
-// reused as-is by api/index.ts for a Vercel serverless deployment.
+// run dev`). The API routes themselves live in api/_lib/app.ts (not a
+// top-level server/ folder - Vercel's function bundler only reliably
+// traces files inside the api/ directory) so they can be reused as-is by
+// api/[...path].ts for the Vercel serverless deployment.
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3001;
