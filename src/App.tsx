@@ -8,6 +8,7 @@ import { OwnerDashboard } from './components/owner/OwnerDashboard';
 import { FloorBedMatrix } from './components/owner/FloorBedMatrix';
 import { TenantDirectory } from './components/owner/TenantDirectory';
 import { FinancialReports } from './components/owner/FinancialReports';
+import { ReportsPage } from './components/owner/ReportsPage';
 import { NoticesAndTickets } from './components/owner/NoticesAndTickets';
 import { GoogleFormsIntegration } from './components/owner/GoogleFormsIntegration';
 import { TenantPortal } from './components/tenant/TenantPortal';
@@ -168,7 +169,7 @@ const AppContent: React.FC = () => {
   // settings writes to role 'owner'; api/_lib/app.ts already requires 'owner'
   // for inviting more team members).
   const isOwnerRole = ownerProfile?.role !== 'staff';
-  const OWNER_ONLY_TABS: OwnerTab[] = ['finance', 'googleforms', 'settings'];
+  const OWNER_ONLY_TABS: OwnerTab[] = ['finance', 'reports', 'googleforms', 'settings'];
   if (!isOwnerRole && OWNER_ONLY_TABS.includes(ownerTab) && ownerTab !== 'dashboard') {
     // Direct-navigate guard, in case a staff account lands on a hidden tab
     // (e.g. stale state) - the sidebar itself never links to these.
@@ -212,6 +213,7 @@ const AppContent: React.FC = () => {
               <TenantDirectory onOpenKYCOnboarding={(id) => handleOpenOnboarding(id)} />
             )}
             {ownerTab === 'finance' && isOwnerRole && <FinancialReports />}
+            {ownerTab === 'reports' && isOwnerRole && <ReportsPage />}
             {ownerTab === 'notices' && <NoticesAndTickets />}
             {ownerTab === 'googleforms' && isOwnerRole && <GoogleFormsIntegration />}
             {ownerTab === 'settings' && isOwnerRole && <SettingsPage />}
