@@ -49,7 +49,7 @@ export async function createTeamMember(
 ): Promise<{ email: string; tempPassword: string }> {
   if (!auth.currentUser) throw new Error('You must be signed in to add a team member.');
   const idToken = await auth.currentUser.getIdToken();
-  const res = await fetch('/api/admin/create-team-member', {
+  const res = await fetch('/api/team/invite', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
     body: JSON.stringify({ name, email, role }),

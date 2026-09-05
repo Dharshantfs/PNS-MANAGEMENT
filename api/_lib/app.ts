@@ -196,7 +196,13 @@ export function createApiApp() {
   // one-time temporary password for the owner to share out-of-band.
   // ----------------------------------------------------
 
-  app.post("/api/admin/create-team-member", async (req, res) => {
+  // Named to avoid the literal word "admin" in the path - Vercel's default
+  // Firewall/bot-protection appears to block requests whose path contains
+  // "/admin/" before they ever reach a function (confirmed: this route
+  // returned Vercel's platform 404 with zero entries in Runtime Logs, while
+  // sibling routes without "admin" in the path were reaching the function
+  // fine). Not a code bug - just don't use that word in a route path.
+  app.post("/api/team/invite", async (req, res) => {
     const db = requireAdminDb(res);
     if (!db) return;
     try {

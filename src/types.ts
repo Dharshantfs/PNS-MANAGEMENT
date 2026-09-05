@@ -277,7 +277,7 @@ export interface OwnerProfile {
   role: 'owner' | 'staff';
   propertyIds: string[];
   // True for an account created by another owner via Settings > Team Access
-  // (see api/_lib/app.ts POST /api/admin/create-team-member) - forces a
+  // (see api/_lib/app.ts POST /api/team/invite) - forces a
   // change-password screen on first login instead of using the shared
   // temporary password indefinitely.
   mustChangePassword?: boolean;
