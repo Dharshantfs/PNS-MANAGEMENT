@@ -192,11 +192,11 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
     <div id="tenant-directory-view" className="space-y-6 animate-in fade-in">
       
       {/* Directory Header & Filters in Royal Blue / White Theme */}
-      <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-4">
+      <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-100 shadow-sm">
+              <div className="w-10 h-10 rounded-2xl bg-brand-50 text-brand-700 flex items-center justify-center border border-brand-100 shadow-sm">
                 <Users className="w-5 h-5" />
               </div>
               <div>
@@ -211,8 +211,8 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
           </div>
 
           <div className="flex items-center space-x-3">
-            <div className="text-xs px-3.5 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 font-semibold shadow-sm">
-              Total Residents: <span className="font-bold text-blue-950">{tenants.length}</span> (
+            <div className="text-xs px-3.5 py-2 rounded-xl bg-brand-50 border border-brand-200 text-brand-900 font-semibold shadow-sm">
+              Total Residents: <span className="font-bold text-brand-950">{tenants.length}</span> (
               <span className="text-emerald-700 font-bold">
                 {tenants.filter((t) => t.kyc?.status === 'verified').length} KYC Verified
               </span>
@@ -222,7 +222,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
             <button
               type="button"
               onClick={() => setIsAddTenantOpen(true)}
-              className="px-4 py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition shadow-md shadow-blue-700/20 flex items-center space-x-1.5"
+              className="px-4 py-2.5 bg-brand-700 hover:bg-brand-800 text-white rounded-xl text-xs font-bold transition shadow-md shadow-brand-700/20 flex items-center space-x-1.5"
             >
               <Plus className="w-4 h-4" />
               <span>Create Tenant & Invite</span>
@@ -239,7 +239,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
               placeholder="Search by Name, Phone, Room Number, or Aadhaar..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
             />
           </div>
 
@@ -255,7 +255,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                 onClick={() => setKycFilter(filter)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition ${
                   kycFilter === filter
-                    ? 'bg-blue-700 text-white shadow-sm'
+                    ? 'bg-brand-700 text-white shadow-sm'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
@@ -266,7 +266,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
             <select
               value={floorFilter}
               onChange={(e) => setFloorFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-              className="bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-600"
+              className="bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-600"
             >
               <option value="all">All Floors</option>
               <option value={1}>Floor 1</option>
@@ -289,7 +289,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
               onClick={() => setProfileTenant(t)}
               role="button"
               tabIndex={0}
-              className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-blue-300 transition space-y-4 text-slate-900 relative flex flex-col justify-between cursor-pointer"
+              className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-brand-300 transition space-y-4 text-slate-900 relative flex flex-col justify-between cursor-pointer"
             >
               {/* Tenant Profile Top */}
               <div className="space-y-3">
@@ -298,12 +298,12 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                     <img
                       src={t.photoUrl}
                       alt={t.name}
-                      className="w-12 h-12 rounded-2xl object-cover border-2 border-blue-600 shadow-sm shrink-0"
+                      className="w-12 h-12 rounded-2xl object-cover border-2 border-brand-600 shadow-sm shrink-0"
                     />
                     <div>
                       <h3 className="font-bold text-slate-900 text-sm">{t.name}</h3>
-                      <p className="text-xs text-blue-700 font-semibold flex items-center space-x-1">
-                        <Phone className="w-3 h-3 text-blue-600" />
+                      <p className="text-xs text-brand-700 font-semibold flex items-center space-x-1">
+                        <Phone className="w-3 h-3 text-brand-600" />
                         <span>+91 {t.phone.replace(/\D/g, '')}</span>
                       </p>
                       <p className="text-[11px] text-slate-500">
@@ -378,7 +378,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setSelectedTenantDossier(t); }}
-                  className="py-2 px-3 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center justify-center space-x-1.5"
+                  className="py-2 px-3 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center justify-center space-x-1.5"
                 >
                   <Eye className="w-3.5 h-3.5" />
                   <span>Review Dossier</span>
@@ -401,18 +401,18 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
 
       {/* CREATE NEW TENANT MODAL */}
       {isAddTenantOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-950/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-blue-100 text-slate-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-brand-100 text-slate-900">
             
             {/* Modal Header */}
-            <div className="bg-blue-700 text-white px-6 py-4 flex items-center justify-between shadow-sm">
+            <div className="bg-brand-700 text-white px-6 py-4 flex items-center justify-between shadow-sm">
               <div className="flex items-center space-x-2.5">
                 <div className="w-8 h-8 rounded-xl bg-white/15 text-white flex items-center justify-center border border-white/20">
                   <UserCheck className="w-4 h-4" />
                 </div>
                 <div>
                   <h2 className="font-bold text-base text-white">Create Tenant & Assign Room</h2>
-                  <p className="text-xs text-blue-100">Step 1: Admin allocates room • Step 2: Auto WhatsApp Invite</p>
+                  <p className="text-xs text-brand-100">Step 1: Admin allocates room • Step 2: Auto WhatsApp Invite</p>
                 </div>
               </div>
               <button
@@ -437,7 +437,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                   placeholder="e.g. Rahul Sharma"
                   value={newTenantName}
                   onChange={(e) => setNewTenantName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                 />
               </div>
 
@@ -455,7 +455,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                     placeholder="9876543210"
                     value={newTenantPhone}
                     onChange={(e) => setNewTenantPhone(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-12 pr-4 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-12 pr-4 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                   />
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
@@ -472,7 +472,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                   <select
                     value={selectedRoomId}
                     onChange={(e) => handleRoomSelect(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                   >
                     <option value="">-- Choose Room --</option>
                     {rooms.map((r) => {
@@ -494,7 +494,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                     value={selectedBedId}
                     onChange={(e) => setSelectedBedId(e.target.value)}
                     disabled={!selectedRoomId}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm disabled:opacity-50"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm disabled:opacity-50"
                   >
                     <option value="">-- Choose Bed --</option>
                     {selectedRoomId &&
@@ -519,7 +519,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                     type="number"
                     value={customRent}
                     onChange={(e) => setCustomRent(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-blue-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-brand-900 focus:outline-none focus:border-brand-600 shadow-sm"
                   />
                 </div>
 
@@ -531,7 +531,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                     type="number"
                     value={customDeposit}
                     onChange={(e) => setCustomDeposit(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-blue-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-brand-900 focus:outline-none focus:border-brand-600 shadow-sm"
                   />
                 </div>
               </div>
@@ -546,7 +546,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition shadow-md shadow-blue-700/20 flex items-center space-x-1.5"
+                  className="px-5 py-2.5 bg-brand-700 hover:bg-brand-800 text-white rounded-xl text-xs font-bold transition shadow-md shadow-brand-700/20 flex items-center space-x-1.5"
                 >
                   <MessageSquare className="w-4 h-4" />
                   <span>Create & Generate WhatsApp Invite</span>
@@ -586,18 +586,18 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
 
       {/* TENANT DOSSIER & POLICE VERIFICATION MODAL */}
       {selectedTenantDossier && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-950/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl border border-blue-100 text-slate-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl border border-brand-100 text-slate-900">
             
             {/* Dossier Header */}
-            <div className="sticky top-0 bg-blue-700 text-white px-6 py-4 flex items-center justify-between z-10 shadow-sm">
+            <div className="sticky top-0 bg-brand-700 text-white px-6 py-4 flex items-center justify-between z-10 shadow-sm">
               <div className="flex items-center space-x-2.5">
                 <div className="w-9 h-9 rounded-xl bg-white/15 text-white flex items-center justify-center border border-white/20">
                   <FileCheck2 className="w-5 h-5" />
                 </div>
                 <div>
                   <h2 className="font-bold text-base text-white">Digital KYC & Verification Record</h2>
-                  <p className="text-xs text-blue-100">Official tenant identification & Aadhaar compliance dossier</p>
+                  <p className="text-xs text-brand-100">Official tenant identification & Aadhaar compliance dossier</p>
                 </div>
               </div>
 
@@ -623,17 +623,17 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
             <div className="p-6 space-y-6">
               
               {/* Tenant Hero Box */}
-              <div className="bg-blue-50/80 border border-blue-200 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="bg-brand-50/80 border border-brand-200 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center space-x-4">
                   <img
                     src={selectedTenantDossier.photoUrl}
                     alt={selectedTenantDossier.name}
-                    className="w-16 h-16 rounded-2xl object-cover border-2 border-blue-600 shadow-md shrink-0"
+                    className="w-16 h-16 rounded-2xl object-cover border-2 border-brand-600 shadow-md shrink-0"
                   />
                   <div>
                     <h3 className="text-lg font-black text-slate-900">{selectedTenantDossier.name}</h3>
-                    <p className="text-xs text-blue-800 font-bold flex items-center space-x-1">
-                      <Phone className="w-3 h-3 text-blue-600" />
+                    <p className="text-xs text-brand-800 font-bold flex items-center space-x-1">
+                      <Phone className="w-3 h-3 text-brand-600" />
                       <span>+91 {selectedTenantDossier.phone.replace(/\D/g, '')}</span>
                     </p>
                     <p className="text-xs text-slate-600">
@@ -711,14 +711,14 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
               {/* Aadhaar Details Block */}
               <div className="border border-slate-200 rounded-2xl p-5 space-y-4 bg-slate-50/50">
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
-                  <CreditCard className="w-4 h-4 text-blue-700" />
+                  <CreditCard className="w-4 h-4 text-brand-700" />
                   <span>Aadhaar Identity Details</span>
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
                   <div>
                     <span className="text-slate-500">Aadhaar Card No.</span>
-                    <p className="font-mono font-bold text-blue-950 text-sm">
+                    <p className="font-mono font-bold text-brand-950 text-sm">
                       {selectedTenantDossier.kyc?.aadhaar?.aadhaarNumber || 'Not submitted'}
                     </p>
                   </div>
@@ -796,9 +796,9 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                 </div>
 
                 {/* Occupation */}
-                <div className="border border-blue-200 bg-blue-50/40 rounded-2xl p-5 space-y-3 text-xs">
-                  <h4 className="font-bold text-blue-900 uppercase tracking-wider flex items-center space-x-2">
-                    <Briefcase className="w-4 h-4 text-blue-700" />
+                <div className="border border-brand-200 bg-brand-50/40 rounded-2xl p-5 space-y-3 text-xs">
+                  <h4 className="font-bold text-brand-900 uppercase tracking-wider flex items-center space-x-2">
+                    <Briefcase className="w-4 h-4 text-brand-700" />
                     <span>Occupation & Workplace</span>
                   </h4>
                   <div>

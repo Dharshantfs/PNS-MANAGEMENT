@@ -466,19 +466,19 @@ function onFormSubmit(e) {
     <div className="space-y-6 animate-in fade-in text-slate-900 font-sans">
       
       {/* Top Banner / Integration Header */}
-      <div className="bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 rounded-3xl p-6 sm:p-8 text-white shadow-lg border border-blue-600 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-brand-700 via-brand-800 to-indigo-900 rounded-3xl p-6 sm:p-8 text-white shadow-lg border border-brand-600 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="px-3 py-1 rounded-full bg-white/15 border border-white/25 text-blue-100 text-xs font-bold flex items-center space-x-1.5">
+            <span className="px-3 py-1 rounded-full bg-white/15 border border-white/25 text-brand-100 text-xs font-bold flex items-center space-x-1.5">
               <FileText className="w-3.5 h-3.5" />
               <span>Google Forms API & Workspace Integration</span>
             </span>
-            <span className="text-xs text-blue-200">Official PG Admission Pipeline</span>
+            <span className="text-xs text-brand-200">Official PG Admission Pipeline</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white mt-2 tracking-tight">
             Google Forms Management Hub
           </h1>
-          <p className="text-xs sm:text-sm text-blue-100 mt-1 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-brand-100 mt-1 max-w-2xl leading-relaxed">
             Create official admission forms directly in your Google Drive, pull live KYC submissions via the Google Forms API, and allocate vacant PG beds with 1 click!
           </p>
         </div>
@@ -495,7 +495,7 @@ function onFormSubmit(e) {
                 />
                 <div className="text-left">
                   <p className="text-xs font-bold text-white leading-tight">{googleUser.displayName || 'Connected Account'}</p>
-                  <p className="text-[10px] text-blue-200 truncate max-w-[140px]">{googleUser.email}</p>
+                  <p className="text-[10px] text-brand-200 truncate max-w-[140px]">{googleUser.email}</p>
                 </div>
               </div>
               <div className="flex items-center justify-center space-x-2 pt-1 border-t border-white/15">
@@ -506,7 +506,7 @@ function onFormSubmit(e) {
                 <button
                   type="button"
                   onClick={handleGoogleLogout}
-                  className="text-[10px] text-blue-200 hover:text-white underline font-semibold"
+                  className="text-[10px] text-brand-200 hover:text-white underline font-semibold"
                 >
                   Disconnect
                 </button>
@@ -514,23 +514,23 @@ function onFormSubmit(e) {
             </div>
           ) : (
             <div className="space-y-2.5">
-              <p className="text-xs text-blue-100 font-medium">Connect Google Account</p>
+              <p className="text-xs text-brand-100 font-medium">Connect Google Account</p>
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={isAuthenticating}
-                className="w-full py-2 px-3.5 bg-white hover:bg-slate-50 text-blue-900 font-bold rounded-xl text-xs transition shadow-md flex items-center justify-center space-x-2"
+                className="w-full py-2 px-3.5 bg-white hover:bg-slate-50 text-brand-900 font-bold rounded-xl text-xs transition shadow-md flex items-center justify-center space-x-2"
               >
                 {isAuthenticating ? (
-                  <div className="w-3.5 h-3.5 border-2 border-blue-900 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-3.5 h-3.5 border-2 border-brand-900 border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    <Globe className="w-3.5 h-3.5 text-blue-700" />
+                    <Globe className="w-3.5 h-3.5 text-brand-700" />
                     <span>Sign In with Google</span>
                   </>
                 )}
               </button>
-              <p className="text-[10px] text-blue-200">Grants Forms & Drive API permissions</p>
+              <p className="text-[10px] text-brand-200">Grants Forms & Drive API permissions</p>
             </div>
           )}
         </div>
@@ -559,14 +559,14 @@ function onFormSubmit(e) {
           onClick={() => setActiveSubTab('api_sync')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
             activeSubTab === 'api_sync'
-              ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
+              ? 'bg-brand-700 text-white shadow-md shadow-brand-700/20'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
           <RefreshCw className="w-3.5 h-3.5" />
           <span>Live Form Responses & Bed Allocator</span>
           {formResponses.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-emerald-400 text-blue-950 ml-1">
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-emerald-400 text-brand-950 ml-1">
               {formResponses.length}
             </span>
           )}
@@ -577,7 +577,7 @@ function onFormSubmit(e) {
           onClick={() => setActiveSubTab('create_form')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
             activeSubTab === 'create_form'
-              ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
+              ? 'bg-brand-700 text-white shadow-md shadow-brand-700/20'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -590,7 +590,7 @@ function onFormSubmit(e) {
           onClick={() => setActiveSubTab('drive_forms')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
             activeSubTab === 'drive_forms'
-              ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
+              ? 'bg-brand-700 text-white shadow-md shadow-brand-700/20'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -608,7 +608,7 @@ function onFormSubmit(e) {
           onClick={() => setActiveSubTab('webhook_script')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
             activeSubTab === 'webhook_script'
-              ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
+              ? 'bg-brand-700 text-white shadow-md shadow-brand-700/20'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -621,7 +621,7 @@ function onFormSubmit(e) {
           onClick={() => setActiveSubTab('simulator')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
             activeSubTab === 'simulator'
-              ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
+              ? 'bg-brand-700 text-white shadow-md shadow-brand-700/20'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -637,10 +637,10 @@ function onFormSubmit(e) {
         <div className="space-y-6">
           
           {/* Active Form Selector Header */}
-          <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center space-x-2">
-                <FileText className="w-5 h-5 text-blue-700" />
+                <FileText className="w-5 h-5 text-brand-700" />
                 <h2 className="text-base font-bold text-slate-900">
                   {activeFormDetails?.title || (selectedFormId ? `Google Form (${selectedFormId.slice(0, 10)}...)` : 'No Google Form Selected')}
                 </h2>
@@ -673,7 +673,7 @@ function onFormSubmit(e) {
                   type="button"
                   onClick={() => selectedFormId && handleSelectForm(selectedFormId)}
                   disabled={isLoadingResponses || !selectedFormId}
-                  className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition shadow-md shadow-blue-700/20 disabled:opacity-50"
+                  className="px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition shadow-md shadow-brand-700/20 disabled:opacity-50"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isLoadingResponses ? 'animate-spin' : ''}`} />
                   <span>{isLoadingResponses ? 'Syncing Responses...' : 'Sync Live Responses'}</span>
@@ -682,7 +682,7 @@ function onFormSubmit(e) {
                 <button
                   type="button"
                   onClick={handleGoogleSignIn}
-                  className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition"
+                  className="px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition"
                 >
                   <LogIn className="w-3.5 h-3.5" />
                   <span>Sign in to Fetch Responses</span>
@@ -705,19 +705,19 @@ function onFormSubmit(e) {
 
           {/* Form Link & QR Code Quick Share Drawer */}
           {publicResponderUrl && (
-            <div className="bg-blue-50/60 border border-blue-200 rounded-3xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="bg-brand-50/60 border border-brand-200 rounded-3xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center space-x-4">
-                <div className="p-2 bg-white rounded-2xl border border-blue-200 shadow-sm shrink-0">
+                <div className="p-2 bg-white rounded-2xl border border-brand-200 shadow-sm shrink-0">
                   <QRCodeSVG value={publicResponderUrl} size={64} level="M" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-bold text-blue-950 uppercase tracking-wider">
+                  <p className="text-xs font-bold text-brand-950 uppercase tracking-wider">
                     Public Google Form Admission Link
                   </p>
                   <p className="text-xs text-slate-600 font-mono break-all max-w-xl">
                     {publicResponderUrl}
                   </p>
-                  <p className="text-[11px] text-blue-700 font-medium">
+                  <p className="text-[11px] text-brand-700 font-medium">
                     Share this link with prospective tenants to collect Aadhaar, phone, and KYC details.
                   </p>
                 </div>
@@ -727,7 +727,7 @@ function onFormSubmit(e) {
                 <button
                   type="button"
                   onClick={() => handleCopyLink(publicResponderUrl)}
-                  className="px-3.5 py-2 bg-white hover:bg-slate-50 text-blue-900 border border-blue-300 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition shadow-sm"
+                  className="px-3.5 py-2 bg-white hover:bg-slate-50 text-brand-900 border border-brand-300 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition shadow-sm"
                 >
                   {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copiedLink ? 'Link Copied!' : 'Copy Form Link'}</span>
@@ -751,10 +751,10 @@ function onFormSubmit(e) {
           )}
 
           {/* Responses Table / List */}
-          <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-4">
+          <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2">
-                <Users className="w-4 h-4 text-blue-700" />
+                <Users className="w-4 h-4 text-brand-700" />
                 <h3 className="font-bold text-sm text-slate-900">
                   Live Form Submissions & Applicants ({formResponses.length})
                 </h3>
@@ -766,7 +766,7 @@ function onFormSubmit(e) {
 
             {formResponses.length === 0 ? (
               <div className="text-center py-12 space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-700 mx-auto flex items-center justify-center border border-blue-100">
+                <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-700 mx-auto flex items-center justify-center border border-brand-100">
                   <FileText className="w-6 h-6" />
                 </div>
                 <p className="text-sm font-bold text-slate-900">No Responses Found Yet</p>
@@ -777,7 +777,7 @@ function onFormSubmit(e) {
                   <button
                     type="button"
                     onClick={() => setActiveSubTab('create_form')}
-                    className="px-4 py-2 bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-700/20"
+                    className="px-4 py-2 bg-brand-700 text-white rounded-xl text-xs font-bold shadow-md shadow-brand-700/20"
                   >
                     Create Official Form
                   </button>
@@ -813,12 +813,12 @@ function onFormSubmit(e) {
                       );
 
                       return (
-                        <tr key={res.responseId} className="hover:bg-blue-50/40 transition">
+                        <tr key={res.responseId} className="hover:bg-brand-50/40 transition">
                           <td className="py-3 px-3">
                             <p className="font-bold text-slate-900">{res.extracted.fullName}</p>
                             <p className="text-[10px] text-slate-500">{res.extracted.occupation}</p>
                           </td>
-                          <td className="py-3 px-3 font-mono font-bold text-blue-900">
+                          <td className="py-3 px-3 font-mono font-bold text-brand-900">
                             +91 {res.extracted.phone.replace(/\D/g, '').slice(-10)}
                           </td>
                           <td className="py-3 px-3">
@@ -853,7 +853,7 @@ function onFormSubmit(e) {
                                   setAdmittingResponse(res);
                                   setSelectedBedId(vacantBeds[0]?.id || '');
                                 }}
-                                className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center space-x-1 ml-auto"
+                                className="px-3 py-1.5 bg-brand-700 hover:bg-brand-800 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center space-x-1 ml-auto"
                               >
                                 <BedDouble className="w-3 h-3" />
                                 <span>Admit to Bed</span>
@@ -875,9 +875,9 @@ function onFormSubmit(e) {
       {/* TAB 2: 1-Click Create Official PG Admission Form in Google Drive */}
       {/* ========================================================================= */}
       {activeSubTab === 'create_form' && (
-        <div className="bg-white border border-blue-100 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+        <div className="bg-white border border-brand-100 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
           <div className="max-w-2xl">
-            <div className="flex items-center space-x-2 text-blue-700">
+            <div className="flex items-center space-x-2 text-brand-700">
               <PlusCircle className="w-5 h-5" />
               <h2 className="text-lg font-bold text-slate-900">Create Official PG Admission Google Form</h2>
             </div>
@@ -938,13 +938,13 @@ function onFormSubmit(e) {
                   rel="noopener noreferrer"
                   className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-900 border border-slate-300 font-bold rounded-xl text-xs flex items-center space-x-1.5 transition"
                 >
-                  <FileText className="w-3.5 h-3.5 text-blue-700" />
+                  <FileText className="w-3.5 h-3.5 text-brand-700" />
                   <span>Edit in Google Forms</span>
                 </a>
                 <button
                   type="button"
                   onClick={() => setActiveSubTab('api_sync')}
-                  className="px-4 py-2 bg-blue-700 text-white font-bold rounded-xl text-xs"
+                  className="px-4 py-2 bg-brand-700 text-white font-bold rounded-xl text-xs"
                 >
                   Go to Live Responses Tab →
                 </button>
@@ -957,7 +957,7 @@ function onFormSubmit(e) {
                   type="button"
                   onClick={() => setCreateFormConfirmOpen(true)}
                   disabled={isCreatingForm}
-                  className="py-3 px-6 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-blue-700/20 flex items-center space-x-2"
+                  className="py-3 px-6 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-brand-700/20 flex items-center space-x-2"
                 >
                   {isCreatingForm ? (
                     <>
@@ -972,14 +972,14 @@ function onFormSubmit(e) {
                   )}
                 </button>
               ) : (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl text-xs flex items-center justify-between">
-                  <p className="text-blue-900 font-medium">
+                <div className="p-4 bg-brand-50 border border-brand-200 rounded-2xl text-xs flex items-center justify-between">
+                  <p className="text-brand-900 font-medium">
                     Please sign in with your Google account to create forms in your Google Drive.
                   </p>
                   <button
                     type="button"
                     onClick={handleGoogleSignIn}
-                    className="px-4 py-2 bg-blue-700 text-white font-bold rounded-xl text-xs shadow"
+                    className="px-4 py-2 bg-brand-700 text-white font-bold rounded-xl text-xs shadow"
                   >
                     Sign In with Google
                   </button>
@@ -994,11 +994,11 @@ function onFormSubmit(e) {
       {/* TAB 3: Browse / Pick Forms from Drive */}
       {/* ========================================================================= */}
       {activeSubTab === 'drive_forms' && (
-        <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-6">
+        <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-                <FolderOpen className="w-5 h-5 text-blue-700" />
+                <FolderOpen className="w-5 h-5 text-brand-700" />
                 <span>Your Google Drive Forms</span>
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -1021,19 +1021,19 @@ function onFormSubmit(e) {
 
           {!accessToken ? (
             <div className="text-center py-10 space-y-3">
-              <Globe className="w-8 h-8 text-blue-700 mx-auto" />
+              <Globe className="w-8 h-8 text-brand-700 mx-auto" />
               <p className="text-xs text-slate-600">Connect your Google account to list forms from Drive</p>
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
-                className="px-4 py-2 bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md shadow-blue-700/20"
+                className="px-4 py-2 bg-brand-700 text-white font-bold rounded-xl text-xs shadow-md shadow-brand-700/20"
               >
                 Sign In with Google
               </button>
             </div>
           ) : isLoadingDriveForms ? (
             <div className="py-12 text-center">
-              <div className="w-6 h-6 border-2 border-blue-700 border-t-transparent rounded-full animate-spin mx-auto" />
+              <div className="w-6 h-6 border-2 border-brand-700 border-t-transparent rounded-full animate-spin mx-auto" />
               <p className="text-xs text-slate-500 mt-2">Loading Google Forms from your Drive...</p>
             </div>
           ) : driveForms.length === 0 ? (
@@ -1044,7 +1044,7 @@ function onFormSubmit(e) {
               <button
                 type="button"
                 onClick={() => setActiveSubTab('create_form')}
-                className="px-4 py-2 bg-blue-700 text-white font-bold rounded-xl text-xs mt-2"
+                className="px-4 py-2 bg-brand-700 text-white font-bold rounded-xl text-xs mt-2"
               >
                 Create Official Form →
               </button>
@@ -1058,8 +1058,8 @@ function onFormSubmit(e) {
                     key={form.id}
                     className={`p-4 rounded-2xl border transition flex flex-col justify-between space-y-3 ${
                       isSelected
-                        ? 'bg-blue-50/70 border-blue-500 shadow-md ring-2 ring-blue-500/20'
-                        : 'bg-white border-slate-200 hover:border-blue-300'
+                        ? 'bg-brand-50/70 border-brand-500 shadow-md ring-2 ring-brand-500/20'
+                        : 'bg-white border-slate-200 hover:border-brand-300'
                     }`}
                   >
                     <div className="flex items-start justify-between">
@@ -1073,7 +1073,7 @@ function onFormSubmit(e) {
                         )}
                       </div>
                       {isSelected && (
-                        <span className="px-2 py-0.5 bg-blue-700 text-white rounded-full text-[10px] font-bold">
+                        <span className="px-2 py-0.5 bg-brand-700 text-white rounded-full text-[10px] font-bold">
                           Active Form
                         </span>
                       )}
@@ -1088,7 +1088,7 @@ function onFormSubmit(e) {
                         }}
                         className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1 ${
                           isSelected
-                            ? 'bg-blue-700 text-white'
+                            ? 'bg-brand-700 text-white'
                             : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
                         }`}
                       >
@@ -1125,7 +1125,7 @@ function onFormSubmit(e) {
                 value={customFormInput}
                 onChange={(e) => setCustomFormInput(e.target.value)}
                 placeholder="e.g. 1FAIpQLSc... or https://docs.google.com/forms/d/1abc.../edit"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-600"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-brand-600"
               />
               <button
                 type="button"
@@ -1135,7 +1135,7 @@ function onFormSubmit(e) {
                     setActiveSubTab('api_sync');
                   }
                 }}
-                className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shrink-0"
+                className="px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shrink-0"
               >
                 Load Form
               </button>
@@ -1150,9 +1150,9 @@ function onFormSubmit(e) {
       {activeSubTab === 'webhook_script' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-6 space-y-6">
-            <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-3">
+            <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-3">
               <div className="flex items-center space-x-2">
-                <Code2 className="w-5 h-5 text-blue-700" />
+                <Code2 className="w-5 h-5 text-brand-700" />
                 <h3 className="font-bold text-sm text-slate-900">Your Live Webhook URL</h3>
               </div>
               <p className="text-xs text-slate-500">
@@ -1164,12 +1164,12 @@ function onFormSubmit(e) {
                   type="text"
                   readOnly
                   value={webhookEndpoint}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-blue-900 select-all font-semibold"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-brand-900 select-all font-semibold"
                 />
                 <button
                   type="button"
                   onClick={handleCopyWebhook}
-                  className="px-3.5 py-2 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition flex items-center space-x-1 shrink-0"
+                  className="px-3.5 py-2 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition flex items-center space-x-1 shrink-0"
                 >
                   {copiedWebhookUrl ? (
                     <>
@@ -1186,7 +1186,7 @@ function onFormSubmit(e) {
               </div>
             </div>
 
-            <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-3">
+            <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-3">
               <h3 className="font-bold text-sm text-slate-900">Setup Instructions (3 Steps)</h3>
               <ol className="list-decimal list-inside text-xs text-slate-600 space-y-2 leading-relaxed">
                 <li>Open your Google Form in Google Drive.</li>
@@ -1196,23 +1196,23 @@ function onFormSubmit(e) {
             </div>
           </div>
 
-          <div className="lg:col-span-6 bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-3">
+          <div className="lg:col-span-6 bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <FileText className="w-5 h-5 text-blue-700" />
+                <FileText className="w-5 h-5 text-brand-700" />
                 <h3 className="font-bold text-sm text-slate-900">Google Apps Script (Copy & Paste)</h3>
               </div>
               <button
                 type="button"
                 onClick={handleCopyScript}
-                className="text-xs text-blue-700 hover:text-blue-900 font-bold flex items-center space-x-1"
+                className="text-xs text-brand-700 hover:text-brand-900 font-bold flex items-center space-x-1"
               >
                 {copiedScript ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                 <span>{copiedScript ? 'Script Copied!' : 'Copy Full Script'}</span>
               </button>
             </div>
 
-            <pre className="bg-slate-950 text-blue-300 p-4 rounded-2xl text-[11px] font-mono overflow-x-auto max-h-96 border border-slate-800 leading-relaxed select-all">
+            <pre className="bg-slate-950 text-brand-300 p-4 rounded-2xl text-[11px] font-mono overflow-x-auto max-h-96 border border-slate-800 leading-relaxed select-all">
               {appsScriptCode}
             </pre>
           </div>
@@ -1223,10 +1223,10 @@ function onFormSubmit(e) {
       {/* TAB 5: Form Submission Simulator */}
       {/* ========================================================================= */}
       {activeSubTab === 'simulator' && (
-        <div className="max-w-2xl mx-auto bg-white border border-blue-100 rounded-3xl p-6 sm:p-8 shadow-sm space-y-5">
+        <div className="max-w-2xl mx-auto bg-white border border-brand-100 rounded-3xl p-6 sm:p-8 shadow-sm space-y-5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div className="flex items-center space-x-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-100 shadow-sm">
+              <div className="w-10 h-10 rounded-2xl bg-brand-50 text-brand-700 flex items-center justify-center border border-brand-100 shadow-sm">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div>
@@ -1252,7 +1252,7 @@ function onFormSubmit(e) {
                   required
                   value={simName}
                   onChange={(e) => setSimName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
 
@@ -1265,7 +1265,7 @@ function onFormSubmit(e) {
                   required
                   value={simPhone}
                   onChange={(e) => setSimPhone(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-blue-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-brand-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
             </div>
@@ -1280,7 +1280,7 @@ function onFormSubmit(e) {
                   required
                   value={simAadhaar}
                   onChange={(e) => setSimAadhaar(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
 
@@ -1293,7 +1293,7 @@ function onFormSubmit(e) {
                   required
                   value={simDob}
                   onChange={(e) => setSimDob(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
             </div>
@@ -1308,7 +1308,7 @@ function onFormSubmit(e) {
                   required
                   value={simEmergencyName}
                   onChange={(e) => setSimEmergencyName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
 
@@ -1321,7 +1321,7 @@ function onFormSubmit(e) {
                   required
                   value={simEmergencyPhone}
                   onChange={(e) => setSimEmergencyPhone(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-medium text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-medium text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
             </div>
@@ -1335,7 +1335,7 @@ function onFormSubmit(e) {
                   type="text"
                   value={simOccupation}
                   onChange={(e) => setSimOccupation(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
 
@@ -1347,7 +1347,7 @@ function onFormSubmit(e) {
                   type="text"
                   value={simCompany}
                   onChange={(e) => setSimCompany(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
 
@@ -1358,7 +1358,7 @@ function onFormSubmit(e) {
                 <select
                   value={simRoomType}
                   onChange={(e) => setSimRoomType(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 font-bold"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-brand-600 font-bold"
                 >
                   <option value="2-Sharing">2-Sharing</option>
                   <option value="3-Sharing">3-Sharing</option>
@@ -1395,7 +1395,7 @@ function onFormSubmit(e) {
             <button
               type="submit"
               disabled={isSubmittingSim}
-              className="w-full py-3.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-blue-700/20 flex items-center justify-center space-x-2 disabled:opacity-70"
+              className="w-full py-3.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-brand-700/20 flex items-center justify-center space-x-2 disabled:opacity-70"
             >
               {isSubmittingSim ? (
                 <>
@@ -1418,8 +1418,8 @@ function onFormSubmit(e) {
       {/* ========================================================================= */}
       {createFormConfirmOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-blue-100 space-y-4 animate-in zoom-in-95">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-100">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-brand-100 space-y-4 animate-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-700 flex items-center justify-center border border-brand-100">
               <FileText className="w-6 h-6" />
             </div>
 
@@ -1441,7 +1441,7 @@ function onFormSubmit(e) {
               <button
                 type="button"
                 onClick={handleCreateOfficialForm}
-                className="flex-1 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-md shadow-blue-700/20"
+                className="flex-1 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-xs shadow-md shadow-brand-700/20"
               >
                 Confirm & Create
               </button>
@@ -1455,10 +1455,10 @@ function onFormSubmit(e) {
       {/* ========================================================================= */}
       {admittingResponse && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-blue-100 space-y-5 animate-in zoom-in-95">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-brand-100 space-y-5 animate-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2">
-                <BedDouble className="w-5 h-5 text-blue-700" />
+                <BedDouble className="w-5 h-5 text-brand-700" />
                 <h3 className="text-base font-bold text-slate-900">Admit Google Form Applicant</h3>
               </div>
               <button
@@ -1471,14 +1471,14 @@ function onFormSubmit(e) {
             </div>
 
             {/* Applicant Summary */}
-            <div className="bg-blue-50/60 p-4 rounded-2xl border border-blue-100 space-y-2 text-xs">
+            <div className="bg-brand-50/60 p-4 rounded-2xl border border-brand-100 space-y-2 text-xs">
               <div className="flex justify-between">
                 <span className="text-slate-500">Applicant:</span>
                 <span className="font-bold text-slate-900">{admittingResponse.extracted.fullName}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Mobile Phone:</span>
-                <span className="font-mono font-bold text-blue-900">+91 {admittingResponse.extracted.phone}</span>
+                <span className="font-mono font-bold text-brand-900">+91 {admittingResponse.extracted.phone}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Aadhaar Card:</span>
@@ -1510,7 +1510,7 @@ function onFormSubmit(e) {
                     required
                     value={selectedBedId}
                     onChange={(e) => setSelectedBedId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-600"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-brand-600"
                   >
                     {vacantBeds.map((b) => (
                       <option key={b.id} value={b.id}>
@@ -1539,7 +1539,7 @@ function onFormSubmit(e) {
                 <button
                   type="submit"
                   disabled={isSubmittingAdmission || vacantBeds.length === 0}
-                  className="flex-1 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-md shadow-blue-700/20 disabled:opacity-50"
+                  className="flex-1 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-xs shadow-md shadow-brand-700/20 disabled:opacity-50"
                 >
                   {isSubmittingAdmission ? 'Admitting Resident...' : 'Confirm Admission & Allocate Bed'}
                 </button>

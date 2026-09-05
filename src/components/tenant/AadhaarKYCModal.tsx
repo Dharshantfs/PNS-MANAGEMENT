@@ -157,18 +157,18 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-950/75 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-blue-100 text-slate-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
+      <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-brand-100 text-slate-900">
         
         {/* Top Header - Royal Blue */}
-        <div className="sticky top-0 bg-blue-700 text-white px-6 py-4 flex items-center justify-between z-10 shadow-sm">
+        <div className="sticky top-0 bg-brand-700 text-white px-6 py-4 flex items-center justify-between z-10 shadow-sm">
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-xl bg-white/15 text-white flex items-center justify-center border border-white/20">
               <CreditCard className="w-4 h-4" />
             </div>
             <div>
               <h2 className="font-bold text-base text-white">Digital Aadhaar KYC Submission</h2>
-              <p className="text-xs text-blue-100">Official tenant identification & compliance records</p>
+              <p className="text-xs text-brand-100">Official tenant identification & compliance records</p>
             </div>
           </div>
           <button
@@ -181,14 +181,14 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
         </div>
 
         {/* Step Indicator */}
-        <div className="bg-blue-50/80 px-6 py-3 border-b border-blue-100 flex items-center justify-between text-xs font-bold">
-          <div className={`flex items-center space-x-1.5 ${step >= 1 ? 'text-blue-800' : 'text-slate-400'}`}>
-            <span className="w-5 h-5 rounded-full bg-blue-700 text-white flex items-center justify-center text-[10px]">1</span>
+        <div className="bg-brand-50/80 px-6 py-3 border-b border-brand-100 flex items-center justify-between text-xs font-bold">
+          <div className={`flex items-center space-x-1.5 ${step >= 1 ? 'text-brand-800' : 'text-slate-400'}`}>
+            <span className="w-5 h-5 rounded-full bg-brand-700 text-white flex items-center justify-center text-[10px]">1</span>
             <span>Aadhaar Card & Identity</span>
           </div>
           <span className="text-slate-300">→</span>
-          <div className={`flex items-center space-x-1.5 ${step >= 2 ? 'text-blue-800' : 'text-slate-400'}`}>
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 2 ? 'bg-blue-700 text-white' : 'bg-slate-300 text-slate-700'}`}>2</span>
+          <div className={`flex items-center space-x-1.5 ${step >= 2 ? 'text-brand-800' : 'text-slate-400'}`}>
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 2 ? 'bg-brand-700 text-white' : 'bg-slate-300 text-slate-700'}`}>2</span>
             <span>Emergency & Work Details</span>
           </div>
           <span className="text-slate-300">→</span>
@@ -215,7 +215,7 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
                       value={aadhaarNum}
                       onChange={handleAadhaarNumberChange}
                       placeholder="XXXX XXXX XXXX"
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono font-bold text-blue-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono font-bold text-brand-900 focus:outline-none focus:border-brand-600 shadow-sm"
                     />
                   </div>
 
@@ -228,7 +228,7 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
                       value={nameOnAadhaar}
                       onChange={(e) => setNameOnAadhaar(e.target.value.toUpperCase())}
                       placeholder="e.g. RAHUL SHARMA"
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold uppercase text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold uppercase text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                     />
                   </div>
                 </div>
@@ -242,7 +242,7 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
                       type="date"
                       value={dob}
                       onChange={(e) => setDob(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                     />
                   </div>
 
@@ -253,7 +253,7 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
                     <select
                       value={gender}
                       onChange={(e) => setGender(e.target.value as any)}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                     >
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
@@ -270,27 +270,27 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
                     rows={2}
                     value={aadhaarAddress}
                     onChange={(e) => setAadhaarAddress(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                   />
                 </div>
               </div>
 
               {/* Uploads Preview */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl flex items-center justify-between">
+                <div className="p-3.5 bg-brand-50/70 border border-brand-200 rounded-xl flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <CheckCircle className="w-4 h-4 text-emerald-600" />
                     <span className="text-xs font-bold text-slate-900">Aadhaar Front Copy</span>
                   </div>
-                  <span className="text-[10px] font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded">Uploaded</span>
+                  <span className="text-[10px] font-bold text-brand-800 bg-brand-100 px-2 py-0.5 rounded">Uploaded</span>
                 </div>
 
-                <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl flex items-center justify-between">
+                <div className="p-3.5 bg-brand-50/70 border border-brand-200 rounded-xl flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <CheckCircle className="w-4 h-4 text-emerald-600" />
                     <span className="text-xs font-bold text-slate-900">Aadhaar Back Copy</span>
                   </div>
-                  <span className="text-[10px] font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded">Uploaded</span>
+                  <span className="text-[10px] font-bold text-brand-800 bg-brand-100 px-2 py-0.5 rounded">Uploaded</span>
                 </div>
               </div>
 
@@ -305,7 +305,7 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
                 type="button"
                 onClick={handleVerifyAadhaar}
                 disabled={isVerifyingAPI}
-                className="w-full py-3.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-700/20 flex items-center justify-center space-x-2 disabled:opacity-70"
+                className="w-full py-3.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-brand-700/20 flex items-center justify-center space-x-2 disabled:opacity-70"
               >
                 {isVerifyingAPI ? (
                   <>
@@ -385,7 +385,7 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
               {/* Occupation & Preference */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
                 <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
-                  <Briefcase className="w-4 h-4 text-blue-700" />
+                  <Briefcase className="w-4 h-4 text-brand-700" />
                   <span>Occupation & Preferences</span>
                 </span>
 
@@ -395,7 +395,7 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
                     <select
                       value={occupation}
                       onChange={(e) => setOccupation(e.target.value as any)}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
                     >
                       <option value="Working Professional">Working Professional</option>
                       <option value="Student">Student</option>
@@ -410,7 +410,7 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
                       type="text"
                       value={companyOrCollege}
                       onChange={(e) => setCompanyOrCollege(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
                     />
                   </div>
                 </div>
@@ -421,7 +421,7 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
                     <select
                       value={foodPreference}
                       onChange={(e) => setFoodPreference(e.target.value as any)}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
                     >
                       <option value="Veg">Vegetarian</option>
                       <option value="Non-Veg">Non-Vegetarian</option>
@@ -434,7 +434,7 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
                     <select
                       value={bloodGroup}
                       onChange={(e) => setBloodGroup(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
                     >
                       <option value="A+">A+</option>
                       <option value="B+">B+</option>
@@ -491,7 +491,7 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-8 py-3 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-700/20"
+                  className="px-8 py-3 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-brand-700/20"
                 >
                   Done & Return to Portal
                 </button>

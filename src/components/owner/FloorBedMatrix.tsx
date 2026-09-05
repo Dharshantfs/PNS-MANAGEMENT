@@ -189,11 +189,11 @@ export const FloorBedMatrix: React.FC = () => {
     <div id="floor-bed-matrix-view" className="space-y-6 animate-in fade-in text-slate-900">
       
       {/* Top Header & Floor Switcher Bar - Royal Blue & White */}
-      <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-4">
+      <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-black text-slate-900 flex items-center space-x-2">
-              <Layers className="w-5 h-5 text-blue-700" />
+              <Layers className="w-5 h-5 text-brand-700" />
               <span>Room & Bed Layout Matrix</span>
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -205,7 +205,7 @@ export const FloorBedMatrix: React.FC = () => {
             id="add-new-room-btn"
             type="button"
             onClick={() => setIsAddRoomOpen(true)}
-            className="px-4 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs flex items-center space-x-2 shadow-md shadow-blue-700/20 transition"
+            className="px-4 py-2.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs flex items-center space-x-2 shadow-md shadow-brand-700/20 transition"
           >
             <Plus className="w-4 h-4" />
             <span>Configure New Room</span>
@@ -221,7 +221,7 @@ export const FloorBedMatrix: React.FC = () => {
               onClick={() => setSelectedFloor('all')}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
                 selectedFloor === 'all'
-                  ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
+                  ? 'bg-brand-700 text-white shadow-md shadow-brand-700/20'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -239,7 +239,7 @@ export const FloorBedMatrix: React.FC = () => {
                   onClick={() => setSelectedFloor(f)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
                     selectedFloor === f
-                      ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
+                      ? 'bg-brand-700 text-white shadow-md shadow-brand-700/20'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -265,14 +265,14 @@ export const FloorBedMatrix: React.FC = () => {
                 placeholder="Search Room..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 w-full sm:w-48"
+                className="bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-brand-600 w-full sm:w-48"
               />
             </div>
 
             <select
               value={filterVacancy}
               onChange={(e) => setFilterVacancy(e.target.value as any)}
-              className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600"
+              className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
             >
               <option value="all">All Rooms</option>
               <option value="has-vacant">Has Vacant Beds</option>
@@ -290,19 +290,19 @@ export const FloorBedMatrix: React.FC = () => {
           return (
             <div
               key={`${room.id}-${index}`}
-              className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm hover:border-blue-300 transition flex flex-col justify-between"
+              className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm hover:border-brand-300 transition flex flex-col justify-between"
             >
               {/* Room Card Top Header */}
               <div>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center font-black text-sm">
+                    <div className="w-11 h-11 rounded-2xl bg-brand-50 text-brand-700 border border-brand-200 flex items-center justify-center font-black text-sm">
                       {room.roomNumber}
                     </div>
                     <div>
                       <div className="flex items-center space-x-1.5">
                         <span className="font-black text-slate-900 text-sm">Room {room.roomNumber}</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 font-bold border border-blue-200">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-800 font-bold border border-brand-200">
                           Floor {room.floor}
                         </span>
                       </div>
@@ -318,7 +318,7 @@ export const FloorBedMatrix: React.FC = () => {
                       className={`text-[10px] px-2.5 py-1 rounded-full font-bold border ${
                         vacantCount > 0
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-blue-50 text-blue-800 border-blue-200'
+                          : 'bg-brand-50 text-brand-800 border-brand-200'
                       }`}
                     >
                       {vacantCount > 0 ? `${vacantCount} Vacant` : 'Occupied'}
@@ -326,7 +326,7 @@ export const FloorBedMatrix: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setEditingRoom(room)}
-                      className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition"
+                      className="p-1.5 text-slate-400 hover:text-brand-700 hover:bg-brand-50 rounded-lg transition"
                       title="Edit Room Pricing & Amenities"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
@@ -346,13 +346,13 @@ export const FloorBedMatrix: React.FC = () => {
                 <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 text-xs py-2.5 px-3.5 bg-slate-50 rounded-2xl border border-slate-200">
                   <div className="flex flex-wrap items-center gap-2 text-slate-500 font-medium">
                     {room.acType === 'AC' && (
-                      <span className="flex items-center space-x-1 text-blue-700" title="Air Conditioned">
+                      <span className="flex items-center space-x-1 text-brand-700" title="Air Conditioned">
                         <Wind className="w-3.5 h-3.5" />
                         <span className="text-[10px] font-bold">AC</span>
                       </span>
                     )}
                     {room.washroomType === 'Attached' && (
-                      <span className="flex items-center space-x-1 text-blue-700" title="Attached Washroom">
+                      <span className="flex items-center space-x-1 text-brand-700" title="Attached Washroom">
                         <Bath className="w-3.5 h-3.5" />
                         <span className="text-[10px] font-bold">Attach</span>
                       </span>
@@ -370,7 +370,7 @@ export const FloorBedMatrix: React.FC = () => {
                   </div>
 
                   <div className="text-right">
-                    <span className="font-black text-blue-900 text-xs">
+                    <span className="font-black text-brand-900 text-xs">
                       ₹{room.pricePerBed.toLocaleString('en-IN')}
                     </span>
                     <span className="text-[10px] text-slate-400"> / bed</span>
@@ -394,7 +394,7 @@ export const FloorBedMatrix: React.FC = () => {
                           key={`${bed.id}-${bIndex}`}
                           className={`p-3 rounded-2xl border transition flex items-center justify-between ${
                             isOccupied
-                              ? 'bg-blue-50/60 border-blue-200'
+                              ? 'bg-brand-50/60 border-brand-200'
                               : 'bg-emerald-50/50 border-emerald-200 hover:border-emerald-400'
                           }`}
                         >
@@ -403,7 +403,7 @@ export const FloorBedMatrix: React.FC = () => {
                             <div
                               className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
                                 isOccupied
-                                  ? 'bg-blue-700 text-white'
+                                  ? 'bg-brand-700 text-white'
                                   : 'bg-emerald-600 text-white'
                               }`}
                             >
@@ -415,7 +415,7 @@ export const FloorBedMatrix: React.FC = () => {
                                 {bed.bedLabel}
                               </p>
                               {isOccupied && occupant ? (
-                                <p className="text-[11px] text-blue-800 font-semibold leading-tight truncate flex items-center space-x-1 mt-0.5">
+                                <p className="text-[11px] text-brand-800 font-semibold leading-tight truncate flex items-center space-x-1 mt-0.5">
                                   <span>{occupant.name}</span>
                                   {occupant.kyc?.status === 'verified' && (
                                     <span className="text-[9px] text-emerald-700 font-bold">✓ KYC</span>
@@ -483,9 +483,9 @@ export const FloorBedMatrix: React.FC = () => {
 
       {/* MODAL 1: CONFIGURE NEW ROOM */}
       {isAddRoomOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-950/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-blue-100 text-slate-900">
-            <div className="flex items-center justify-between px-6 py-4 bg-blue-700 text-white shadow-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-brand-100 text-slate-900">
+            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 text-white shadow-sm">
               <h2 className="font-bold text-white text-sm flex items-center space-x-2">
                 <Plus className="w-4 h-4" />
                 <span>Configure & Add New Room</span>
@@ -508,7 +508,7 @@ export const FloorBedMatrix: React.FC = () => {
                     required
                     readOnly
                     value={newRoomNum}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-blue-800 font-bold focus:outline-none cursor-not-allowed"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-brand-800 font-bold focus:outline-none cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -516,7 +516,7 @@ export const FloorBedMatrix: React.FC = () => {
                   <select
                     value={newFloor}
                     onChange={(e) => setNewFloor(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                   >
                     {Array.from({ length: totalFloors }, (_, i) => i + 1).map((f) => (
                       <option key={f} value={f}>Floor {f}</option>
@@ -531,7 +531,7 @@ export const FloorBedMatrix: React.FC = () => {
                   <select
                     value={newRoomTypeId}
                     onChange={(e) => setNewRoomTypeId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                   >
                     {roomTypes.map((rt) => (
                       <option key={rt.id} value={rt.id}>{rt.name}</option>
@@ -543,7 +543,7 @@ export const FloorBedMatrix: React.FC = () => {
                   <select
                     value={newSharingId}
                     onChange={(e) => setNewSharingId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                   >
                     {sharingOptions.map((s) => (
                       <option key={s.id} value={s.id}>{s.label} (₹{s.defaultRent}/bed)</option>
@@ -558,7 +558,7 @@ export const FloorBedMatrix: React.FC = () => {
                   <select
                     value={newAcType}
                     onChange={(e) => setNewAcType(e.target.value as any)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                   >
                     <option value="AC">Air Conditioned (AC)</option>
                     <option value="Non-AC">Non-AC</option>
@@ -574,7 +574,7 @@ export const FloorBedMatrix: React.FC = () => {
                     required
                     value={newPrice}
                     onChange={(e) => setNewPrice(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold font-mono text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold font-mono text-slate-900 focus:outline-none focus:border-brand-600"
                   />
                 </div>
                 <div>
@@ -584,7 +584,7 @@ export const FloorBedMatrix: React.FC = () => {
                     required
                     value={newDeposit}
                     onChange={(e) => setNewDeposit(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold font-mono text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold font-mono text-slate-900 focus:outline-none focus:border-brand-600"
                   />
                 </div>
               </div>
@@ -595,7 +595,7 @@ export const FloorBedMatrix: React.FC = () => {
                   <select
                     value={newWashroom}
                     onChange={(e) => setNewWashroom(e.target.value as any)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
                   >
                     <option value="Attached">Attached</option>
                     <option value="Common">Common</option>
@@ -607,7 +607,7 @@ export const FloorBedMatrix: React.FC = () => {
                     id="hasBalcony"
                     checked={newBalcony}
                     onChange={(e) => setNewBalcony(e.target.checked)}
-                    className="w-4 h-4 text-blue-700 rounded border-slate-300 focus:ring-blue-600"
+                    className="w-4 h-4 text-brand-700 rounded border-slate-300 focus:ring-brand-600"
                   />
                   <label htmlFor="hasBalcony" className="text-xs font-bold text-slate-700 cursor-pointer">
                     Private Balcony Included
@@ -618,7 +618,7 @@ export const FloorBedMatrix: React.FC = () => {
               <div className="pt-3">
                 <button
                   type="submit"
-                  className="w-full py-3.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-700/20"
+                  className="w-full py-3.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-brand-700/20"
                 >
                   Create & Initialize Beds
                 </button>
@@ -630,9 +630,9 @@ export const FloorBedMatrix: React.FC = () => {
 
       {/* MODAL 2: EDIT ROOM PRICING & AMENITIES */}
       {editingRoom && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-950/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-blue-100 text-slate-900">
-            <div className="flex items-center justify-between px-6 py-4 bg-blue-700 text-white shadow-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-brand-100 text-slate-900">
+            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 text-white shadow-sm">
               <h2 className="font-bold text-white text-sm">Edit Room {editingRoom.roomNumber}</h2>
               <button
                 type="button"
@@ -651,7 +651,7 @@ export const FloorBedMatrix: React.FC = () => {
                   required
                   value={editingRoom.pricePerBed}
                   onChange={(e) => setEditingRoom({ ...editingRoom, pricePerBed: Number(e.target.value) })}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
 
@@ -662,7 +662,7 @@ export const FloorBedMatrix: React.FC = () => {
                   required
                   value={editingRoom.securityDeposit}
                   onChange={(e) => setEditingRoom({ ...editingRoom, securityDeposit: Number(e.target.value) })}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
 
@@ -672,7 +672,7 @@ export const FloorBedMatrix: React.FC = () => {
                   <select
                     value={editingRoom.acType}
                     onChange={(e) => setEditingRoom({ ...editingRoom, acType: e.target.value as any })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                   >
                     <option value="AC">AC</option>
                     <option value="Non-AC">Non-AC</option>
@@ -683,7 +683,7 @@ export const FloorBedMatrix: React.FC = () => {
                   <select
                     value={editingRoom.washroomType}
                     onChange={(e) => setEditingRoom({ ...editingRoom, washroomType: e.target.value as any })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                   >
                     <option value="Attached">Attached</option>
                     <option value="Common">Common</option>
@@ -694,7 +694,7 @@ export const FloorBedMatrix: React.FC = () => {
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-700/20"
+                  className="w-full py-3.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-brand-700/20"
                 >
                   Save Changes
                 </button>
@@ -706,14 +706,14 @@ export const FloorBedMatrix: React.FC = () => {
 
       {/* MODAL 3: ASSIGN VACANT BED TO TENANT */}
       {assigningBedInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-950/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-blue-100 text-slate-900">
-            <div className="flex items-center justify-between px-6 py-4 bg-blue-700 text-white shadow-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-brand-100 text-slate-900">
+            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 text-white shadow-sm">
               <div>
                 <h2 className="font-bold text-white text-sm">
                   Assign {assigningBedInfo.bed.bedLabel}
                 </h2>
-                <p className="text-xs text-blue-100">
+                <p className="text-xs text-brand-100">
                   Room {assigningBedInfo.room.roomNumber} • Floor {assigningBedInfo.room.floor} (₹{assigningBedInfo.bed.pricePerMonth}/mo)
                 </p>
               </div>
@@ -734,7 +734,7 @@ export const FloorBedMatrix: React.FC = () => {
                 <select
                   value={selectedTenantIdToAssign}
                   onChange={(e) => setSelectedTenantIdToAssign(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                 >
                   <option value="">-- Choose Tenant --</option>
                   {tenants.map((t) => (
@@ -746,7 +746,7 @@ export const FloorBedMatrix: React.FC = () => {
               </div>
 
               {selectedTenantIdToAssign && (
-                <div className="bg-blue-50/60 p-3.5 rounded-2xl border border-blue-200 text-xs space-y-1">
+                <div className="bg-brand-50/60 p-3.5 rounded-2xl border border-brand-200 text-xs space-y-1">
                   {(() => {
                     const t = tenants.find((item) => item.id === selectedTenantIdToAssign);
                     if (!t) return null;
@@ -776,7 +776,7 @@ export const FloorBedMatrix: React.FC = () => {
                 type="button"
                 disabled={!selectedTenantIdToAssign}
                 onClick={handleConfirmAssign}
-                className="w-full py-3.5 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-700/20"
+                className="w-full py-3.5 bg-brand-700 hover:bg-brand-800 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition shadow-md shadow-brand-700/20"
               >
                 Confirm Bed Allocation
               </button>
@@ -787,15 +787,15 @@ export const FloorBedMatrix: React.FC = () => {
 
       {/* MODAL 4: TRANSFER TENANT TO ANOTHER BED */}
       {transferringTenant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-950/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-blue-100 text-slate-900">
-            <div className="flex items-center justify-between px-6 py-4 bg-blue-700 text-white shadow-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-brand-100 text-slate-900">
+            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 text-white shadow-sm">
               <div>
                 <h2 className="font-bold text-white text-sm flex items-center space-x-1.5">
                   <ArrowRightLeft className="w-4 h-4" />
                   <span>Transfer Resident: {transferringTenant.name}</span>
                 </h2>
-                <p className="text-xs text-blue-100">
+                <p className="text-xs text-brand-100">
                   Current: Room {transferringTenant.roomNumber} ({transferringTenant.bedLabel})
                 </p>
               </div>
@@ -820,7 +820,7 @@ export const FloorBedMatrix: React.FC = () => {
                     setTargetRoomId(rId || '');
                     setTargetBedId(bId || '');
                   }}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                 >
                   <option value="">-- Choose Vacant Room & Bed --</option>
                   {allVacantBeds.map((v, vIndex) => (
@@ -835,7 +835,7 @@ export const FloorBedMatrix: React.FC = () => {
                 type="button"
                 disabled={!targetRoomId || !targetBedId}
                 onClick={handleConfirmTransfer}
-                className="w-full py-3.5 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-700/20"
+                className="w-full py-3.5 bg-brand-700 hover:bg-brand-800 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition shadow-md shadow-brand-700/20"
               >
                 Execute Room Transfer
               </button>

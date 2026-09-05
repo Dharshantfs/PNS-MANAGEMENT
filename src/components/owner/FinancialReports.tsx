@@ -145,11 +145,11 @@ export const FinancialReports: React.FC = () => {
     <div id="financial-reports-view" className="space-y-6 animate-in fade-in text-slate-900">
       
       {/* Top Header & Actions - Royal Blue & White */}
-      <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-5">
+      <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-black text-slate-900 flex items-center space-x-2">
-              <IndianRupee className="w-5 h-5 text-blue-700" />
+              <IndianRupee className="w-5 h-5 text-brand-700" />
               <span>Rent Collection & Financial Reports</span>
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -162,7 +162,7 @@ export const FinancialReports: React.FC = () => {
               id="add-dues-btn"
               type="button"
               onClick={() => setIsAddDuesOpen(true)}
-              className="px-4 py-2.5 bg-white hover:bg-slate-50 text-blue-700 border border-blue-200 font-bold rounded-xl text-xs flex items-center space-x-2 shadow-sm transition"
+              className="px-4 py-2.5 bg-white hover:bg-slate-50 text-brand-700 border border-brand-200 font-bold rounded-xl text-xs flex items-center space-x-2 shadow-sm transition"
             >
               <ReceiptText className="w-4 h-4" />
               <span>Add Dues</span>
@@ -171,7 +171,7 @@ export const FinancialReports: React.FC = () => {
               id="record-manual-payment-btn"
               type="button"
               onClick={() => setIsRecordPaymentOpen(true)}
-              className="px-4 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs flex items-center space-x-2 shadow-md shadow-blue-700/20 transition"
+              className="px-4 py-2.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs flex items-center space-x-2 shadow-md shadow-brand-700/20 transition"
             >
               <Plus className="w-4 h-4" />
               <span>Record Rent Payment</span>
@@ -186,7 +186,7 @@ export const FinancialReports: React.FC = () => {
             <div className="text-xl font-black text-slate-900 mt-1">
               ₹{stats.totalExpectedRevenue.toLocaleString('en-IN')}
             </div>
-            <p className="text-[11px] text-blue-700 font-semibold mt-0.5">
+            <p className="text-[11px] text-brand-700 font-semibold mt-0.5">
               Across {stats.occupiedBeds} occupied beds
             </p>
           </div>
@@ -211,15 +211,15 @@ export const FinancialReports: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-blue-50/70 p-4 rounded-2xl border border-blue-200">
-            <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">Security Deposits Held</span>
-            <div className="text-xl font-black text-blue-900 mt-1">
+          <div className="bg-brand-50/70 p-4 rounded-2xl border border-brand-200">
+            <span className="text-xs font-bold text-brand-800 uppercase tracking-wider">Security Deposits Held</span>
+            <div className="text-xl font-black text-brand-900 mt-1">
               ₹
               {tenants
                 .reduce((sum, t) => sum + (t.depositPaid ? t.securityDeposit : 0), 0)
                 .toLocaleString('en-IN')}
             </div>
-            <p className="text-[11px] text-blue-700 font-medium mt-0.5">Refundable safety deposits</p>
+            <p className="text-[11px] text-brand-700 font-medium mt-0.5">Refundable safety deposits</p>
           </div>
         </div>
       </div>
@@ -232,7 +232,7 @@ export const FinancialReports: React.FC = () => {
       )}
 
       {/* Outstanding Rent Reminders Queue */}
-      <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-4">
+      <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4">
         <div className="flex items-center space-x-2.5">
           <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center font-bold">
             <AlertCircle className="w-4 h-4" />
@@ -313,9 +313,9 @@ export const FinancialReports: React.FC = () => {
 
       {/* Recent Dues Added (charges) */}
       {charges.length > 0 && (
-        <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-3">
+        <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-3">
           <h3 className="font-bold text-sm text-slate-900 flex items-center space-x-2">
-            <ReceiptText className="w-4 h-4 text-blue-700" />
+            <ReceiptText className="w-4 h-4 text-brand-700" />
             <span>Recent Dues Added</span>
           </h3>
           <div className="space-y-1.5">
@@ -337,10 +337,10 @@ export const FinancialReports: React.FC = () => {
       )}
 
       {/* Payments Ledger Table */}
-      <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-4">
+      <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center font-bold">
               <Receipt className="w-4 h-4" />
             </div>
             <div>
@@ -357,7 +357,7 @@ export const FinancialReports: React.FC = () => {
                 placeholder="Search tenant, room..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
               />
             </div>
           </div>
@@ -379,8 +379,8 @@ export const FinancialReports: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
               {filteredPayments.map((p) => (
-                <tr key={p.id} className="hover:bg-blue-50/30 transition">
-                  <td className="py-3.5 px-3 font-mono font-bold text-blue-900">{p.receiptNumber}</td>
+                <tr key={p.id} className="hover:bg-brand-50/30 transition">
+                  <td className="py-3.5 px-3 font-mono font-bold text-brand-900">{p.receiptNumber}</td>
                   <td className="py-3.5 px-3">
                     <p className="font-bold text-slate-900">{p.tenantName}</p>
                     <p className="text-[10px] text-slate-500">Room {p.roomNumber}</p>
@@ -388,7 +388,7 @@ export const FinancialReports: React.FC = () => {
                   <td className="py-3.5 px-3 font-bold text-slate-700">{p.month}</td>
                   <td className="py-3.5 px-3 font-bold text-emerald-600">₹{p.amount.toLocaleString('en-IN')}</td>
                   <td className="py-3.5 px-3">
-                    <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 font-bold border border-blue-200">
+                    <span className="px-2 py-0.5 rounded-md bg-brand-50 text-brand-800 font-bold border border-brand-200">
                       {p.paymentMode}
                     </span>
                   </td>
@@ -404,7 +404,7 @@ export const FinancialReports: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setSelectedReceiptPayment(p)}
-                      className="px-2.5 py-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition shadow-sm inline-flex items-center space-x-1"
+                      className="px-2.5 py-1 bg-white hover:bg-brand-50 text-brand-700 border border-brand-200 rounded-lg text-xs font-bold transition shadow-sm inline-flex items-center space-x-1"
                     >
                       <Printer className="w-3 h-3" />
                       <span>Receipt</span>
@@ -419,9 +419,9 @@ export const FinancialReports: React.FC = () => {
 
       {/* Record Payment Modal */}
       {isRecordPaymentOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-950/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-blue-100 text-slate-900 overflow-hidden">
-            <div className="bg-blue-700 text-white px-6 py-4 flex items-center justify-between shadow-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-brand-100 text-slate-900 overflow-hidden">
+            <div className="bg-brand-700 text-white px-6 py-4 flex items-center justify-between shadow-sm">
               <div className="flex items-center space-x-2">
                 <IndianRupee className="w-4 h-4 text-white" />
                 <h3 className="font-bold text-sm text-white">Record Manual Rent Payment</h3>
@@ -442,7 +442,7 @@ export const FinancialReports: React.FC = () => {
                   required
                   value={payTenantId}
                   onChange={(e) => handleSelectTenantForPayment(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                 >
                   <option value="">-- Choose Tenant --</option>
                   {tenants.map((t) => (
@@ -461,7 +461,7 @@ export const FinancialReports: React.FC = () => {
                     required
                     value={payAmount}
                     onChange={(e) => setPayAmount(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                   />
                 </div>
 
@@ -470,7 +470,7 @@ export const FinancialReports: React.FC = () => {
                   <select
                     value={payMode}
                     onChange={(e) => setPayMode(e.target.value as any)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
                   >
                     <option value="UPI">UPI</option>
                     <option value="Cash">Cash</option>
@@ -487,13 +487,13 @@ export const FinancialReports: React.FC = () => {
                   placeholder="e.g. UPI-9843219082"
                   value={payTxnId}
                   onChange={(e) => setPayTxnId(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-700/20 flex items-center justify-center space-x-2"
+                className="w-full py-3.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-brand-700/20 flex items-center justify-center space-x-2"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Save Payment & Issue Receipt</span>
@@ -505,9 +505,9 @@ export const FinancialReports: React.FC = () => {
 
       {/* Add Dues (Charge) Modal */}
       {isAddDuesOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-950/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-blue-100 text-slate-900 overflow-hidden">
-            <div className="bg-blue-700 text-white px-6 py-4 flex items-center justify-between shadow-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-brand-100 text-slate-900 overflow-hidden">
+            <div className="bg-brand-700 text-white px-6 py-4 flex items-center justify-between shadow-sm">
               <div className="flex items-center space-x-2">
                 <ReceiptText className="w-4 h-4 text-white" />
                 <h3 className="font-bold text-sm text-white">Add Dues to Tenant Account</h3>
@@ -524,7 +524,7 @@ export const FinancialReports: React.FC = () => {
                   required
                   value={dueTenantId}
                   onChange={(e) => setDueTenantId(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                 >
                   <option value="">-- Choose Tenant --</option>
                   {tenants.map((t) => (
@@ -539,7 +539,7 @@ export const FinancialReports: React.FC = () => {
                   required
                   value={dueCategoryId}
                   onChange={(e) => handleSelectDuesCategory(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                 >
                   <option value="">-- Choose Category --</option>
                   {activeDuesCategories.map((c) => (
@@ -560,7 +560,7 @@ export const FinancialReports: React.FC = () => {
                   required
                   value={dueAmount}
                   onChange={(e) => setDueAmount(Number(e.target.value))}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
 
@@ -570,7 +570,7 @@ export const FinancialReports: React.FC = () => {
                   type="text"
                   value={dueNotes}
                   onChange={(e) => setDueNotes(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
 
@@ -578,7 +578,7 @@ export const FinancialReports: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full py-3.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-700/20 flex items-center justify-center space-x-2"
+                className="w-full py-3.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-brand-700/20 flex items-center justify-center space-x-2"
               >
                 <ReceiptText className="w-4 h-4" />
                 <span>Add to Tenant's Due</span>

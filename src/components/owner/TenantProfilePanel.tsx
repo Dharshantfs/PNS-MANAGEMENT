@@ -62,10 +62,10 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-blue-950/60 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex justify-end bg-brand-950/60 backdrop-blur-sm animate-in fade-in">
       <div className="w-full max-w-md h-full bg-white shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-200">
         {/* Header */}
-        <div className="sticky top-0 bg-blue-700 text-white px-5 py-4 flex items-center justify-between shadow-sm z-10">
+        <div className="sticky top-0 bg-brand-700 text-white px-5 py-4 flex items-center justify-between shadow-sm z-10">
           <h2 className="font-bold text-sm">{tenant.name}'s Profile</h2>
           <button type="button" onClick={onClose} className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10">
             <X className="w-5 h-5" />
@@ -75,7 +75,7 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
         <div className="p-5 space-y-5 text-slate-900">
           {/* Identity block */}
           <div className="flex items-center space-x-3.5">
-            <img src={tenant.photoUrl} alt={tenant.name} className="w-16 h-16 rounded-2xl object-cover border-2 border-blue-600 shadow-sm shrink-0" />
+            <img src={tenant.photoUrl} alt={tenant.name} className="w-16 h-16 rounded-2xl object-cover border-2 border-brand-600 shadow-sm shrink-0" />
             <div className="min-w-0">
               <h3 className="text-base font-black text-slate-900 truncate">{tenant.name}</h3>
               <p className="text-xs text-slate-500 font-mono">+91 {cleanPhone}</p>
@@ -92,7 +92,7 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
           {/* Quick actions */}
           <div className="grid grid-cols-2 gap-2">
             <a href={`tel:${cleanPhone}`} className="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 border border-slate-300">
-              <Phone className="w-3.5 h-3.5 text-blue-700" />
+              <Phone className="w-3.5 h-3.5 text-brand-700" />
               <span>Call</span>
             </a>
             <a
@@ -119,7 +119,7 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
                 )}
                 <span>KYC: {kycStatus}</span>
               </span>
-              <button type="button" onClick={onViewDossier} className="text-[11px] text-blue-700 hover:text-blue-900 font-bold flex items-center space-x-1">
+              <button type="button" onClick={onViewDossier} className="text-[11px] text-brand-700 hover:text-brand-900 font-bold flex items-center space-x-1">
                 <FileCheck2 className="w-3.5 h-3.5" />
                 <span>Full Dossier</span>
               </button>
@@ -164,13 +164,13 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
           </div>
 
           {/* Room info */}
-          <div className="bg-blue-50/60 border border-blue-200 rounded-2xl p-4 space-y-2">
+          <div className="bg-brand-50/60 border border-brand-200 rounded-2xl p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
-                <BedDouble className="w-4 h-4 text-blue-700" />
+                <BedDouble className="w-4 h-4 text-brand-700" />
                 <span>Room: {tenant.roomNumber ? `${tenant.roomNumber} - ${tenant.bedLabel}` : 'Unassigned'}</span>
               </span>
-              <button type="button" onClick={() => setChangingRoom((v) => !v)} className="text-[11px] text-blue-700 hover:text-blue-900 font-bold">
+              <button type="button" onClick={() => setChangingRoom((v) => !v)} className="text-[11px] text-brand-700 hover:text-brand-900 font-bold">
                 Change
               </button>
             </div>
@@ -184,7 +184,7 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
                   const [roomId, bedId] = e.target.value.split('::');
                   if (roomId && bedId) handleTransfer(roomId, bedId);
                 }}
-                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-blue-300 focus:outline-none focus:border-blue-600"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-brand-300 focus:outline-none focus:border-brand-600"
               >
                 <option value="">-- Choose a vacant bed --</option>
                 {vacantBeds.map(({ room: r, bed: b }) => (

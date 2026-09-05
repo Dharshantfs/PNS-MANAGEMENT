@@ -1,1 +1,19 @@
 @import "tailwindcss";
+
+/* Brand palette sampled directly from the PNS Hospitalities logo
+   (assets/logo.png) - red #C00019 is the dominant accent color, black
+   #000000 the wordmark/neutral. This replaces the old default blue-700
+   theme everywhere in the app ("brand-*" classes stand in for the old
+   "blue-*" ones, e.g. bg-brand-700 instead of bg-blue-700). */
+@theme {
+  --color-brand-50: #fdf2f2;
+  --color-brand-100: #fadcdf;
+  --color-brand-200: #f4b7bc;
+  --color-brand-300: #ea8890;
+  --color-brand-400: #dc525f;
+  --color-brand-600: #d21a2c;
+  --color-brand-700: #c00019;
+  --color-brand-800: #970014;
+  --color-brand-900: #74000f;
+  --color-brand-950: #450009;
+}

@@ -49,7 +49,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
 
   if (!activeTenant) {
     return (
-      <div className="p-8 text-center bg-white border border-blue-100 rounded-3xl text-slate-900">
+      <div className="p-8 text-center bg-white border border-brand-100 rounded-3xl text-slate-900">
         <Users className="w-8 h-8 text-slate-400 mx-auto mb-2" />
         <p className="text-sm font-semibold">No active tenant found.</p>
       </div>
@@ -72,7 +72,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
     <div id="tenant-portal-view" className="space-y-6 animate-in fade-in">
       
       {/* Top Welcome & KYC Status Banner - Royal Blue Gradient */}
-      <div className="bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 p-6 sm:p-8 rounded-3xl text-white shadow-lg border border-blue-600 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-brand-700 via-brand-800 to-indigo-900 p-6 sm:p-8 rounded-3xl text-white shadow-lg border border-brand-600 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-center space-x-4">
           <img
             src={activeTenant.photoUrl}
@@ -81,17 +81,17 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
           />
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-white/15 border border-white/20 font-bold text-blue-100">
+              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-white/15 border border-white/20 font-bold text-brand-100">
                 Resident Portal
               </span>
-              <span className="text-xs text-blue-200">
+              <span className="text-xs text-brand-200">
                 Floor {activeTenant.floor} • Room {activeTenant.roomNumber || 'Unassigned'} ({activeTenant.bedLabel || 'Bed'})
               </span>
             </div>
             <h1 className="text-2xl font-black text-white mt-1">
               Welcome back, {activeTenant.name}
             </h1>
-            <p className="text-xs text-blue-100 mt-0.5">
+            <p className="text-xs text-brand-100 mt-0.5">
               {settings.pgName} • {activeTenant.kyc?.companyOrCollege || activeTenant.kyc?.occupation || 'Resident'}
             </p>
           </div>
@@ -113,9 +113,9 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
             <button
               type="button"
               onClick={() => setIsKYCModalOpen(true)}
-              className="bg-white hover:bg-blue-50 text-blue-700 font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center space-x-2 shadow-md transition"
+              className="bg-white hover:bg-brand-50 text-brand-700 font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center space-x-2 shadow-md transition"
             >
-              <CreditCard className="w-4 h-4 text-blue-700" />
+              <CreditCard className="w-4 h-4 text-brand-700" />
               <span>Complete Aadhaar KYC</span>
             </button>
           )}
@@ -150,47 +150,47 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* CARD 1: MY ROOM & STAY DETAILS */}
-        <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-4 text-slate-900">
+        <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4 text-slate-900">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-              <BedDouble className="w-5 h-5 text-blue-700" />
+              <BedDouble className="w-5 h-5 text-brand-700" />
               <span>My Room & Bed Details</span>
             </h2>
-            <span className="text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-800 font-bold border border-blue-200">
+            <span className="text-xs px-3 py-1 rounded-full bg-brand-50 text-brand-800 font-bold border border-brand-200">
               Floor {activeTenant.floor}
             </span>
           </div>
 
-          <div className="bg-blue-50/60 p-5 rounded-2xl border border-blue-200 space-y-3">
+          <div className="bg-brand-50/60 p-5 rounded-2xl border border-brand-200 space-y-3">
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Room Allocation</span>
                 <p className="text-2xl font-black text-slate-900">Room {activeTenant.roomNumber || 'N/A'}</p>
-                <p className="text-xs text-blue-700 font-bold mt-0.5">
+                <p className="text-xs text-brand-700 font-bold mt-0.5">
                   {activeTenant.bedLabel || 'Bed Assigned'} • {getSharingLabel(activeProperty, currentRoom?.sharingId)}
                 </p>
               </div>
 
               <div className="text-right">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Monthly Rent</span>
-                <p className="text-2xl font-black text-blue-700">₹{activeTenant.monthlyRent.toLocaleString('en-IN')}</p>
+                <p className="text-2xl font-black text-brand-700">₹{activeTenant.monthlyRent.toLocaleString('en-IN')}</p>
                 <p className="text-[10px] text-slate-500 font-medium">Due on 5th of each month</p>
               </div>
             </div>
 
             {/* Room Features */}
             {currentRoom && (
-              <div className="pt-3 border-t border-blue-200 flex flex-wrap gap-2 text-xs">
-                <span className="px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-blue-900 font-medium flex items-center space-x-1">
-                  <Wind className="w-3.5 h-3.5 text-blue-600" />
+              <div className="pt-3 border-t border-brand-200 flex flex-wrap gap-2 text-xs">
+                <span className="px-2.5 py-1 rounded-lg bg-white border border-brand-200 text-brand-900 font-medium flex items-center space-x-1">
+                  <Wind className="w-3.5 h-3.5 text-brand-600" />
                   <span>{currentRoom.acType}</span>
                 </span>
-                <span className="px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-blue-900 font-medium flex items-center space-x-1">
-                  <Bath className="w-3.5 h-3.5 text-blue-600" />
+                <span className="px-2.5 py-1 rounded-lg bg-white border border-brand-200 text-brand-900 font-medium flex items-center space-x-1">
+                  <Bath className="w-3.5 h-3.5 text-brand-600" />
                   <span>{currentRoom.washroomType}</span>
                 </span>
-                <span className="px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-blue-900 font-medium flex items-center space-x-1">
-                  <Wifi className="w-3.5 h-3.5 text-blue-600" />
+                <span className="px-2.5 py-1 rounded-lg bg-white border border-brand-200 text-brand-900 font-medium flex items-center space-x-1">
+                  <Wifi className="w-3.5 h-3.5 text-brand-600" />
                   <span>High-Speed WiFi</span>
                 </span>
               </div>
@@ -204,7 +204,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
               <button
                 type="button"
                 onClick={onNavigateToRoommates}
-                className="text-blue-700 hover:text-blue-900 font-bold flex items-center space-x-1"
+                className="text-brand-700 hover:text-brand-900 font-bold flex items-center space-x-1"
               >
                 <span>View Full Contacts</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -225,7 +225,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
                     <img
                       src={rm.photoUrl}
                       alt={rm.name}
-                      className="w-8 h-8 rounded-lg object-cover border border-blue-400"
+                      className="w-8 h-8 rounded-lg object-cover border border-brand-400"
                     />
                     <div className="truncate">
                       <p className="font-bold truncate">{rm.name}</p>
@@ -239,7 +239,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
         </div>
 
         {/* CARD 2: RENT PAYMENT & UPI DIRECT APP CHECKOUT */}
-        <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-4 text-slate-900">
+        <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4 text-slate-900">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
               <IndianRupee className="w-5 h-5 text-emerald-600" />
@@ -266,7 +266,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsPayModalOpen(true)}
-                  className="px-5 py-3 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-2xl text-xs transition shadow-lg shadow-blue-700/20 flex items-center space-x-2"
+                  className="px-5 py-3 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-2xl text-xs transition shadow-lg shadow-brand-700/20 flex items-center space-x-2"
                 >
                   <QrCode className="w-4 h-4" />
                   <span>Pay Now via UPI</span>
@@ -275,15 +275,15 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
             </div>
 
             {/* UPI Deep Link direct hint */}
-            <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl text-xs text-blue-950 flex items-center justify-between">
+            <div className="p-3.5 bg-brand-50/70 border border-brand-200 rounded-xl text-xs text-brand-950 flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Sparkles className="w-4 h-4 text-blue-700 shrink-0" />
+                <Sparkles className="w-4 h-4 text-brand-700 shrink-0" />
                 <span>Verified Owner UPI: <b>{settings.ownerUpiId}</b></span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsPayModalOpen(true)}
-                className="text-blue-700 font-bold hover:underline shrink-0 text-xs"
+                className="text-brand-700 font-bold hover:underline shrink-0 text-xs"
               >
                 Open UPI App →
               </button>
@@ -314,7 +314,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
                       <button
                         type="button"
                         onClick={() => setSelectedReceipt(p)}
-                        className="px-2.5 py-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-sm"
+                        className="px-2.5 py-1 bg-white hover:bg-brand-50 text-brand-700 border border-brand-200 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-sm"
                       >
                         <Printer className="w-3.5 h-3.5" />
                         <span>Receipt</span>

@@ -30,16 +30,16 @@ export const TenantKYC: React.FC = () => {
     <div id="tenant-kyc-verification-view" className="space-y-6 animate-in fade-in">
       
       {/* Header - Royal Blue & White */}
-      <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold">
+            <span className="px-3 py-1 rounded-full bg-brand-50 text-brand-800 border border-brand-200 text-xs font-bold">
               Government Identity Verification
             </span>
             <span className="text-xs text-slate-500">UIDAI / Aadhaar Compliant</span>
           </div>
           <h1 className="text-xl font-black text-slate-900 mt-1.5 flex items-center space-x-2">
-            <CreditCard className="w-5 h-5 text-blue-700" />
+            <CreditCard className="w-5 h-5 text-brand-700" />
             <span>My Aadhaar Card KYC & Verification Status</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -50,7 +50,7 @@ export const TenantKYC: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 shadow-md shadow-blue-700/20 transition"
+          className="px-4 py-2.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 shadow-md shadow-brand-700/20 transition"
         >
           <CreditCard className="w-4 h-4" />
           <span>{kyc?.status === 'verified' ? 'Update KYC Info' : 'Submit Aadhaar KYC'}</span>
@@ -94,16 +94,16 @@ export const TenantKYC: React.FC = () => {
       </div>
 
       {/* Aadhaar Card Digital Preview & Details */}
-      <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-4">
+      <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4">
         <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-          <CreditCard className="w-4 h-4 text-blue-700" />
+          <CreditCard className="w-4 h-4 text-brand-700" />
           <span>Aadhaar Identity Details on Record</span>
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          <div className="bg-blue-50/60 p-5 rounded-2xl border border-blue-200 space-y-2">
-            <span className="text-blue-900 uppercase text-[10px] font-bold">Aadhaar 12-Digit Number</span>
-            <p className="text-lg font-mono font-black text-blue-950">
+          <div className="bg-brand-50/60 p-5 rounded-2xl border border-brand-200 space-y-2">
+            <span className="text-brand-900 uppercase text-[10px] font-bold">Aadhaar 12-Digit Number</span>
+            <p className="text-lg font-mono font-black text-brand-950">
               {kyc?.aadhaar?.aadhaarNumber || 'Not provided'}
             </p>
             <span className="text-slate-500 uppercase text-[10px] font-bold block pt-2">Full Name on Aadhaar</span>
@@ -142,15 +142,15 @@ export const TenantKYC: React.FC = () => {
         </div>
 
         {/* Occupation & College */}
-        <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-3 text-xs">
+        <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-3 text-xs">
           <h3 className="font-bold text-slate-900 flex items-center space-x-2">
-            <Briefcase className="w-4 h-4 text-blue-700" />
+            <Briefcase className="w-4 h-4 text-brand-700" />
             <span>Occupation & Preferences</span>
           </h3>
-          <div className="bg-blue-50/50 p-4 rounded-2xl space-y-2 border border-blue-200">
+          <div className="bg-brand-50/50 p-4 rounded-2xl space-y-2 border border-brand-200">
             <p><span className="text-slate-500 font-medium">Occupation:</span> <span className="font-bold text-slate-900">{kyc?.occupation || 'Working Professional'}</span></p>
             <p><span className="text-slate-500 font-medium">Company / College:</span> <span className="font-semibold text-slate-800">{kyc?.companyOrCollege || 'Tech Mahindra'}</span></p>
-            <p><span className="text-slate-500 font-medium">Food Preference:</span> <span className="text-blue-900 font-bold">{kyc?.foodPreference || 'Veg'}</span></p>
+            <p><span className="text-slate-500 font-medium">Food Preference:</span> <span className="text-brand-900 font-bold">{kyc?.foodPreference || 'Veg'}</span></p>
             <p><span className="text-slate-500 font-medium">Blood Group:</span> <span className="font-semibold text-slate-800">{kyc?.bloodGroup || 'B+'}</span></p>
           </div>
         </div>

@@ -98,7 +98,7 @@ const AppContent: React.FC = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-blue-700 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-brand-700 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -131,7 +131,7 @@ const AppContent: React.FC = () => {
         <button
           type="button"
           onClick={() => logout()}
-          className="mt-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-xl"
+          className="mt-2 px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-xl"
         >
           Sign Out
         </button>
@@ -143,7 +143,7 @@ const AppContent: React.FC = () => {
   // there's somewhere for rooms/tenants/etc. to be scoped to.
   if (role === 'owner' && properties.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col selection:bg-blue-600 selection:text-white font-sans">
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col selection:bg-brand-600 selection:text-white font-sans">
         <Navbar />
         <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <h1 className="text-lg font-black text-slate-900 mb-1">Welcome! Let's set up your first property.</h1>
@@ -157,13 +157,13 @@ const AppContent: React.FC = () => {
   if (role === 'owner' && !activePropertyId) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-blue-700 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-brand-700 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex selection:bg-blue-600 selection:text-white font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex selection:bg-brand-600 selection:text-white font-sans">
       {/* Left icon sidebar (owner view only) */}
       {role === 'owner' && (
         <Sidebar
@@ -216,7 +216,7 @@ const AppContent: React.FC = () => {
                 onClick={() => setTenantTab('mystay')}
                 className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                   tenantTab === 'mystay'
-                    ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
+                    ? 'bg-brand-700 text-white shadow-md shadow-brand-700/20'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
@@ -230,7 +230,7 @@ const AppContent: React.FC = () => {
                 onClick={() => setTenantTab('roommates')}
                 className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                   tenantTab === 'roommates'
-                    ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
+                    ? 'bg-brand-700 text-white shadow-md shadow-brand-700/20'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
@@ -244,7 +244,7 @@ const AppContent: React.FC = () => {
                 onClick={() => setTenantTab('kyc')}
                 className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                   tenantTab === 'kyc'
-                    ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
+                    ? 'bg-brand-700 text-white shadow-md shadow-brand-700/20'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
@@ -263,7 +263,7 @@ const AppContent: React.FC = () => {
                 onClick={() => setTenantTab('services')}
                 className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
                   tenantTab === 'services'
-                    ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
+                    ? 'bg-brand-700 text-white shadow-md shadow-brand-700/20'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >

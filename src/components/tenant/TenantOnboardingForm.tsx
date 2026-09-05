@@ -316,9 +316,9 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
   if (!existingTenant && !isSelfRegisterMode) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl border border-blue-100 shadow-xl w-full max-w-md p-8 text-slate-900 space-y-6">
+        <div className="bg-white rounded-3xl border border-brand-100 shadow-xl w-full max-w-md p-8 text-slate-900 space-y-6">
           <div className="text-center space-y-2">
-            <div className="w-14 h-14 rounded-2xl bg-blue-700 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-700/20">
+            <div className="w-14 h-14 rounded-2xl bg-brand-700 text-white flex items-center justify-center mx-auto shadow-lg shadow-brand-700/20">
               <ShieldCheck className="w-7 h-7" />
             </div>
             <h1 className="text-xl font-bold text-slate-900">Tenant Digital KYC & Admission</h1>
@@ -344,7 +344,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                     setPhoneLookup(e.target.value);
                     setValidationError('');
                   }}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-12 pr-4 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-12 pr-4 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                 />
               </div>
             </div>
@@ -358,7 +358,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-700/20 flex items-center justify-center space-x-2"
+              className="w-full py-3.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-brand-700/20 flex items-center justify-center space-x-2"
             >
               <span>Continue to Digital KYC Form</span>
               <ArrowRight className="w-4 h-4" />
@@ -373,7 +373,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                 setMobileNumber(phoneLookup || '9876543210');
                 setIsSelfRegisterMode(true);
               }}
-              className="text-xs text-blue-700 hover:text-blue-900 font-bold"
+              className="text-xs text-brand-700 hover:text-brand-900 font-bold"
             >
               New Resident? Click here for Direct Public Admission Form →
             </button>
@@ -397,16 +397,16 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4 flex items-center justify-center">
-      <div className="bg-white border border-blue-100 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl text-slate-900">
+      <div className="bg-white border border-brand-100 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl text-slate-900">
         
         {/* Top Header - Royal Blue */}
-        <div className="bg-blue-700 text-white px-8 py-6 flex items-center justify-between shadow-md">
+        <div className="bg-brand-700 text-white px-8 py-6 flex items-center justify-between shadow-md">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center text-white">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-200">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-brand-200">
                 PNS Luxury PG • Resident Onboarding
               </span>
               <h1 className="text-lg sm:text-xl font-extrabold text-white">
@@ -418,21 +418,21 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
           <button
             type="button"
             onClick={onBackToLogin}
-            className="text-xs text-blue-100 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition"
+            className="text-xs text-brand-100 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition"
           >
             Exit to Login
           </button>
         </div>
 
         {/* Step Indicator Bar */}
-        <div className="bg-blue-50/80 px-8 py-3.5 border-b border-blue-100 flex items-center justify-between text-xs font-bold">
-          <div className={`flex items-center space-x-1.5 ${step >= 1 ? 'text-blue-800' : 'text-slate-400'}`}>
-            <span className="w-5 h-5 rounded-full bg-blue-700 text-white flex items-center justify-center text-[10px]">1</span>
+        <div className="bg-brand-50/80 px-8 py-3.5 border-b border-brand-100 flex items-center justify-between text-xs font-bold">
+          <div className={`flex items-center space-x-1.5 ${step >= 1 ? 'text-brand-800' : 'text-slate-400'}`}>
+            <span className="w-5 h-5 rounded-full bg-brand-700 text-white flex items-center justify-center text-[10px]">1</span>
             <span>Aadhaar & Resident Profile</span>
           </div>
           <span className="text-slate-300">→</span>
-          <div className={`flex items-center space-x-1.5 ${step >= 2 ? 'text-blue-800' : 'text-slate-400'}`}>
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 2 ? 'bg-blue-700 text-white' : 'bg-slate-300 text-slate-700'}`}>2</span>
+          <div className={`flex items-center space-x-1.5 ${step >= 2 ? 'text-brand-800' : 'text-slate-400'}`}>
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 2 ? 'bg-brand-700 text-white' : 'bg-slate-300 text-slate-700'}`}>2</span>
             <span>Emergency & Occupation</span>
           </div>
           <span className="text-slate-300">→</span>
@@ -444,9 +444,9 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
 
         {/* Status / Stay Banner */}
         <div className="px-8 pt-6">
-          <div className="bg-gradient-to-r from-blue-50 via-white to-blue-50 border border-blue-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="bg-gradient-to-r from-brand-50 via-white to-brand-50 border border-brand-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-sm shrink-0">
                 <BedDouble className="w-5 h-5" />
               </div>
               <div>
@@ -454,14 +454,14 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                 <h3 className="text-sm font-bold text-slate-900">
                   {existingTenant?.roomNumber ? `Room ${existingTenant.roomNumber} (${existingTenant.bedLabel}) • Floor ${existingTenant.floor}` : 'Automated Room Allocation on Submit'}
                 </h3>
-                <p className="text-xs text-blue-800 font-semibold">
+                <p className="text-xs text-brand-800 font-semibold">
                   Phone: +91 {(mobileNumber || phoneLookup || existingTenant?.phone || '').replace(/\D/g, '')}
                 </p>
               </div>
             </div>
 
             <div className="text-right sm:text-right w-full sm:w-auto">
-              <span className="text-xs font-bold text-blue-900 bg-blue-100 px-3 py-1.5 rounded-xl border border-blue-200 inline-block">
+              <span className="text-xs font-bold text-brand-900 bg-brand-100 px-3 py-1.5 rounded-xl border border-brand-200 inline-block">
                 {existingTenant ? `₹${existingTenant.monthlyRent.toLocaleString('en-IN')} / month` : 'Standard PG Rent Plan'}
               </span>
             </div>
@@ -473,7 +473,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
           <form onSubmit={handleProceedToStep2} className="p-8 space-y-5">
             <div className="space-y-1">
               <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-                <CreditCard className="w-5 h-5 text-blue-700" />
+                <CreditCard className="w-5 h-5 text-brand-700" />
                 <span>1. Personal Information & Government Aadhaar</span>
               </h2>
               <p className="text-xs text-slate-500">
@@ -483,7 +483,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
 
             {/* If Self-Registration, fill Name & Room Preference */}
             {(!existingTenant || isSelfRegisterMode) && (
-              <div className="bg-blue-50/60 border border-blue-200 p-4 rounded-2xl space-y-3">
+              <div className="bg-brand-50/60 border border-brand-200 p-4 rounded-2xl space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
@@ -495,7 +495,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                       placeholder="e.g. Rahul Sharma"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                     />
                   </div>
 
@@ -511,7 +511,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                         maxLength={10}
                         value={mobileNumber}
                         onChange={(e) => setMobileNumber(e.target.value)}
-                        className="w-full bg-white border border-slate-300 rounded-xl pl-12 pr-4 py-2 text-xs font-mono font-bold text-blue-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                        className="w-full bg-white border border-slate-300 rounded-xl pl-12 pr-4 py-2 text-xs font-mono font-bold text-brand-900 focus:outline-none focus:border-brand-600 shadow-sm"
                       />
                     </div>
                   </div>
@@ -527,7 +527,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                       placeholder="e.g. rahul@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                     />
                   </div>
 
@@ -538,7 +538,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                     <select
                       value={preferredRoomId}
                       onChange={(e) => setPreferredRoomId(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                     >
                       <option value="">-- Auto Assign First Available Room --</option>
                       {rooms.map((r) => {
@@ -569,7 +569,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                     placeholder="XXXX XXXX XXXX"
                     value={aadhaarNum}
                     onChange={(e) => handleAadhaarChange(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono font-bold text-blue-900 tracking-wider focus:outline-none focus:border-blue-600 shadow-sm"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono font-bold text-brand-900 tracking-wider focus:outline-none focus:border-brand-600 shadow-sm"
                   />
                   <p className="text-[11px] text-slate-500 mt-1">Example: 5412 8903 2198</p>
                 </div>
@@ -584,7 +584,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                     placeholder="e.g. RAHUL SHARMA"
                     value={nameOnAadhaar}
                     onChange={(e) => setNameOnAadhaar(e.target.value.toUpperCase())}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold uppercase text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold uppercase text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                   />
                 </div>
               </div>
@@ -599,7 +599,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                     required
                     value={dob}
                     onChange={(e) => setDob(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                   />
                 </div>
 
@@ -610,7 +610,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                   <select
                     value={gender}
                     onChange={(e) => setGender(e.target.value as any)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                   >
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -629,7 +629,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                   placeholder="House/Flat No, Street, Landmark, Area"
                   value={aadhaarAddress}
                   onChange={(e) => setAadhaarAddress(e.target.value)}
-                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                 />
               </div>
 
@@ -641,7 +641,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                     required
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
                   />
                 </div>
                 <div>
@@ -651,7 +651,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                     required
                     value={stateName}
                     onChange={(e) => setStateName(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
                   />
                 </div>
                 <div>
@@ -662,7 +662,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                     maxLength={6}
                     value={pincode}
                     onChange={(e) => setPincode(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 font-mono"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-brand-600 font-mono"
                   />
                 </div>
               </div>
@@ -674,7 +674,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                 Scanned Aadhaar Card (Front & Back)
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-3.5 bg-blue-50/60 border border-blue-200 rounded-xl flex items-center justify-between">
+                <div className="p-3.5 bg-brand-50/60 border border-brand-200 rounded-xl flex items-center justify-between">
                   <div className="flex items-center space-x-2.5">
                     <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
                     <div>
@@ -682,10 +682,10 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                       <p className="text-[10px] text-emerald-700 font-medium">aadhaar_front.jpg ready</p>
                     </div>
                   </div>
-                  <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded font-bold">Attached</span>
+                  <span className="text-[10px] bg-brand-600 text-white px-2 py-0.5 rounded font-bold">Attached</span>
                 </div>
 
-                <div className="p-3.5 bg-blue-50/60 border border-blue-200 rounded-xl flex items-center justify-between">
+                <div className="p-3.5 bg-brand-50/60 border border-brand-200 rounded-xl flex items-center justify-between">
                   <div className="flex items-center space-x-2.5">
                     <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
                     <div>
@@ -693,7 +693,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                       <p className="text-[10px] text-emerald-700 font-medium">aadhaar_back.jpg ready</p>
                     </div>
                   </div>
-                  <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded font-bold">Attached</span>
+                  <span className="text-[10px] bg-brand-600 text-white px-2 py-0.5 rounded font-bold">Attached</span>
                 </div>
               </div>
             </div>
@@ -707,7 +707,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-blue-700/20 flex items-center justify-center space-x-2"
+              className="w-full py-3.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-brand-700/20 flex items-center justify-center space-x-2"
             >
               <span>Save Profile & Proceed to Emergency Details</span>
               <ArrowRight className="w-4 h-4" />
@@ -720,7 +720,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
           <form onSubmit={handleSubmitFinalKYC} className="p-8 space-y-5">
             <div className="space-y-1">
               <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-                <Phone className="w-5 h-5 text-blue-700" />
+                <Phone className="w-5 h-5 text-brand-700" />
                 <span>2. Emergency Contact & Employment Information</span>
               </h2>
               <p className="text-xs text-slate-500">
@@ -794,7 +794,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
             {/* Occupation & Food Preferences */}
             <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-4">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
-                <Briefcase className="w-4 h-4 text-blue-700" />
+                <Briefcase className="w-4 h-4 text-brand-700" />
                 <span>Occupation & Resident Preferences</span>
               </span>
 
@@ -804,7 +804,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                   <select
                     value={occupation}
                     onChange={(e) => setOccupation(e.target.value as any)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
                   >
                     <option value="Working Professional">Working Professional</option>
                     <option value="Student">College / University Student</option>
@@ -823,7 +823,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                     placeholder="e.g. Infosys, Tech Mahindra, RV College"
                     value={companyOrCollege}
                     onChange={(e) => setCompanyOrCollege(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
                   />
                 </div>
               </div>
@@ -834,7 +834,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                   <select
                     value={foodPref}
                     onChange={(e) => setFoodPref(e.target.value as any)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
                   >
                     <option value="Veg">Pure Vegetarian</option>
                     <option value="Non-Veg">Non-Vegetarian</option>
@@ -847,7 +847,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                   <select
                     value={bloodGroup}
                     onChange={(e) => setBloodGroup(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
                   >
                     <option value="A+">A+</option>
                     <option value="A-">A-</option>
@@ -920,14 +920,14 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
             </div>
 
             {/* Account Information Card */}
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 max-w-md mx-auto text-left space-y-2 text-xs">
+            <div className="bg-brand-50 border border-brand-200 rounded-2xl p-4 max-w-md mx-auto text-left space-y-2 text-xs">
               <div className="flex justify-between">
                 <span className="text-slate-600">Allocated Stay:</span>
                 <span className="font-bold text-slate-900">Room {activeTenantObj.roomNumber || 'Assigned'} ({activeTenantObj.bedLabel || 'Bed Assigned'}) • Floor {activeTenantObj.floor}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600">Registered Phone:</span>
-                <span className="font-mono font-bold text-blue-900">+91 {activeTenantObj.phone.replace(/\D/g, '')}</span>
+                <span className="font-mono font-bold text-brand-900">+91 {activeTenantObj.phone.replace(/\D/g, '')}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600">Monthly Rent:</span>
@@ -939,7 +939,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
               <button
                 type="button"
                 onClick={() => onCompletedLogin(activeTenantObj)}
-                className="w-full sm:w-auto px-8 py-3.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-blue-700/25 flex items-center justify-center space-x-2"
+                className="w-full sm:w-auto px-8 py-3.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-brand-700/25 flex items-center justify-center space-x-2"
               >
                 <span>Login to Tenant Portal Now</span>
                 <ArrowRight className="w-4 h-4" />

@@ -99,18 +99,18 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-950/75 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-xl max-h-[92vh] overflow-y-auto shadow-2xl border border-blue-100 text-slate-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
+      <div className="bg-white rounded-2xl w-full max-w-xl max-h-[92vh] overflow-y-auto shadow-2xl border border-brand-100 text-slate-900">
         
         {/* Top Header - Royal Blue */}
-        <div className="sticky top-0 bg-blue-700 text-white px-6 py-4 flex items-center justify-between z-10 shadow-sm">
+        <div className="sticky top-0 bg-brand-700 text-white px-6 py-4 flex items-center justify-between z-10 shadow-sm">
           <div className="flex items-center space-x-2.5">
             <div className="w-9 h-9 rounded-xl bg-white/15 text-white flex items-center justify-center border border-white/20">
               <MessageSquare className="w-5 h-5" />
             </div>
             <div>
               <h2 className="font-bold text-base text-white">Send WhatsApp KYC Invitation</h2>
-              <p className="text-xs text-blue-100">Send direct registration link to tenant's mobile</p>
+              <p className="text-xs text-brand-100">Send direct registration link to tenant's mobile</p>
             </div>
           </div>
 
@@ -126,17 +126,17 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
         <div className="p-6 space-y-5">
           
           {/* Tenant Summary Banner */}
-          <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="bg-brand-50/80 border border-brand-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-3">
               <img
                 src={tenant.photoUrl}
                 alt={tenant.name}
-                className="w-12 h-12 rounded-xl object-cover border-2 border-blue-600 shadow-sm shrink-0"
+                className="w-12 h-12 rounded-xl object-cover border-2 border-brand-600 shadow-sm shrink-0"
               />
               <div>
                 <h3 className="font-bold text-slate-900 text-sm">{tenant.name}</h3>
-                <p className="text-xs text-blue-800 font-semibold flex items-center space-x-1">
-                  <Phone className="w-3 h-3 mr-0.5 text-blue-600" />
+                <p className="text-xs text-brand-800 font-semibold flex items-center space-x-1">
+                  <Phone className="w-3 h-3 mr-0.5 text-brand-600" />
                   <span>+91 {cleanPhone}</span>
                 </p>
                 <p className="text-[11px] text-slate-600">
@@ -146,7 +146,7 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
             </div>
 
             <div className="text-right sm:text-right w-full sm:w-auto">
-              <span className="text-[11px] font-semibold text-blue-900 bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 inline-block">
+              <span className="text-[11px] font-semibold text-brand-900 bg-brand-100 px-2.5 py-1 rounded-lg border border-brand-200 inline-block">
                 Monthly Rent: ₹{tenant.monthlyRent.toLocaleString('en-IN')}
               </span>
             </div>
@@ -162,7 +162,7 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
                 type="text"
                 readOnly
                 value={inviteUrl}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-blue-900 font-medium select-all focus:outline-none focus:border-blue-600"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-brand-900 font-medium select-all focus:outline-none focus:border-brand-600"
               />
               <button
                 type="button"
@@ -193,7 +193,7 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
               <button
                 type="button"
                 onClick={handleCopyMessage}
-                className="text-xs text-blue-700 hover:text-blue-800 font-semibold flex items-center space-x-1"
+                className="text-xs text-brand-700 hover:text-brand-800 font-semibold flex items-center space-x-1"
               >
                 {copiedMessage ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copiedMessage ? 'Message Copied!' : 'Copy Text'}</span>
@@ -238,7 +238,7 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
               type="button"
               onClick={handleSendTwilioWhatsApp}
               disabled={isSendingTwilio}
-              className="w-full py-3 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-700/20 flex items-center justify-center space-x-2 disabled:opacity-70"
+              className="w-full py-3 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-brand-700/20 flex items-center justify-center space-x-2 disabled:opacity-70"
             >
               {isSendingTwilio ? (
                 <>
@@ -263,7 +263,7 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
                   onClose();
                   onOpenFormDirectly(tenant.id);
                 }}
-                className="text-xs text-blue-700 hover:text-blue-900 font-bold underline"
+                className="text-xs text-brand-700 hover:text-brand-900 font-bold underline"
               >
                 Or Open and Fill KYC Onboarding Form Right Now →
               </button>

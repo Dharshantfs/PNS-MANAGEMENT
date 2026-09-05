@@ -74,13 +74,13 @@ export const SettingsPage: React.FC = () => {
       <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-black text-slate-900 flex items-center space-x-2">
-            <Building2 className="w-4 h-4 text-blue-700" />
+            <Building2 className="w-4 h-4 text-brand-700" />
             <span>Your Properties</span>
           </h2>
           <button
             type="button"
             onClick={() => setIsAddingProperty((v) => !v)}
-            className="px-3 py-1.5 text-xs font-bold bg-blue-700 hover:bg-blue-800 text-white rounded-xl flex items-center space-x-1.5"
+            className="px-3 py-1.5 text-xs font-bold bg-brand-700 hover:bg-brand-800 text-white rounded-xl flex items-center space-x-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Property</span>
@@ -96,7 +96,7 @@ export const SettingsPage: React.FC = () => {
                 onClick={() => switchProperty(p.id)}
                 className={`px-4 py-2 rounded-xl text-xs font-bold border transition ${
                   activePropertyId === p.id
-                    ? 'bg-blue-700 text-white border-blue-700 shadow-md'
+                    ? 'bg-brand-700 text-white border-brand-700 shadow-md'
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
@@ -109,18 +109,18 @@ export const SettingsPage: React.FC = () => {
         {isAddingProperty && (
           <form onSubmit={handleCreateProperty} className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
             <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Property name (e.g. Sunrise PG)" required
-              className="col-span-2 px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600" />
+              className="col-span-2 px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
             <input value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder="Address" required
-              className="col-span-2 px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600" />
+              className="col-span-2 px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
             <input value={newCity} onChange={(e) => setNewCity(e.target.value)} placeholder="City"
-              className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600" />
+              className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
             <input value={newState} onChange={(e) => setNewState(e.target.value)} placeholder="State"
-              className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600" />
+              className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
             <input value={newPincode} onChange={(e) => setNewPincode(e.target.value)} placeholder="Pincode"
-              className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600" />
+              className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
             <input type="number" min={1} max={20} value={newFloors} onChange={(e) => setNewFloors(Number(e.target.value))} placeholder="Total floors"
-              className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600" />
-            <button type="submit" className="col-span-2 py-2.5 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-xl">
+              className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
+            <button type="submit" className="col-span-2 py-2.5 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-xl">
               Create Property
             </button>
           </form>
@@ -135,7 +135,7 @@ export const SettingsPage: React.FC = () => {
           {/* Room types */}
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
             <h2 className="text-sm font-black text-slate-900 flex items-center space-x-2 mb-4">
-              <Home className="w-4 h-4 text-blue-700" />
+              <Home className="w-4 h-4 text-brand-700" />
               <span>Room Types</span>
             </h2>
             <div className="space-y-2 mb-4">
@@ -157,12 +157,12 @@ export const SettingsPage: React.FC = () => {
                 value={newRoomTypeName}
                 onChange={(e) => setNewRoomTypeName(e.target.value)}
                 placeholder="e.g. 1BHK, 2BHK, Studio"
-                className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600"
+                className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600"
               />
               <button
                 type="button"
                 onClick={() => { if (newRoomTypeName.trim()) { runOrShowError(addRoomType(newRoomTypeName.trim())); setNewRoomTypeName(''); } }}
-                className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1"
+                className="px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add</span>
@@ -176,7 +176,7 @@ export const SettingsPage: React.FC = () => {
           {/* Sharing options / rent packages */}
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
             <h2 className="text-sm font-black text-slate-900 flex items-center space-x-2 mb-1">
-              <Users2 className="w-4 h-4 text-blue-700" />
+              <Users2 className="w-4 h-4 text-brand-700" />
               <span>Sharing Options & Rent Packages</span>
             </h2>
             <p className="text-[11px] text-slate-500 mb-4">Up to 6-sharing per room. These become the rent defaults when adding a room in the Bed Matrix.</p>
@@ -194,7 +194,7 @@ export const SettingsPage: React.FC = () => {
                         type="number"
                         value={s.defaultRent}
                         onChange={(e) => runOrShowError(updateSharingOption(s.id, { defaultRent: Number(e.target.value) }))}
-                        className="w-24 text-xs font-mono font-bold text-slate-900 bg-transparent focus:outline-none border-b border-transparent focus:border-blue-600"
+                        className="w-24 text-xs font-mono font-bold text-slate-900 bg-transparent focus:outline-none border-b border-transparent focus:border-brand-600"
                       />
                       <span className="text-[10px] text-slate-500 ml-1">/ month</span>
                     </div>
@@ -208,7 +208,7 @@ export const SettingsPage: React.FC = () => {
               <select
                 value={newSharingOccupancy}
                 onChange={(e) => setNewSharingOccupancy(Number(e.target.value))}
-                className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600"
+                className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600"
               >
                 {[1, 2, 3, 4, 5, 6].map((n) => (
                   <option key={n} value={n}>{n === 1 ? 'Single' : `${n}-Sharing`}</option>
@@ -227,7 +227,7 @@ export const SettingsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => runOrShowError(addSharingOption(newSharingOccupancy, newSharingRent))}
-                className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1"
+                className="px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Sharing Option</span>
@@ -238,7 +238,7 @@ export const SettingsPage: React.FC = () => {
           {/* Dues packages: Rent / Deposit / custom fee categories */}
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
             <h2 className="text-sm font-black text-slate-900 flex items-center space-x-2 mb-1">
-              <Receipt className="w-4 h-4 text-blue-700" />
+              <Receipt className="w-4 h-4 text-brand-700" />
               <span>Dues Packages</span>
             </h2>
             <p className="text-[11px] text-slate-500 mb-4">
@@ -253,7 +253,7 @@ export const SettingsPage: React.FC = () => {
                     onChange={(e) => runOrShowError(updateDuesCategory(c.id, { name: e.target.value }))}
                     className="text-xs font-bold text-slate-900 bg-transparent focus:outline-none w-40"
                   />
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-bold capitalize">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-800 border border-brand-200 font-bold capitalize">
                     {c.categoryType}
                   </span>
                   <label className="flex items-center space-x-1.5 text-[11px] text-slate-500">
@@ -272,7 +272,7 @@ export const SettingsPage: React.FC = () => {
                         type="number"
                         value={c.fixedAmount || 0}
                         onChange={(e) => runOrShowError(updateDuesCategory(c.id, { fixedAmount: Number(e.target.value) }))}
-                        className="w-20 text-xs font-mono font-bold text-slate-900 bg-transparent focus:outline-none border-b border-transparent focus:border-blue-600"
+                        className="w-20 text-xs font-mono font-bold text-slate-900 bg-transparent focus:outline-none border-b border-transparent focus:border-brand-600"
                       />
                       <span className="text-[10px] text-slate-500 ml-1">fixed</span>
                     </div>
@@ -294,12 +294,12 @@ export const SettingsPage: React.FC = () => {
                 value={newDuesName}
                 onChange={(e) => setNewDuesName(e.target.value)}
                 placeholder="e.g. Late Fine, Joining Fee"
-                className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 flex-1 min-w-[160px]"
+                className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600 flex-1 min-w-[160px]"
               />
               <select
                 value={newDuesType}
                 onChange={(e) => setNewDuesType(e.target.value as DuesCategoryConfig['categoryType'])}
-                className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600"
+                className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600"
               >
                 <option value="rent">Rent</option>
                 <option value="deposit">Deposit</option>
@@ -308,7 +308,7 @@ export const SettingsPage: React.FC = () => {
               <select
                 value={newDuesAmountType}
                 onChange={(e) => setNewDuesAmountType(e.target.value as DuesCategoryConfig['amountType'])}
-                className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600"
+                className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600"
               >
                 <option value="variable">Variable Amount</option>
                 <option value="fixed">Fixed Amount</option>
@@ -332,7 +332,7 @@ export const SettingsPage: React.FC = () => {
                   setNewDuesName('');
                   setNewDuesFixedAmount(0);
                 }}
-                className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1"
+                className="px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Category</span>
@@ -380,43 +380,43 @@ const PropertyBasicsCard: React.FC = () => {
   return (
     <form onSubmit={handleSave} className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
       <h2 className="text-sm font-black text-slate-900 flex items-center space-x-2">
-        <MapPin className="w-4 h-4 text-blue-700" />
+        <MapPin className="w-4 h-4 text-brand-700" />
         <span>Property Settings</span>
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Property Name</label>
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600" />
+            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
         </div>
         <div>
           <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">UPI ID</label>
           <input value={form.upiId} onChange={(e) => setForm({ ...form, upiId: e.target.value })} placeholder="yourpg@okaxis"
-            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600" />
+            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
         </div>
         <div className="sm:col-span-2">
           <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Address</label>
           <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
-            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600" />
+            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
         </div>
         <div>
           <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Total Floors</label>
           <input type="number" min={1} max={20} value={form.totalFloors} onChange={(e) => setForm({ ...form, totalFloors: Number(e.target.value) })}
-            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600" />
+            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
         </div>
         <div>
           <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Gate Closing Time</label>
           <input value={form.gateClosingTime} onChange={(e) => setForm({ ...form, gateClosingTime: e.target.value })}
-            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600" />
+            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
         </div>
         <div>
           <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Rent Due Day (of month)</label>
           <input type="number" min={1} max={28} value={form.rentDueDay} onChange={(e) => setForm({ ...form, rentDueDay: Number(e.target.value) })}
-            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600" />
+            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
         </div>
       </div>
       {error && <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">{error}</div>}
-      <button type="submit" className="px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5">
+      <button type="submit" className="px-5 py-2.5 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5">
         <Save className="w-3.5 h-3.5" />
         <span>{saved ? 'Saved!' : 'Save Settings'}</span>
       </button>
@@ -465,7 +465,7 @@ const TeamAccessCard: React.FC = () => {
     <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
       <div>
         <h2 className="text-sm font-black text-slate-900 flex items-center space-x-2">
-          <UserPlus className="w-4 h-4 text-blue-700" />
+          <UserPlus className="w-4 h-4 text-brand-700" />
           <span>Team Access</span>
         </h2>
         <p className="text-[11px] text-slate-500 mt-1">
@@ -480,7 +480,7 @@ const TeamAccessCard: React.FC = () => {
           onChange={(e) => setName(e.target.value)}
           placeholder="Full name"
           required
-          className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600"
+          className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600"
         />
         <input
           type="email"
@@ -488,12 +488,12 @@ const TeamAccessCard: React.FC = () => {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
           required
-          className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600"
+          className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600"
         />
         <select
           value={role}
           onChange={(e) => setRole(e.target.value as 'owner' | 'staff')}
-          className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600"
+          className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600"
         >
           <option value="staff">Staff</option>
           <option value="owner">Co-Owner</option>
@@ -501,7 +501,7 @@ const TeamAccessCard: React.FC = () => {
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5"
+          className="px-4 py-2 bg-brand-700 hover:bg-brand-800 disabled:opacity-50 text-white text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5"
         >
           <UserPlus className="w-3.5 h-3.5" />
           <span>{loading ? 'Adding...' : 'Add'}</span>

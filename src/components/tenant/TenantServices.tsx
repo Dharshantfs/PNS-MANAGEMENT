@@ -60,17 +60,17 @@ export const TenantServices: React.FC = () => {
     <div id="tenant-services-view" className="space-y-6 animate-in fade-in text-slate-900">
       
       {/* SECTION 1: DAILY MESS & FOOD MENU - Royal Blue & White */}
-      <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-4">
+      <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2">
-              <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold">
+              <span className="px-3 py-1 rounded-full bg-brand-50 text-brand-800 border border-brand-200 text-xs font-bold">
                 Weekly Meal Planner
               </span>
               <span className="text-xs text-slate-500 font-semibold">North & South Indian Gourmet</span>
             </div>
             <h2 className="text-xl font-black text-slate-900 mt-1.5 flex items-center space-x-2">
-              <Utensils className="w-5 h-5 text-blue-700" />
+              <Utensils className="w-5 h-5 text-brand-700" />
               <span>Mess & Dining Timetable</span>
             </h2>
           </div>
@@ -84,7 +84,7 @@ export const TenantServices: React.FC = () => {
                 onClick={() => setSelectedDay(day)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
                   selectedDay === day
-                    ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
+                    ? 'bg-brand-700 text-white shadow-md shadow-brand-700/20'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -98,13 +98,13 @@ export const TenantServices: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
           
           {/* Breakfast */}
-          <div className="bg-blue-50/60 p-5 rounded-2xl border border-blue-200 space-y-3">
+          <div className="bg-brand-50/60 p-5 rounded-2xl border border-brand-200 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Coffee className="w-4 h-4 text-blue-700" />
-                <span className="font-extrabold text-xs text-blue-900 uppercase">Breakfast</span>
+                <Coffee className="w-4 h-4 text-brand-700" />
+                <span className="font-extrabold text-xs text-brand-900 uppercase">Breakfast</span>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-800">
                 7:30 AM - 10:00 AM
               </span>
             </div>
@@ -149,9 +149,9 @@ export const TenantServices: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Raise Ticket Form */}
-        <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center font-bold">
               <Wrench className="w-4 h-4" />
             </div>
             <div>
@@ -167,7 +167,7 @@ export const TenantServices: React.FC = () => {
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as any)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
                 >
                   <option value="Air Conditioner">Air Conditioner (AC)</option>
                   <option value="Plumbing / Washroom">Plumbing / Washroom</option>
@@ -184,7 +184,7 @@ export const TenantServices: React.FC = () => {
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as any)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
                 >
                   <option value="Low">Low - Normal Request</option>
                   <option value="Medium">Medium - Needs Attention</option>
@@ -201,7 +201,7 @@ export const TenantServices: React.FC = () => {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="e.g. AC cooling is slow, or bathroom tap needs washer replacement..."
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 shadow-sm"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
               />
             </div>
 
@@ -214,7 +214,7 @@ export const TenantServices: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-700/20 flex items-center justify-center space-x-2"
+              className="w-full py-3.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-brand-700/20 flex items-center justify-center space-x-2"
             >
               <Plus className="w-4 h-4" />
               <span>Submit Maintenance Ticket</span>
@@ -223,10 +223,10 @@ export const TenantServices: React.FC = () => {
         </div>
 
         {/* My Open Tickets Ledger */}
-        <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+              <div className="w-8 h-8 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center font-bold">
                 <Clock className="w-4 h-4" />
               </div>
               <div>
@@ -234,7 +234,7 @@ export const TenantServices: React.FC = () => {
                 <p className="text-xs text-slate-500">Live progress on raised complaints</p>
               </div>
             </div>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-800 font-bold border border-blue-200">
+            <span className="text-xs px-2.5 py-1 rounded-full bg-brand-50 text-brand-800 font-bold border border-brand-200">
               {tenantTickets.length} Total
             </span>
           </div>
@@ -257,7 +257,7 @@ export const TenantServices: React.FC = () => {
                       ticket.status === 'Resolved'
                         ? 'bg-emerald-100 text-emerald-800'
                         : ticket.status === 'In Progress'
-                        ? 'bg-blue-100 text-blue-800'
+                        ? 'bg-brand-100 text-brand-800'
                         : 'bg-amber-100 text-amber-800'
                     }`}>
                       {ticket.status}

@@ -47,10 +47,10 @@ export const NoticesAndTickets: React.FC = () => {
     <div id="notices-and-tickets-view" className="space-y-6 animate-in fade-in text-slate-900">
       
       {/* SECTION 1: BROADCAST NOTICES - Royal Blue & White */}
-      <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-4">
+      <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center font-bold">
               <Bell className="w-4 h-4" />
             </div>
             <div>
@@ -62,7 +62,7 @@ export const NoticesAndTickets: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsAddNoticeOpen(true)}
-            className="px-3.5 py-2 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 shadow-md shadow-blue-700/20 transition"
+            className="px-3.5 py-2 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 shadow-md shadow-brand-700/20 transition"
           >
             <Plus className="w-4 h-4" />
             <span>Post Notice</span>
@@ -86,7 +86,7 @@ export const NoticesAndTickets: React.FC = () => {
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-100 text-brand-800">
                       {n.category}
                     </span>
                     <button
@@ -111,9 +111,9 @@ export const NoticesAndTickets: React.FC = () => {
       </div>
 
       {/* SECTION 2: MAINTENANCE TICKETS - Royal Blue & White */}
-      <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-4">
+      <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4">
         <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+          <div className="w-8 h-8 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center font-bold">
             <Wrench className="w-4 h-4" />
           </div>
           <div>
@@ -141,7 +141,7 @@ export const NoticesAndTickets: React.FC = () => {
                       t.status === 'Resolved'
                         ? 'bg-emerald-100 text-emerald-800'
                         : t.status === 'In Progress'
-                        ? 'bg-blue-100 text-blue-800'
+                        ? 'bg-brand-100 text-brand-800'
                         : 'bg-amber-100 text-amber-800'
                     }`}>
                       {t.status}
@@ -158,7 +158,7 @@ export const NoticesAndTickets: React.FC = () => {
                   <select
                     value={t.status}
                     onChange={(e) => updateTicketStatus(t.id, e.target.value as any)}
-                    className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                   >
                     <option value="Open">Open</option>
                     <option value="In Progress">In Progress</option>
@@ -173,9 +173,9 @@ export const NoticesAndTickets: React.FC = () => {
 
       {/* Add Notice Modal */}
       {isAddNoticeOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-950/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-blue-100 text-slate-900 overflow-hidden">
-            <div className="bg-blue-700 text-white px-6 py-4 flex items-center justify-between shadow-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-brand-100 text-slate-900 overflow-hidden">
+            <div className="bg-brand-700 text-white px-6 py-4 flex items-center justify-between shadow-sm">
               <h3 className="font-bold text-sm text-white">Post New PG Announcement</h3>
               <button
                 type="button"
@@ -195,7 +195,7 @@ export const NoticesAndTickets: React.FC = () => {
                   placeholder="e.g. Deep Cleaning of Water Tanks"
                   value={noticeTitle}
                   onChange={(e) => setNoticeTitle(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
 
@@ -205,7 +205,7 @@ export const NoticesAndTickets: React.FC = () => {
                   <select
                     value={noticeCategory}
                     onChange={(e) => setNoticeCategory(e.target.value as any)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
                   >
                     <option value="General">General</option>
                     <option value="Maintenance">Maintenance</option>
@@ -220,7 +220,7 @@ export const NoticesAndTickets: React.FC = () => {
                   <select
                     value={noticeFloor}
                     onChange={(e) => setNoticeFloor(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
                   >
                     <option value="all">All 4 Floors</option>
                     <option value="1">Floor 1</option>
@@ -239,13 +239,13 @@ export const NoticesAndTickets: React.FC = () => {
                   placeholder="Details of the announcement..."
                   value={noticeContent}
                   onChange={(e) => setNoticeContent(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-700/20"
+                className="w-full py-3.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-brand-700/20"
               >
                 Broadcast Notice to Residents
               </button>

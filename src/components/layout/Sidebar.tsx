@@ -33,8 +33,8 @@ const NAV_ITEMS: Array<{ tab: OwnerTab; label: string; icon: React.ElementType }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onChange, vacantBeds, pendingKYCCount, onLogout }) => {
   return (
-    <aside className="hidden sm:flex flex-col items-center w-20 shrink-0 bg-blue-700 min-h-screen py-4 space-y-1">
-      <div className="w-10 h-10 rounded-2xl bg-white text-blue-700 flex items-center justify-center shadow-md mb-3 shrink-0">
+    <aside className="hidden sm:flex flex-col items-center w-20 shrink-0 bg-brand-700 min-h-screen py-4 space-y-1">
+      <div className="w-10 h-10 rounded-2xl bg-white text-brand-700 flex items-center justify-center shadow-md mb-3 shrink-0">
         <Building2 className="w-5 h-5" />
       </div>
 
@@ -53,7 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onChange, vacantBed
               type="button"
               onClick={() => onChange(tab)}
               className={`relative w-full flex flex-col items-center justify-center gap-1 py-2.5 rounded-2xl text-[10px] font-bold transition ${
-                isActive ? 'bg-white text-blue-700 shadow-md' : 'text-blue-100 hover:bg-blue-600'
+                isActive ? 'bg-white text-brand-700 shadow-md' : 'text-brand-100 hover:bg-brand-600'
               }`}
               title={label}
             >
@@ -62,7 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onChange, vacantBed
               {badge !== null && (
                 <span
                   className={`absolute top-1 right-2 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center ${
-                    isActive ? 'bg-blue-700 text-white' : 'bg-rose-500 text-white'
+                    isActive ? 'bg-brand-700 text-white' : 'bg-rose-500 text-white'
                   }`}
                 >
                   {badge}
@@ -76,7 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onChange, vacantBed
       <button
         type="button"
         onClick={onLogout}
-        className="w-full flex flex-col items-center justify-center gap-1 py-2.5 mx-2 rounded-2xl text-[10px] font-bold text-blue-100 hover:bg-blue-600 transition"
+        className="w-full flex flex-col items-center justify-center gap-1 py-2.5 mx-2 rounded-2xl text-[10px] font-bold text-brand-100 hover:bg-brand-600 transition"
         title="Logout"
       >
         <LogOut className="w-5 h-5" />
