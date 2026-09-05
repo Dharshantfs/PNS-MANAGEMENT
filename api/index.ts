@@ -1,4 +1,9 @@
-import { createApiApp } from "./_lib/app";
+// Explicit ".js" extension required: package.json has "type": "module", so
+// Vercel's Node runtime resolves this import with the native ESM loader,
+// which (unlike tsx/bundlers) does not resolve extensionless relative
+// imports - this alone was causing every /api/* invocation to crash with
+// ERR_MODULE_NOT_FOUND, independent of the routing bug fixed above.
+import { createApiApp } from "./_lib/app.js";
 
 // Vercel serverless function entrypoint.
 //
