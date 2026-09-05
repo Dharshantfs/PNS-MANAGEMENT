@@ -44,13 +44,83 @@ export function fillAgreementTemplate(
   );
 }
 
-export const AGREEMENT_TOKEN_HELP = [
-  'currentDate', 'pgName', 'ownerName', 'ownerPhone', 'ownerEmail',
-  'propertyAddress', 'propertyCity', 'propertyState', 'propertyPincode',
-  'tenantName', 'tenantPhone', 'tenantEmail', 'tenantAddress', 'aadhaarNumber',
-  'fatherName', 'roomNumber', 'bedLabel', 'floor', 'sharingType',
-  'monthlyRent', 'securityDeposit', 'checkInDate', 'rentDueDay',
+// Plain-English labels for every fillable field, grouped for a click-to-insert
+// UI (see AgreementTemplatesCard) - the owner never has to type or read the
+// {{tokenName}} syntax themselves, just click "Tenant Name" etc.
+export const AGREEMENT_FIELD_GROUPS: Array<{ group: string; fields: Array<{ token: string; label: string }> }> = [
+  {
+    group: 'Tenant',
+    fields: [
+      { token: 'tenantName', label: 'Tenant Name' },
+      { token: 'tenantPhone', label: 'Tenant Phone' },
+      { token: 'tenantEmail', label: 'Tenant Email' },
+      { token: 'tenantAddress', label: 'Tenant Address' },
+      { token: 'aadhaarNumber', label: 'Aadhaar Number' },
+      { token: 'fatherName', label: "Father's Name" },
+    ],
+  },
+  {
+    group: 'Room & Rent',
+    fields: [
+      { token: 'roomNumber', label: 'Room Number' },
+      { token: 'bedLabel', label: 'Bed' },
+      { token: 'floor', label: 'Floor' },
+      { token: 'sharingType', label: 'Sharing Type' },
+      { token: 'monthlyRent', label: 'Monthly Rent' },
+      { token: 'securityDeposit', label: 'Security Deposit' },
+      { token: 'checkInDate', label: 'Check-in Date' },
+      { token: 'rentDueDay', label: 'Rent Due Day' },
+    ],
+  },
+  {
+    group: 'PG & Owner',
+    fields: [
+      { token: 'currentDate', label: "Today's Date" },
+      { token: 'pgName', label: 'PG Name' },
+      { token: 'ownerName', label: 'Owner Name' },
+      { token: 'ownerPhone', label: 'Owner Phone' },
+      { token: 'ownerEmail', label: 'Owner Email' },
+      { token: 'propertyAddress', label: 'Property Address' },
+      { token: 'propertyCity', label: 'City' },
+      { token: 'propertyState', label: 'State' },
+      { token: 'propertyPincode', label: 'Pincode' },
+    ],
+  },
 ];
+
+// Used to render a "what will this look like" preview in Settings without
+// requiring a real tenant to be selected first.
+export const SAMPLE_AGREEMENT_TOKENS: Record<string, string> = {
+  currentDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }),
+  pgName: 'Your PG Name',
+  ownerName: 'Owner Name',
+  ownerPhone: '+91 98765 43210',
+  ownerEmail: 'owner@example.com',
+  propertyAddress: 'Property Address',
+  propertyCity: 'City',
+  propertyState: 'State',
+  propertyPincode: '000000',
+  tenantName: 'Tenant Name',
+  tenantPhone: '+91 90000 00000',
+  tenantEmail: 'tenant@example.com',
+  tenantAddress: 'Tenant Permanent Address',
+  aadhaarNumber: 'XXXX XXXX XXXX',
+  fatherName: "Tenant's Father Name",
+  roomNumber: '101',
+  bedLabel: 'Bed A',
+  floor: '1',
+  sharingType: '2-sharing',
+  monthlyRent: '8,500',
+  securityDeposit: '15,000',
+  checkInDate: '01 Jan 2026',
+  rentDueDay: '5',
+};
+
+export function fillSampleTemplate(body: string): string {
+  return body.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key) =>
+    Object.prototype.hasOwnProperty.call(SAMPLE_AGREEMENT_TOKENS, key) ? SAMPLE_AGREEMENT_TOKENS[key] : match
+  );
+}
 
 // A starting Leave & License style agreement, in plain English - NOT
 // reviewed by a lawyer. Indian state stamp duty / registration rules vary a

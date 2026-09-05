@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { usePG } from '../../context/PGContext';
 import { createTeamMember } from '../../services/authService';
 import { DuesCategoryConfig } from '../../types';
-import { AGREEMENT_TOKEN_HELP, DEFAULT_AGREEMENT_BODY } from '../../lib/agreementFill';
+import { AGREEMENT_FIELD_GROUPS, DEFAULT_AGREEMENT_BODY, fillSampleTemplate } from '../../lib/agreementFill';
 import { Building2, Plus, Trash2, Save, Home, Users2, IndianRupee, MapPin, UserPlus, Copy, Check, Receipt, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
@@ -538,8 +538,10 @@ const TeamAccessCard: React.FC = () => {
 const AgreementTemplatesCard: React.FC = () => {
   const { activeProperty, addAgreementTemplate, updateAgreementTemplate, deleteAgreementTemplate } = usePG();
   const [newName, setNewName] = useState('');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null); // "edit wording" mode
+  const [previewId, setPreviewId] = useState<string | null>(null); // "see what it looks like"
   const [error, setError] = useState('');
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   if (!activeProperty) return null;
   const templates = activeProperty.agreementTemplates || [];
@@ -549,17 +551,39 @@ const AgreementTemplatesCard: React.FC = () => {
     promise.catch((e: any) => setError(e?.message || 'That change was rejected by the database.'));
   };
 
+  // Inserts a field like {{tenantName}} at wherever the cursor currently is
+  // in the wording box, so the owner never has to type the double-curly
+  // syntax themselves - just click the labeled button.
+  const insertField = (templateId: string, currentBody: string, token: string) => {
+    const el = textareaRef.current;
+    const insertion = `{{${token}}}`;
+    if (!el) {
+      runOrShowError(updateAgreementTemplate(templateId, { body: currentBody + insertion }));
+      return;
+    }
+    const start = el.selectionStart ?? currentBody.length;
+    const end = el.selectionEnd ?? currentBody.length;
+    const nextBody = currentBody.slice(0, start) + insertion + currentBody.slice(end);
+    runOrShowError(updateAgreementTemplate(templateId, { body: nextBody }));
+    requestAnimationFrame(() => {
+      el.focus();
+      const cursor = start + insertion.length;
+      el.setSelectionRange(cursor, cursor);
+    });
+  };
+
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
       <div>
         <h2 className="text-sm font-black text-slate-900 flex items-center space-x-2">
           <FileText className="w-4 h-4 text-brand-700" />
-          <span>Rental Agreement Templates</span>
+          <span>Rental Agreement</span>
         </h2>
         <p className="text-[11px] text-slate-500 mt-1">
-          Not reviewed by a lawyer - a starting point only. Check your state's stamp duty / registration rules before
-          relying on it as a legally binding document. Use tokens like {'{{tenantName}}'} - available tokens:{' '}
-          {AGREEMENT_TOKEN_HELP.map((t) => `{{${t}}}`).join(', ')}.
+          A ready-to-use agreement is set up for you already - you don't need to change anything to start using it
+          (open a tenant's profile and click "Generate Rental Agreement"). Only edit the wording below if you want to
+          change what it says. Not reviewed by a lawyer - check your state's rules before relying on it as a legally
+          binding document.
         </p>
       </div>
 
@@ -574,22 +598,60 @@ const AgreementTemplatesCard: React.FC = () => {
               />
               <button
                 type="button"
-                onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
-                className="text-slate-500 hover:text-slate-700"
+                onClick={() => { setPreviewId(previewId === t.id ? null : t.id); setOpenId(null); }}
+                className="px-2.5 py-1 text-[11px] font-bold text-brand-700 hover:text-brand-900 bg-white border border-brand-200 rounded-lg"
               >
-                {expandedId === t.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {previewId === t.id ? 'Hide Preview' : 'Preview'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setOpenId(openId === t.id ? null : t.id); setPreviewId(null); }}
+                className="px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-300 rounded-lg"
+              >
+                {openId === t.id ? 'Done Editing' : 'Edit Wording'}
               </button>
               <button type="button" onClick={() => runOrShowError(deleteAgreementTemplate(t.id))} className="text-rose-500 hover:text-rose-700">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
-            {expandedId === t.id && (
-              <textarea
-                value={t.body}
-                onChange={(e) => runOrShowError(updateAgreementTemplate(t.id, { body: e.target.value }))}
-                rows={14}
-                className="w-full px-4 py-3 text-[11px] font-mono text-slate-800 focus:outline-none border-t border-slate-200"
-              />
+
+            {previewId === t.id && (
+              <div className="p-4 border-t border-slate-200 bg-white">
+                <p className="text-[10px] text-slate-400 mb-2">Shown with sample details - the real one fills in the actual tenant's info.</p>
+                <div className="border border-slate-200 rounded-xl p-4 whitespace-pre-wrap font-serif text-[11px] leading-relaxed text-slate-900 max-h-96 overflow-y-auto">
+                  {fillSampleTemplate(t.body)}
+                </div>
+              </div>
+            )}
+
+            {openId === t.id && (
+              <div className="border-t border-slate-200">
+                <div className="p-3 bg-slate-50 space-y-2">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Click a field to add it into the wording:</p>
+                  {AGREEMENT_FIELD_GROUPS.map((g) => (
+                    <div key={g.group} className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-slate-400 w-20 shrink-0">{g.group}:</span>
+                      {g.fields.map((f) => (
+                        <button
+                          key={f.token}
+                          type="button"
+                          onClick={() => insertField(t.id, t.body, f.token)}
+                          className="px-2 py-1 text-[10px] font-semibold text-brand-800 bg-brand-50 hover:bg-brand-100 border border-brand-200 rounded-md"
+                        >
+                          + {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <textarea
+                  ref={textareaRef}
+                  value={t.body}
+                  onChange={(e) => runOrShowError(updateAgreementTemplate(t.id, { body: e.target.value }))}
+                  rows={14}
+                  className="w-full px-4 py-3 text-xs text-slate-800 focus:outline-none border-t border-slate-200"
+                />
+              </div>
             )}
           </div>
         ))}
@@ -599,7 +661,7 @@ const AgreementTemplatesCard: React.FC = () => {
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder="New template name, e.g. Short-Term Agreement"
+          placeholder="New agreement name, e.g. Short-Term Agreement"
           className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600"
         />
         <button
@@ -612,7 +674,7 @@ const AgreementTemplatesCard: React.FC = () => {
           className="px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Add Template</span>
+          <span>Add Another</span>
         </button>
       </div>
 
