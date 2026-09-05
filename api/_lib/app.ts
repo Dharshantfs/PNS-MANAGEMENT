@@ -236,6 +236,27 @@ export function createApiApp() {
         createdAt: nowIso(),
       });
 
+      // Best-effort: one Activity Log entry per property the caller has
+      // access to (see ActivityLog in src/types.ts). Never let a logging
+      // failure fail the actual invite - the new account is already created.
+      const propertyIds: string[] = callerProfile.propertyIds || [];
+      await Promise.all(
+        propertyIds.map((propertyId) =>
+          db
+            .collection("activityLogs")
+            .add({
+              propertyId,
+              actorUid: decoded.uid,
+              actorName: callerProfile.name || callerProfile.email || "Unknown",
+              actorRole: callerProfile.role,
+              action: "team.invite",
+              summary: `Invited ${name} (${role}) to the team`,
+              createdAt: nowIso(),
+            })
+            .catch((err: any) => console.warn("team.invite activity log failed:", err))
+        )
+      );
+
       res.json({ success: true, email, tempPassword });
     } catch (err: any) {
       console.error("create-team-member error:", err);

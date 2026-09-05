@@ -19,6 +19,8 @@ import {
   DueCharge,
   AgreementTemplateConfig,
   OwnerProfile,
+  ActivityAction,
+  ActivityLog,
 } from '../types';
 import { DEFAULT_AGREEMENT_BODY } from '../lib/agreementFill';
 import {
@@ -43,6 +45,8 @@ import {
   createTicket,
   saveTicket,
   createCharge,
+  subscribeActivityLogs,
+  createActivityLog,
   getOwnerProfile,
   getPropertiesByIds,
   findTenantByPhone,
@@ -162,6 +166,7 @@ interface PGContextType {
   deleteDuesCategory: (id: string) => Promise<void>;
   charges: DueCharge[];
   addDueCharge: (tenantId: string, categoryId: string, amount: number, notes?: string) => Promise<void>;
+  activityLogs: ActivityLog[];
   addAgreementTemplate: (name: string, body: string) => Promise<void>;
   updateAgreementTemplate: (id: string, updates: Partial<AgreementTemplateConfig>) => Promise<void>;
   deleteAgreementTemplate: (id: string) => Promise<void>;
@@ -276,6 +281,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [notices, setNotices] = useState<Notice[]>([]);
   const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
   const [charges, setCharges] = useState<DueCharge[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
 
   // --- Firebase Auth session -------------------------------------------------
   useEffect(() => {
@@ -384,6 +390,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       setNotices([]);
       setTickets([]);
       setCharges([]);
+      setActivityLogs([]);
       return;
     }
     const unsubs = [
@@ -393,9 +400,12 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       subscribeNotices(activePropertyId, setNotices),
       subscribeTickets(activePropertyId, setTickets),
       subscribeCharges(activePropertyId, setCharges),
+      // Owner/staff only per firestore.rules - a signed-in tenant's read is
+      // simply denied, so don't bother subscribing for role !== 'owner'.
+      ...(role === 'owner' ? [subscribeActivityLogs(activePropertyId, setActivityLogs)] : []),
     ];
     return () => unsubs.forEach((u) => u());
-  }, [activePropertyId]);
+  }, [activePropertyId, role]);
 
   useEffect(() => {
     if (authUser?.uid && activePropertyId) {
@@ -407,6 +417,25 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     () => properties.find((p) => p.id === activePropertyId),
     [properties, activePropertyId]
   );
+
+  // Records one entry in the property's Activity Log (see ActivityLog in
+  // types.ts) - fire-and-forget, alongside the mutation it describes. Only
+  // owner/staff actions are logged (tenants have no users/{uid} profile, so
+  // firestore.rules would reject a tenant-authored entry anyway - see
+  // isOwnerOfProperty there). Failures are swallowed: a logging failure
+  // should never block the actual action it's describing.
+  const logActivity = (action: ActivityAction, summary: string, propertyIdOverride?: string) => {
+    const propertyId = propertyIdOverride || activePropertyId;
+    if (!propertyId || !authUser || role !== 'owner') return;
+    createActivityLog({
+      propertyId,
+      actorUid: authUser.uid,
+      actorName: ownerProfile?.name || authUser.email || 'Unknown',
+      actorRole: ownerProfile?.role || 'owner',
+      action,
+      summary,
+    }).catch((e) => console.warn('logActivity failed', e));
+  };
 
   const setRole = (newRole: UserRole) => setRoleState(newRole);
   const setCurrentTenantId = (id: string) => setCurrentTenantIdState(id);
@@ -465,6 +494,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     // (see isOwnerOfProperty in firestore.rules). propertyIds is only for
     // invited team members, set server-side at invite time.
     setActivePropertyId(id);
+    logActivity('property.create', `Created property "${data.name}"`, id);
     return id;
   };
 
@@ -483,43 +513,51 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     // Firestore rejects a field whose value is `undefined` outright - only
     // include `description` when one was actually given.
     const newType: RoomTypeConfig = description ? { id, name, description } : { id, name };
-    return updatePropertySettings({ roomTypes: [...activeProperty.roomTypes, newType] });
+    return updatePropertySettings({ roomTypes: [...activeProperty.roomTypes, newType] }).then(() =>
+      logActivity('roomtype.add', `Added room type "${name}"`)
+    );
   };
 
   const updateRoomType = (id: string, updates: Partial<RoomTypeConfig>) => {
     if (!activeProperty) return Promise.reject(new Error('No active property'));
+    const name = activeProperty.roomTypes.find((rt) => rt.id === id)?.name || id;
     return updatePropertySettings({
       roomTypes: activeProperty.roomTypes.map((rt) => (rt.id === id ? { ...rt, ...updates } : rt)),
-    });
+    }).then(() => logActivity('roomtype.update', `Updated room type "${name}"`));
   };
 
   const deleteRoomType = (id: string) => {
     if (!activeProperty) return Promise.reject(new Error('No active property'));
-    return updatePropertySettings({ roomTypes: activeProperty.roomTypes.filter((rt) => rt.id !== id) });
+    const name = activeProperty.roomTypes.find((rt) => rt.id === id)?.name || id;
+    return updatePropertySettings({ roomTypes: activeProperty.roomTypes.filter((rt) => rt.id !== id) }).then(() =>
+      logActivity('roomtype.delete', `Deleted room type "${name}"`)
+    );
   };
 
   const addSharingOption = (occupancy: number, defaultRent: number, label?: string) => {
     if (!activeProperty) return Promise.reject(new Error('No active property'));
     const clamped = Math.min(6, Math.max(1, occupancy));
     const id = `sh-${Date.now()}`;
+    const finalLabel = label || SHARING_LABELS[clamped] || `${clamped}-Sharing`;
     return updatePropertySettings({
-      sharingOptions: [
-        ...activeProperty.sharingOptions,
-        { id, occupancy: clamped, label: label || SHARING_LABELS[clamped] || `${clamped}-Sharing`, defaultRent },
-      ],
-    });
+      sharingOptions: [...activeProperty.sharingOptions, { id, occupancy: clamped, label: finalLabel, defaultRent }],
+    }).then(() => logActivity('sharing.add', `Added sharing option "${finalLabel}" (₹${defaultRent}/bed)`));
   };
 
   const updateSharingOption = (id: string, updates: Partial<SharingConfig>) => {
     if (!activeProperty) return Promise.reject(new Error('No active property'));
+    const label = activeProperty.sharingOptions.find((s) => s.id === id)?.label || id;
     return updatePropertySettings({
       sharingOptions: activeProperty.sharingOptions.map((s) => (s.id === id ? { ...s, ...updates } : s)),
-    });
+    }).then(() => logActivity('sharing.update', `Updated sharing option "${label}"`));
   };
 
   const deleteSharingOption = (id: string) => {
     if (!activeProperty) return Promise.reject(new Error('No active property'));
-    return updatePropertySettings({ sharingOptions: activeProperty.sharingOptions.filter((s) => s.id !== id) });
+    const label = activeProperty.sharingOptions.find((s) => s.id === id)?.label || id;
+    return updatePropertySettings({ sharingOptions: activeProperty.sharingOptions.filter((s) => s.id !== id) }).then(
+      () => logActivity('sharing.delete', `Deleted sharing option "${label}"`)
+    );
   };
 
   // --- Dues packages (Rent / Deposit / custom fee categories) ------------------
@@ -536,19 +574,25 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       amountType === 'fixed'
         ? { id, name, categoryType, amountType, fixedAmount: fixedAmount || 0, active: true }
         : { id, name, categoryType, amountType, active: true };
-    return updatePropertySettings({ duesCategories: [...(activeProperty.duesCategories || []), newCategory] });
+    return updatePropertySettings({ duesCategories: [...(activeProperty.duesCategories || []), newCategory] }).then(
+      () => logActivity('dues.add', `Added dues category "${name}"`)
+    );
   };
 
   const updateDuesCategory = (id: string, updates: Partial<DuesCategoryConfig>) => {
     if (!activeProperty) return Promise.reject(new Error('No active property'));
+    const name = (activeProperty.duesCategories || []).find((c) => c.id === id)?.name || id;
     return updatePropertySettings({
       duesCategories: (activeProperty.duesCategories || []).map((c) => (c.id === id ? { ...c, ...updates } : c)),
-    });
+    }).then(() => logActivity('dues.update', `Updated dues category "${name}"`));
   };
 
   const deleteDuesCategory = (id: string) => {
     if (!activeProperty) return Promise.reject(new Error('No active property'));
-    return updatePropertySettings({ duesCategories: (activeProperty.duesCategories || []).filter((c) => c.id !== id) });
+    const name = (activeProperty.duesCategories || []).find((c) => c.id === id)?.name || id;
+    return updatePropertySettings({ duesCategories: (activeProperty.duesCategories || []).filter((c) => c.id !== id) }).then(
+      () => logActivity('dues.delete', `Deleted dues category "${name}"`)
+    );
   };
 
   // Charges a tenant's account against a dues category (e.g. "add a Late
@@ -578,6 +622,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       dueAmount: tenant.dueAmount + amount,
       rentStatus: 'due',
     });
+    logActivity('charge.add', `Added ₹${amount.toLocaleString('en-IN')} ${category.name} charge to ${tenant.name}`);
   };
 
   // --- Rental agreement templates ----------------------------------------------
@@ -587,21 +632,23 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const id = `agr-${Date.now()}`;
     return updatePropertySettings({
       agreementTemplates: [...(activeProperty.agreementTemplates || []), { id, name, body }],
-    });
+    }).then(() => logActivity('agreement.add', `Added agreement template "${name}"`));
   };
 
   const updateAgreementTemplate = (id: string, updates: Partial<AgreementTemplateConfig>) => {
     if (!activeProperty) return Promise.reject(new Error('No active property'));
+    const name = (activeProperty.agreementTemplates || []).find((t) => t.id === id)?.name || id;
     return updatePropertySettings({
       agreementTemplates: (activeProperty.agreementTemplates || []).map((t) => (t.id === id ? { ...t, ...updates } : t)),
-    });
+    }).then(() => logActivity('agreement.update', `Updated agreement template "${name}"`));
   };
 
   const deleteAgreementTemplate = (id: string) => {
     if (!activeProperty) return Promise.reject(new Error('No active property'));
+    const name = (activeProperty.agreementTemplates || []).find((t) => t.id === id)?.name || id;
     return updatePropertySettings({
       agreementTemplates: (activeProperty.agreementTemplates || []).filter((t) => t.id !== id),
-    });
+    }).then(() => logActivity('agreement.delete', `Deleted agreement template "${name}"`));
   };
 
   // --- Backward-compatible flattened settings ---------------------------------
@@ -628,7 +675,11 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     if (updates.totalFloors !== undefined) propertyUpdates.totalFloors = updates.totalFloors;
     if (updates.gateClosingTime !== undefined) propertyUpdates.gateClosingTime = updates.gateClosingTime;
     if (updates.rentDueDay !== undefined) propertyUpdates.rentDueDay = updates.rentDueDay;
-    if (Object.keys(propertyUpdates).length > 0) updatePropertySettings(propertyUpdates);
+    if (Object.keys(propertyUpdates).length > 0) {
+      updatePropertySettings(propertyUpdates).then(() =>
+        logActivity('settings.update', `Updated property settings (${Object.keys(propertyUpdates).join(', ')})`)
+      );
+    }
   };
 
   // --- Rooms & beds ------------------------------------------------------------
@@ -678,7 +729,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       ...(roomData.notes ? { notes: roomData.notes } : {}),
     };
 
-    setDoc(ref, newRoom).catch((e) => console.warn('addRoom failed', e));
+    setDoc(ref, newRoom)
+      .then(() => logActivity('room.add', `Added room ${roomData.roomNumber} (Floor ${roomData.floor})`))
+      .catch((e) => console.warn('addRoom failed', e));
   };
 
   const updateRoom = (roomId: string, updates: Partial<Room>) => {
@@ -688,10 +741,13 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     if (updates.pricePerBed !== undefined) {
       patch.beds = room.beds.map((b) => ({ ...b, pricePerMonth: updates.pricePerBed! }));
     }
-    saveRoom(roomId, patch).catch((e) => console.warn('updateRoom failed', e));
+    saveRoom(roomId, patch)
+      .then(() => logActivity('room.update', `Updated room ${room.roomNumber}`))
+      .catch((e) => console.warn('updateRoom failed', e));
   };
 
   const deleteRoom = (roomId: string) => {
+    const room = rooms.find((r) => r.id === roomId);
     // Firestore's updateDoc() rejects a literal `undefined` field value -
     // deleteField() is the correct way to clear a field via a partial update.
     tenants
@@ -704,7 +760,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
           bedLabel: deleteField(),
         } as unknown as Partial<Tenant>).catch((e) => console.warn('deleteRoom(tenant) failed', e))
       );
-    removeRoom(roomId).catch((e) => console.warn('deleteRoom failed', e));
+    removeRoom(roomId)
+      .then(() => logActivity('room.delete', `Deleted room ${room?.roomNumber || roomId}`))
+      .catch((e) => console.warn('deleteRoom failed', e));
   };
 
   const assignBed = (roomId: string, bedId: string, tenantId: string): boolean => {
@@ -741,7 +799,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       securityDeposit: room.securityDeposit,
       dueAmount: tenant.dueAmount > 0 ? tenant.dueAmount : bed.pricePerMonth || room.pricePerBed,
       rentStatus: tenant.rentStatus === 'paid' ? 'paid' : 'due',
-    }).catch((e) => console.warn('assignBed(tenant) failed', e));
+    })
+      .then(() => logActivity('bed.assign', `Assigned ${tenant.name} to Room ${room.roomNumber} (${bed.bedLabel})`))
+      .catch((e) => console.warn('assignBed(tenant) failed', e));
 
     return true;
   };
@@ -764,13 +824,16 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     saveRoom(roomId, { beds: updatedBeds }).catch((e) => console.warn('vacateBed(room) failed', e));
 
     if (tenantId) {
+      const tenantName = bed.tenantName || 'tenant';
       saveTenant(tenantId, {
         roomId: deleteField(),
         roomNumber: deleteField(),
         bedId: deleteField(),
         bedLabel: deleteField(),
         checkOutDate: nowIso().split('T')[0],
-      } as unknown as Partial<Tenant>).catch((e) => console.warn('vacateBed(tenant) failed', e));
+      } as unknown as Partial<Tenant>)
+        .then(() => logActivity('bed.vacate', `Vacated ${bed.bedLabel} in Room ${room.roomNumber} (${tenantName} checked out)`))
+        .catch((e) => console.warn('vacateBed(tenant) failed', e));
     }
   };
 
@@ -828,7 +891,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       updatedAt: nowIso(),
     };
 
-    setDoc(ref, newTenant).catch((e) => console.warn('addTenant failed', e));
+    setDoc(ref, newTenant)
+      .then(() => logActivity('tenant.add', `Added tenant ${tenantData.name}`))
+      .catch((e) => console.warn('addTenant failed', e));
 
     if (targetRoom && targetBed) {
       const updatedBeds = targetRoom.beds.map((b) =>
@@ -843,7 +908,10 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   };
 
   const updateTenant = (tenantId: string, updates: Partial<Tenant>) => {
-    saveTenant(tenantId, updates).catch((e) => console.warn('updateTenant failed', e));
+    const tenant = tenants.find((t) => t.id === tenantId);
+    saveTenant(tenantId, updates)
+      .then(() => logActivity('tenant.update', `Updated tenant ${tenant?.name || tenantId}`))
+      .catch((e) => console.warn('updateTenant failed', e));
   };
 
   const submitKYC = (tenantId: string, kycData: Partial<TenantKYC>) => {
@@ -860,7 +928,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         verificationMethod: 'manual',
       },
     };
-    saveTenant(tenantId, { kyc: updatedKYC }).catch((e) => console.warn('submitKYC failed', e));
+    saveTenant(tenantId, { kyc: updatedKYC })
+      .then(() => logActivity('kyc.submit', `Submitted KYC for ${tenant.name}`))
+      .catch((e) => console.warn('submitKYC failed', e));
   };
 
   const approveKYC = (tenantId: string) => {
@@ -873,7 +943,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         verifiedByOwner: true,
         aadhaar: { ...tenant.kyc.aadhaar, verifiedAt: nowIso().split('T')[0] },
       },
-    }).catch((e) => console.warn('approveKYC failed', e));
+    })
+      .then(() => logActivity('kyc.approve', `Approved KYC for ${tenant.name}`))
+      .catch((e) => console.warn('approveKYC failed', e));
   };
 
   const rejectKYC = (tenantId: string, reason: string) => {
@@ -886,7 +958,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         verifiedByOwner: false,
         aadhaar: { ...tenant.kyc.aadhaar, rejectionReason: reason },
       },
-    }).catch((e) => console.warn('rejectKYC failed', e));
+    })
+      .then(() => logActivity('kyc.reject', `Rejected KYC for ${tenant.name}: ${reason}`))
+      .catch((e) => console.warn('rejectKYC failed', e));
   };
 
   // --- Payments ------------------------------------------------------------------
@@ -939,6 +1013,10 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       });
     }
 
+    logActivity(
+      'payment.record',
+      `Recorded ₹${paymentData.amount.toLocaleString('en-IN')} ${paymentData.paymentMode} payment for ${newPayment.tenantName} (${paymentData.month})`
+    );
     return { id, ...newPayment };
   };
 
@@ -997,7 +1075,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         lastPaymentDate: payment.paymentDate,
       }).catch((e) => console.warn('confirmPendingPayment(tenant) failed', e));
     }
-    updateDoc(doc(db, 'payments', paymentId), { status: 'paid', dueAmount: 0 });
+    updateDoc(doc(db, 'payments', paymentId), { status: 'paid', dueAmount: 0 }).then(() =>
+      logActivity('payment.confirm', `Confirmed ₹${payment.amount.toLocaleString('en-IN')} payment for ${payment.tenantName}`)
+    );
   };
 
   // --- Notices & tickets -----------------------------------------------------
@@ -1006,11 +1086,16 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     if (!activePropertyId) return;
     const ref = doc(collection(db, 'notices'));
     const newNotice: Notice = { id: ref.id, propertyId: activePropertyId, ...notice, date: nowIso().split('T')[0] };
-    setDoc(ref, newNotice).catch((e) => console.warn('addNotice failed', e));
+    setDoc(ref, newNotice)
+      .then(() => logActivity('notice.add', `Posted notice "${notice.title}"`))
+      .catch((e) => console.warn('addNotice failed', e));
   };
 
   const deleteNotice = (id: string) => {
-    removeNotice(id).catch((e) => console.warn('deleteNotice failed', e));
+    const notice = notices.find((n) => n.id === id);
+    removeNotice(id)
+      .then(() => logActivity('notice.delete', `Deleted notice "${notice?.title || id}"`))
+      .catch((e) => console.warn('deleteNotice failed', e));
   };
 
   const raiseTicket = (ticket: Omit<MaintenanceTicket, 'id' | 'createdAt' | 'status' | 'propertyId'>) => {
@@ -1023,7 +1108,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       status: 'Open',
       createdAt: nowIso().split('T')[0],
     };
-    setDoc(ref, newTicket).catch((e) => console.warn('raiseTicket failed', e));
+    setDoc(ref, newTicket)
+      .then(() => logActivity('ticket.raise', `Raised ${ticket.category} ticket for ${ticket.tenantName}`))
+      .catch((e) => console.warn('raiseTicket failed', e));
   };
 
   const updateTicketStatus = (id: string, status: MaintenanceTicket['status'], adminNote?: string) => {
@@ -1032,7 +1119,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       status,
       adminNote: adminNote !== undefined ? adminNote : ticket?.adminNote,
       resolvedAt: status === 'Resolved' ? nowIso().split('T')[0] : ticket?.resolvedAt,
-    }).catch((e) => console.warn('updateTicketStatus failed', e));
+    })
+      .then(() => logActivity('ticket.update', `Updated ${ticket?.tenantName || 'a'} ticket to "${status}"`))
+      .catch((e) => console.warn('updateTicketStatus failed', e));
   };
 
   // --- Helpers -----------------------------------------------------------------
@@ -1145,6 +1234,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         deleteDuesCategory,
         charges,
         addDueCharge,
+        activityLogs,
         addAgreementTemplate,
         updateAgreementTemplate,
         deleteAgreementTemplate,

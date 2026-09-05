@@ -7,12 +7,13 @@ import {
   Bell,
   FileText,
   FileBarChart,
+  History,
   Settings as SettingsIcon,
   LogOut,
   Building2,
 } from 'lucide-react';
 
-export type OwnerTab = 'dashboard' | 'matrix' | 'tenants' | 'finance' | 'reports' | 'notices' | 'googleforms' | 'settings';
+export type OwnerTab = 'dashboard' | 'matrix' | 'tenants' | 'finance' | 'reports' | 'activity' | 'notices' | 'googleforms' | 'settings';
 
 interface SidebarProps {
   activeTab: OwnerTab;
@@ -31,6 +32,7 @@ const NAV_ITEMS: Array<{ tab: OwnerTab; label: string; icon: React.ElementType; 
   { tab: 'tenants', label: 'Tenants', icon: Users },
   { tab: 'finance', label: 'Money', icon: IndianRupee, ownerOnly: true },
   { tab: 'reports', label: 'Reports', icon: FileBarChart, ownerOnly: true },
+  { tab: 'activity', label: 'Activity', icon: History, ownerOnly: true },
   { tab: 'notices', label: 'Notices', icon: Bell },
   { tab: 'googleforms', label: 'Forms', icon: FileText, ownerOnly: true },
   { tab: 'settings', label: 'Settings', icon: SettingsIcon, ownerOnly: true },

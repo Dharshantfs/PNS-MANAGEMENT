@@ -148,5 +148,17 @@ match /databases/{database}/documents {
     allow create: if isOwnerOfProperty(request.resource.data.propertyId);
     allow update, delete: if isOwnerOfProperty(resource.data.propertyId);
   }
+
+  // Activity log (Owner > Activity Log): records what staff/co-owner accounts
+  // did in the app. Owner-only to read (so staff can't see each other's/the
+  // owner's full history); any owner/staff account with property access may
+  // append an entry alongside the action it describes (see PGContext's
+  // `logActivity`). Immutable once written - no update/delete rule, and the
+  // one server-side writer (api/_lib/app.ts team invite) uses the Admin SDK,
+  // which bypasses these rules entirely.
+  match /activityLogs/{logId} {
+    allow read: if isOwnerOfProperty(resource.data.propertyId) && isOwnerRole();
+    allow create: if isOwnerOfProperty(request.resource.data.propertyId);
+  }
 }
 }

@@ -22,6 +22,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import {
+  ActivityLog,
   DueCharge,
   MaintenanceTicket,
   Notice,
@@ -237,5 +238,27 @@ export const subscribeCharges = (propertyId: string, cb: (charges: DueCharge[]) 
 
 export async function createCharge(charge: Omit<DueCharge, 'id'>): Promise<string> {
   const ref = await addDoc(collection(db, 'charges'), charge);
+  return ref.id;
+}
+
+// ---------------------------------------------------------------------------
+// Activity log - see ActivityLog in types.ts. Capped to the most recent 500
+// entries per property so the owner's Activity Log tab doesn't have to page
+// through an ever-growing collection; older history is still in Firestore,
+// just not subscribed to live.
+// ---------------------------------------------------------------------------
+
+export const subscribeActivityLogs = (propertyId: string, cb: (logs: ActivityLog[]) => void) => {
+  const q = query(
+    collection(db, 'activityLogs'),
+    where('propertyId', '==', propertyId),
+    orderBy('createdAt', 'desc'),
+    limit(500)
+  );
+  return onSnapshot(q, (snap) => cb(fromDocs<ActivityLog>(snap)));
+};
+
+export async function createActivityLog(entry: Omit<ActivityLog, 'id' | 'createdAt'>): Promise<string> {
+  const ref = await addDoc(collection(db, 'activityLogs'), { ...entry, createdAt: nowIso() });
   return ref.id;
 }

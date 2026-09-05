@@ -267,6 +267,40 @@ export interface PGSettings {
   rentDueDay: number;
 }
 
+// A record of one action a staff/owner account took in the app - shown to the
+// owner in the Activity Log tab so they can see what co-owners/staff did
+// (and when). Written client-side alongside the mutation it describes (see
+// PGContext's `logActivity` helper) plus server-side for the one action that
+// happens in api/_lib/app.ts (inviting a new team member). Immutable once
+// written - firestore.rules allows create but not update/delete.
+export type ActivityAction =
+  | 'property.create'
+  | 'settings.update'
+  | 'roomtype.add' | 'roomtype.update' | 'roomtype.delete'
+  | 'sharing.add' | 'sharing.update' | 'sharing.delete'
+  | 'dues.add' | 'dues.update' | 'dues.delete'
+  | 'agreement.add' | 'agreement.update' | 'agreement.delete'
+  | 'room.add' | 'room.update' | 'room.delete'
+  | 'bed.assign' | 'bed.vacate'
+  | 'tenant.add' | 'tenant.update'
+  | 'kyc.submit' | 'kyc.approve' | 'kyc.reject'
+  | 'charge.add'
+  | 'payment.record' | 'payment.confirm'
+  | 'notice.add' | 'notice.delete'
+  | 'ticket.raise' | 'ticket.update'
+  | 'team.invite';
+
+export interface ActivityLog {
+  id: string;
+  propertyId: string;
+  actorUid: string;
+  actorName: string;
+  actorRole: 'owner' | 'staff';
+  action: ActivityAction;
+  summary: string; // human-readable, e.g. "Recorded ₹8,500 UPI payment for Ramesh (Room 101)"
+  createdAt: string; // ISO timestamp
+}
+
 // Minimal profile for the signed-in owner/staff Firebase Auth account, stored in
 // Firestore at users/{uid}. Holds which properties this account can access.
 export interface OwnerProfile {
