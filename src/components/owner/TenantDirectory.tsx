@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { usePG } from '../../context/PGContext';
 import { Tenant } from '../../types';
 import { TenantInviteModal } from './TenantInviteModal';
+import { TenantProfilePanel } from './TenantProfilePanel';
 import { getSharingLabel } from '../../lib/roomLabels';
 import {
   Users,
@@ -58,6 +59,9 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
 
   // Invite Modal State
   const [inviteModalTenant, setInviteModalTenant] = useState<Tenant | null>(null);
+
+  // Profile slide-over (opened by clicking a tenant card)
+  const [profileTenant, setProfileTenant] = useState<Tenant | null>(null);
 
   // Filtered tenants
   const filteredTenants = tenants.filter((t) => {
@@ -282,7 +286,10 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
           return (
             <div
               key={t.id}
-              className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition space-y-4 text-slate-900 relative flex flex-col justify-between"
+              onClick={() => setProfileTenant(t)}
+              role="button"
+              tabIndex={0}
+              className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-blue-300 transition space-y-4 text-slate-900 relative flex flex-col justify-between cursor-pointer"
             >
               {/* Tenant Profile Top */}
               <div className="space-y-3">
@@ -361,7 +368,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
               <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setInviteModalTenant(t)}
+                  onClick={(e) => { e.stopPropagation(); setInviteModalTenant(t); }}
                   className="py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold rounded-xl text-xs border border-emerald-200 transition flex items-center justify-center space-x-1.5 shadow-sm"
                 >
                   <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
@@ -370,7 +377,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
 
                 <button
                   type="button"
-                  onClick={() => setSelectedTenantDossier(t)}
+                  onClick={(e) => { e.stopPropagation(); setSelectedTenantDossier(t); }}
                   className="py-2 px-3 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center justify-center space-x-1.5"
                 >
                   <Eye className="w-3.5 h-3.5" />
@@ -548,6 +555,18 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
             </form>
           </div>
         </div>
+      )}
+
+      {/* TENANT PROFILE SLIDE-OVER (opened by clicking a tenant card) */}
+      {profileTenant && (
+        <TenantProfilePanel
+          tenant={tenants.find((t) => t.id === profileTenant.id) || profileTenant}
+          onClose={() => setProfileTenant(null)}
+          onViewDossier={() => {
+            setSelectedTenantDossier(profileTenant);
+            setProfileTenant(null);
+          }}
+        />
       )}
 
       {/* WHATSAPP INVITATION MODAL */}

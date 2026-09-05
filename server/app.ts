@@ -396,9 +396,12 @@ export function createApiApp() {
   });
 
   // Safety nets so a client always gets JSON back, never a hosting
-  // platform's generic HTML error page (which broke `res.json()` parsing
-  // on the frontend - see PostToolUse note above).
-  app.use((req, res) => {
+  // platform's generic HTML error page. Scoped to /api so this doesn't
+  // swallow the frontend's own routes when server.ts mounts this whole app
+  // as global middleware for local dev (Vercel only ever routes /api/*
+  // here anyway, but local dev needs every non-API path to fall through to
+  // Vite/static serving instead of hitting this catch-all).
+  app.use("/api", (req, res) => {
     res.status(404).json({ success: false, error: `No route for ${req.method} ${req.path}` });
   });
   app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {

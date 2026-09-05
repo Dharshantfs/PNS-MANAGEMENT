@@ -15,21 +15,13 @@ import { RoommatesView } from './components/tenant/RoommatesView';
 import { TenantKYC } from './components/tenant/TenantKYC';
 import { TenantServices } from './components/tenant/TenantServices';
 import { SettingsPage } from './components/owner/SettingsPage';
+import { Sidebar, OwnerTab } from './components/layout/Sidebar';
 import { Tenant } from './types';
 import {
-  LayoutDashboard,
-  Layers,
   Users,
-  IndianRupee,
-  Bell,
   BedDouble,
   CreditCard,
   Utensils,
-  ShieldCheck,
-  Building,
-  Sparkles,
-  FileText,
-  Settings as SettingsIcon,
 } from 'lucide-react';
 
 const AppContent: React.FC = () => {
@@ -51,7 +43,7 @@ const AppContent: React.FC = () => {
   const stats = getStats();
 
   // Owner Active Tab
-  const [ownerTab, setOwnerTab] = useState<'dashboard' | 'matrix' | 'tenants' | 'finance' | 'notices' | 'googleforms' | 'settings'>('dashboard');
+  const [ownerTab, setOwnerTab] = useState<OwnerTab>('dashboard');
 
   // Tenant Active Tab
   const [tenantTab, setTenantTab] = useState<'mystay' | 'roommates' | 'kyc' | 'services'>('mystay');
@@ -171,135 +163,35 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col selection:bg-blue-600 selection:text-white font-sans">
-      {/* Global Top Navbar - Royal Blue */}
-      <Navbar />
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex selection:bg-blue-600 selection:text-white font-sans">
+      {/* Left icon sidebar (owner view only) */}
+      {role === 'owner' && (
+        <Sidebar
+          activeTab={ownerTab}
+          onChange={setOwnerTab}
+          vacantBeds={stats.vacantBeds}
+          pendingKYCCount={stats.pendingKYCCount}
+          onLogout={logout}
+        />
+      )}
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        
-        {/* ======================= OWNER VIEW ======================= */}
-        {role === 'owner' && (
-          <div className="space-y-6">
-            
-            {/* Owner Navigation Tabs in Royal Blue & Crisp White */}
-            <div className="flex items-center space-x-2 overflow-x-auto pb-1 border-b border-slate-200 scrollbar-none">
-              <button
-                id="owner-tab-dashboard"
-                type="button"
-                onClick={() => setOwnerTab('dashboard')}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
-                  ownerTab === 'dashboard'
-                    ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                <span>Overview & KPIs</span>
-              </button>
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Global Top Navbar - Royal Blue */}
+        <Navbar />
 
-              <button
-                id="owner-tab-matrix"
-                type="button"
-                onClick={() => setOwnerTab('matrix')}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
-                  ownerTab === 'matrix'
-                    ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <Layers className="w-4 h-4" />
-                <span>4-Floor Bed Matrix</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ml-1 ${
-                  ownerTab === 'matrix' ? 'bg-blue-800 text-blue-100' : 'bg-slate-200 text-slate-700'
-                }`}>
-                  {stats.vacantBeds} Vacant
-                </span>
-              </button>
+        {/* Main Container */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-              <button
-                id="owner-tab-tenants"
-                type="button"
-                onClick={() => setOwnerTab('tenants')}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
-                  ownerTab === 'tenants'
-                    ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <Users className="w-4 h-4" />
-                <span>Tenant Directory & KYC</span>
-                {stats.pendingKYCCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-500 text-white ml-1 font-bold animate-pulse">
-                    {stats.pendingKYCCount} Review
-                  </span>
-                )}
-              </button>
-
-              <button
-                id="owner-tab-finance"
-                type="button"
-                onClick={() => setOwnerTab('finance')}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
-                  ownerTab === 'finance'
-                    ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <IndianRupee className="w-4 h-4" />
-                <span>Revenue & Rent Reports</span>
-              </button>
-
-              <button
-                id="owner-tab-notices"
-                type="button"
-                onClick={() => setOwnerTab('notices')}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
-                  ownerTab === 'notices'
-                    ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <Bell className="w-4 h-4" />
-                <span>Notices & Complaints</span>
-              </button>
-
-              <button
-                id="owner-tab-googleforms"
-                type="button"
-                onClick={() => setOwnerTab('googleforms')}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
-                  ownerTab === 'googleforms'
-                    ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                <span>Google Forms & Webhook</span>
-              </button>
-
-              <button
-                id="owner-tab-settings"
-                type="button"
-                onClick={() => setOwnerTab('settings')}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 whitespace-nowrap ${
-                  ownerTab === 'settings'
-                    ? 'bg-blue-700 text-white shadow-md shadow-blue-700/20'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <SettingsIcon className="w-4 h-4" />
-                <span>Properties & Settings</span>
-              </button>
-            </div>
-
-            {/* Active Owner Tab Content */}
-            {ownerTab === 'dashboard' && (
-              <OwnerDashboard
-                onNavigateToMatrix={() => setOwnerTab('matrix')}
-                onNavigateToKYC={() => setOwnerTab('tenants')}
-                onNavigateToReports={() => setOwnerTab('finance')}
-              />
+          {/* ======================= OWNER VIEW ======================= */}
+          {role === 'owner' && (
+            <div className="space-y-6">
+              {/* Active Owner Tab Content */}
+              {ownerTab === 'dashboard' && (
+                <OwnerDashboard
+                  onNavigateToMatrix={() => setOwnerTab('matrix')}
+                  onNavigateToKYC={() => setOwnerTab('tenants')}
+                  onNavigateToReports={() => setOwnerTab('finance')}
+                />
             )}
             {ownerTab === 'matrix' && <FloorBedMatrix />}
             {ownerTab === 'tenants' && (
@@ -396,12 +288,13 @@ const AppContent: React.FC = () => {
 
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-4 px-6 text-center text-xs text-slate-500">
-        <p>
-          {settings.pgName} Management System • {settings.totalFloors} Floors • {stats.totalRooms} Rooms
-        </p>
-      </footer>
+        {/* Footer */}
+        <footer className="border-t border-slate-200 bg-white py-4 px-6 text-center text-xs text-slate-500">
+          <p>
+            {settings.pgName} Management System • {settings.totalFloors} Floors • {stats.totalRooms} Rooms
+          </p>
+        </footer>
+      </div>
     </div>
   );
 };
