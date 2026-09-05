@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { usePG } from '../../context/PGContext';
 import { Tenant } from '../../types';
 import { getSharingLabel } from '../../lib/roomLabels';
+import { AgreementModal } from './AgreementModal';
 import {
   X,
   Phone,
@@ -17,6 +18,8 @@ import {
   Clock,
   BedDouble,
   AlertCircle,
+  FileText,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface TenantProfilePanelProps {
@@ -40,10 +43,15 @@ const stayingSince = (checkInDate: string): string => {
 };
 
 export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, onClose, onViewDossier }) => {
-  const { rooms, tickets, activeProperty, approveKYC, rejectKYC, transferBed } = usePG();
+  const { rooms, tickets, activeProperty, approveKYC, rejectKYC, transferBed, recordPayment } = usePG();
   const [changingRoom, setChangingRoom] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [showReject, setShowReject] = useState(false);
+  const [showAgreement, setShowAgreement] = useState(false);
+  const [showPayForm, setShowPayForm] = useState(false);
+  const [payAmount, setPayAmount] = useState(tenant.dueAmount || tenant.monthlyRent);
+  const [payMode, setPayMode] = useState<'UPI' | 'Cash' | 'Bank Transfer' | 'Card'>('Cash');
+  const [payBusy, setPayBusy] = useState(false);
 
   const room = rooms.find((r) => r.id === tenant.roomId);
   const kycStatus = tenant.kyc?.status || 'unsubmitted';
@@ -59,6 +67,18 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
     if (!roomId || !bedId) return;
     transferBed(tenant.id, roomId, bedId);
     setChangingRoom(false);
+  };
+
+  const handleRecordPayment = async () => {
+    if (payAmount <= 0) return;
+    setPayBusy(true);
+    try {
+      const month = new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' }).format(new Date());
+      await recordPayment({ tenantId: tenant.id, amount: payAmount, month, paymentMode: payMode });
+      setShowPayForm(false);
+    } finally {
+      setPayBusy(false);
+    }
   };
 
   return (
@@ -163,6 +183,60 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
             )}
           </div>
 
+          {/* Record a payment (front-desk/staff-friendly - doesn't need the full Finance tab) */}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-emerald-900 flex items-center space-x-1.5">
+                <IndianRupee className="w-4 h-4" />
+                <span>Record Payment</span>
+              </span>
+              <button type="button" onClick={() => setShowPayForm((v) => !v)} className="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold">
+                {showPayForm ? 'Cancel' : 'Add'}
+              </button>
+            </div>
+            {showPayForm && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={payAmount}
+                    onChange={(e) => setPayAmount(Number(e.target.value))}
+                    className="flex-1 px-2.5 py-1.5 text-xs rounded-lg border border-emerald-300 focus:outline-none focus:border-emerald-600"
+                  />
+                  <select
+                    value={payMode}
+                    onChange={(e) => setPayMode(e.target.value as any)}
+                    className="px-2.5 py-1.5 text-xs rounded-lg border border-emerald-300 focus:outline-none focus:border-emerald-600"
+                  >
+                    <option value="Cash">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Card">Card</option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  disabled={payBusy}
+                  onClick={handleRecordPayment}
+                  className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>{payBusy ? 'Saving...' : 'Save & Issue Receipt'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Generate rental agreement */}
+          <button
+            type="button"
+            onClick={() => setShowAgreement(true)}
+            className="w-full py-2.5 bg-white hover:bg-slate-50 text-brand-700 border border-brand-200 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Generate Rental Agreement</span>
+          </button>
+
           {/* Room info */}
           <div className="bg-brand-50/60 border border-brand-200 rounded-2xl p-4 space-y-2">
             <div className="flex items-center justify-between">
@@ -247,6 +321,8 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
           </div>
         </div>
       </div>
+
+      {showAgreement && <AgreementModal tenant={tenant} onClose={() => setShowAgreement(false)} />}
     </div>
   );
 };

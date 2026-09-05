@@ -204,6 +204,16 @@ export interface DuesCategoryConfig {
   active: boolean;
 }
 
+// A rental/leave-and-license agreement template with {{placeholder}} tokens
+// (see src/lib/agreementFill.ts for the full token list) that get filled in
+// with a specific tenant + property's details when generating a real
+// agreement - see AgreementModal.tsx.
+export interface AgreementTemplateConfig {
+  id: string;
+  name: string;
+  body: string;
+}
+
 export interface Property {
   id: string;
   ownerId: string; // Firebase Auth uid of the owning account
@@ -219,6 +229,7 @@ export interface Property {
   roomTypes: RoomTypeConfig[];
   sharingOptions: SharingConfig[];
   duesCategories: DuesCategoryConfig[];
+  agreementTemplates: AgreementTemplateConfig[];
   createdAt?: string;
   updatedAt?: string;
 }

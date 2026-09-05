@@ -9,7 +9,7 @@ import {
 interface NavbarProps {}
 
 export const Navbar: React.FC<NavbarProps> = () => {
-  const { role, activeTenant, getStats, logout, settings } = usePG();
+  const { role, activeTenant, getStats, logout, settings, ownerProfile } = usePG();
   const stats = getStats();
 
   return (
@@ -41,7 +41,7 @@ export const Navbar: React.FC<NavbarProps> = () => {
             {role === 'owner' && (
               <div className="hidden sm:flex items-center space-x-2 bg-brand-800/90 border border-brand-600/80 px-3 py-1.5 rounded-xl text-xs text-white shadow-sm">
                 <ShieldCheck className="w-4 h-4 text-amber-300" />
-                <span className="font-bold">Admin / Owner Portal</span>
+                <span className="font-bold">{ownerProfile?.role === 'staff' ? 'Staff Portal' : 'Admin / Owner Portal'}</span>
               </div>
             )}
 

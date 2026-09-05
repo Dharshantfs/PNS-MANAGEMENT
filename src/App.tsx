@@ -162,6 +162,19 @@ const AppContent: React.FC = () => {
     );
   }
 
+  // Staff accounts (ownerProfile.role === 'staff') get day-to-day operational
+  // tabs only - Money, Google Forms config, and Settings are owner-only, both
+  // hidden here AND enforced server-side (firestore.rules restricts property
+  // settings writes to role 'owner'; server/app.ts already requires 'owner'
+  // for inviting more team members).
+  const isOwnerRole = ownerProfile?.role !== 'staff';
+  const OWNER_ONLY_TABS: OwnerTab[] = ['finance', 'googleforms', 'settings'];
+  if (!isOwnerRole && OWNER_ONLY_TABS.includes(ownerTab) && ownerTab !== 'dashboard') {
+    // Direct-navigate guard, in case a staff account lands on a hidden tab
+    // (e.g. stale state) - the sidebar itself never links to these.
+    setTimeout(() => setOwnerTab('dashboard'), 0);
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex selection:bg-brand-600 selection:text-white font-sans">
       {/* Left icon sidebar (owner view only) */}
@@ -172,6 +185,7 @@ const AppContent: React.FC = () => {
           vacantBeds={stats.vacantBeds}
           pendingKYCCount={stats.pendingKYCCount}
           onLogout={logout}
+          isOwnerRole={isOwnerRole}
         />
       )}
 
@@ -197,10 +211,10 @@ const AppContent: React.FC = () => {
             {ownerTab === 'tenants' && (
               <TenantDirectory onOpenKYCOnboarding={(id) => handleOpenOnboarding(id)} />
             )}
-            {ownerTab === 'finance' && <FinancialReports />}
+            {ownerTab === 'finance' && isOwnerRole && <FinancialReports />}
             {ownerTab === 'notices' && <NoticesAndTickets />}
-            {ownerTab === 'googleforms' && <GoogleFormsIntegration />}
-            {ownerTab === 'settings' && <SettingsPage />}
+            {ownerTab === 'googleforms' && isOwnerRole && <GoogleFormsIntegration />}
+            {ownerTab === 'settings' && isOwnerRole && <SettingsPage />}
           </div>
         )}
 

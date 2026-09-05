@@ -19,19 +19,23 @@ interface SidebarProps {
   vacantBeds: number;
   pendingKYCCount: number;
   onLogout: () => void;
+  // Staff accounts get day-to-day operational tabs only - Money, Google
+  // Forms config, and Settings (property config + Team Access) are owner-only.
+  isOwnerRole: boolean;
 }
 
-const NAV_ITEMS: Array<{ tab: OwnerTab; label: string; icon: React.ElementType }> = [
+const NAV_ITEMS: Array<{ tab: OwnerTab; label: string; icon: React.ElementType; ownerOnly?: boolean }> = [
   { tab: 'dashboard', label: 'Home', icon: LayoutDashboard },
   { tab: 'matrix', label: 'Rooms', icon: Layers },
   { tab: 'tenants', label: 'Tenants', icon: Users },
-  { tab: 'finance', label: 'Money', icon: IndianRupee },
+  { tab: 'finance', label: 'Money', icon: IndianRupee, ownerOnly: true },
   { tab: 'notices', label: 'Notices', icon: Bell },
-  { tab: 'googleforms', label: 'Forms', icon: FileText },
-  { tab: 'settings', label: 'Settings', icon: SettingsIcon },
+  { tab: 'googleforms', label: 'Forms', icon: FileText, ownerOnly: true },
+  { tab: 'settings', label: 'Settings', icon: SettingsIcon, ownerOnly: true },
 ];
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onChange, vacantBeds, pendingKYCCount, onLogout }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onChange, vacantBeds, pendingKYCCount, onLogout, isOwnerRole }) => {
+  const visibleItems = NAV_ITEMS.filter((item) => !item.ownerOnly || isOwnerRole);
   return (
     <aside className="hidden sm:flex flex-col items-center w-20 shrink-0 bg-brand-700 min-h-screen py-4 space-y-1">
       <div className="w-10 h-10 rounded-2xl bg-white text-brand-700 flex items-center justify-center shadow-md mb-3 shrink-0">
@@ -39,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onChange, vacantBed
       </div>
 
       <nav className="flex-1 w-full flex flex-col items-center space-y-1 px-2">
-        {NAV_ITEMS.map(({ tab, label, icon: Icon }) => {
+        {visibleItems.map(({ tab, label, icon: Icon }) => {
           const isActive = activeTab === tab;
           const badge =
             tab === 'matrix' && vacantBeds > 0

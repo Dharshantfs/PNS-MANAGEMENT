@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { usePG } from '../../context/PGContext';
 import { createTeamMember } from '../../services/authService';
 import { DuesCategoryConfig } from '../../types';
-import { Building2, Plus, Trash2, Save, Home, Users2, IndianRupee, MapPin, UserPlus, Copy, Check, Receipt } from 'lucide-react';
+import { AGREEMENT_TOKEN_HELP, DEFAULT_AGREEMENT_BODY } from '../../lib/agreementFill';
+import { Building2, Plus, Trash2, Save, Home, Users2, IndianRupee, MapPin, UserPlus, Copy, Check, Receipt, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const {
@@ -345,6 +346,7 @@ export const SettingsPage: React.FC = () => {
         </>
       )}
 
+      <AgreementTemplatesCard />
       <TeamAccessCard />
     </div>
   );
@@ -526,6 +528,95 @@ const TeamAccessCard: React.FC = () => {
           <p className="text-amber-700">They'll be asked to set their own password the first time they sign in.</p>
         </div>
       )}
+    </div>
+  );
+};
+
+// Rental agreement templates - editable text with {{tokens}} that get filled
+// in with a specific tenant's details when generating an agreement (see
+// AgreementModal.tsx, opened from a tenant's profile panel).
+const AgreementTemplatesCard: React.FC = () => {
+  const { activeProperty, addAgreementTemplate, updateAgreementTemplate, deleteAgreementTemplate } = usePG();
+  const [newName, setNewName] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  if (!activeProperty) return null;
+  const templates = activeProperty.agreementTemplates || [];
+
+  const runOrShowError = (promise: Promise<void>) => {
+    setError('');
+    promise.catch((e: any) => setError(e?.message || 'That change was rejected by the database.'));
+  };
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+      <div>
+        <h2 className="text-sm font-black text-slate-900 flex items-center space-x-2">
+          <FileText className="w-4 h-4 text-brand-700" />
+          <span>Rental Agreement Templates</span>
+        </h2>
+        <p className="text-[11px] text-slate-500 mt-1">
+          Not reviewed by a lawyer - a starting point only. Check your state's stamp duty / registration rules before
+          relying on it as a legally binding document. Use tokens like {'{{tenantName}}'} - available tokens:{' '}
+          {AGREEMENT_TOKEN_HELP.map((t) => `{{${t}}}`).join(', ')}.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        {templates.map((t) => (
+          <div key={t.id} className="border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50">
+              <input
+                value={t.name}
+                onChange={(e) => runOrShowError(updateAgreementTemplate(t.id, { name: e.target.value }))}
+                className="text-xs font-bold text-slate-900 bg-transparent focus:outline-none flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
+                className="text-slate-500 hover:text-slate-700"
+              >
+                {expandedId === t.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+              <button type="button" onClick={() => runOrShowError(deleteAgreementTemplate(t.id))} className="text-rose-500 hover:text-rose-700">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {expandedId === t.id && (
+              <textarea
+                value={t.body}
+                onChange={(e) => runOrShowError(updateAgreementTemplate(t.id, { body: e.target.value }))}
+                rows={14}
+                className="w-full px-4 py-3 text-[11px] font-mono text-slate-800 focus:outline-none border-t border-slate-200"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="New template name, e.g. Short-Term Agreement"
+          className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            if (!newName.trim()) return;
+            runOrShowError(addAgreementTemplate(newName.trim(), DEFAULT_AGREEMENT_BODY));
+            setNewName('');
+          }}
+          className="px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Add Template</span>
+        </button>
+      </div>
+
+      {error && <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">{error}</div>}
     </div>
   );
 };

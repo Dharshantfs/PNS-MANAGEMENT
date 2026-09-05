@@ -47,6 +47,16 @@ match /databases/{database}/documents {
     );
   }
 
+  // Property/business SETTINGS (room types, sharing options, dues packages,
+  // agreement templates, rent due day, etc.) are owner-only - a "staff" role
+  // account can run day-to-day operations (rooms/tenants/payments/notices/
+  // tickets, all still gated by isOwnerOfProperty above) but not reconfigure
+  // the property itself or invite more team members (that's also enforced
+  // server-side in server/app.ts's create-team-member endpoint).
+  function isOwnerRole() {
+    return isSignedIn() && callerProfile().role == 'owner';
+  }
+
   // Owner/staff profile. The account may read/update its own profile, but
   // NOT its own `role` or `propertyIds` - those are only ever set by the
   // Admin SDK (server/app.ts, which bypasses rules), preventing a staff
@@ -66,7 +76,7 @@ match /databases/{database}/documents {
   match /properties/{propertyId} {
     allow read: if true;
     allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-    allow update, delete: if isOwnerOfProperty(propertyId);
+    allow update, delete: if isOwnerOfProperty(propertyId) && isOwnerRole();
 
     match /counters/{counterId} {
       allow read: if true;

@@ -17,8 +17,10 @@ import {
   SharingConfig,
   DuesCategoryConfig,
   DueCharge,
+  AgreementTemplateConfig,
   OwnerProfile,
 } from '../types';
+import { DEFAULT_AGREEMENT_BODY } from '../lib/agreementFill';
 import {
   subscribeOwnerProperties,
   subscribeRooms,
@@ -94,6 +96,10 @@ const DEFAULT_DUES_CATEGORIES: DuesCategoryConfig[] = [
   { id: 'due-deposit', name: 'Security Deposit', categoryType: 'deposit', amountType: 'variable', active: true },
 ];
 
+const DEFAULT_AGREEMENT_TEMPLATES: AgreementTemplateConfig[] = [
+  { id: 'agr-standard', name: 'Standard Leave & License Agreement', body: DEFAULT_AGREEMENT_BODY },
+];
+
 const emptyKYC = (): TenantKYC => ({
   status: 'unsubmitted',
   aadhaar: { aadhaarNumber: '', nameOnAadhaar: '', dob: '', gender: 'Male', address: '' },
@@ -156,6 +162,9 @@ interface PGContextType {
   deleteDuesCategory: (id: string) => Promise<void>;
   charges: DueCharge[];
   addDueCharge: (tenantId: string, categoryId: string, amount: number, notes?: string) => Promise<void>;
+  addAgreementTemplate: (name: string, body: string) => Promise<void>;
+  updateAgreementTemplate: (id: string, updates: Partial<AgreementTemplateConfig>) => Promise<void>;
+  deleteAgreementTemplate: (id: string) => Promise<void>;
 
   // Backward-compatible flattened settings (derived from activeProperty)
   settings: PGSettings;
@@ -449,6 +458,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       roomTypes: DEFAULT_ROOM_TYPES,
       sharingOptions: DEFAULT_SHARING_OPTIONS,
       duesCategories: DEFAULT_DUES_CATEGORIES,
+      agreementTemplates: DEFAULT_AGREEMENT_TEMPLATES,
     });
     // No need to also record this on the profile's propertyIds - the
     // creator is granted access via the property's own `ownerId` field
@@ -559,13 +569,38 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       categoryType: category.categoryType,
       amount,
       date: nowIso().split('T')[0],
-      notes,
       addedBy: 'owner',
+      // Firestore rejects a literal `undefined` field value.
+      ...(notes ? { notes } : {}),
     };
     await createCharge(charge);
     await saveTenant(tenantId, {
       dueAmount: tenant.dueAmount + amount,
       rentStatus: 'due',
+    });
+  };
+
+  // --- Rental agreement templates ----------------------------------------------
+
+  const addAgreementTemplate = (name: string, body: string) => {
+    if (!activeProperty) return Promise.reject(new Error('No active property'));
+    const id = `agr-${Date.now()}`;
+    return updatePropertySettings({
+      agreementTemplates: [...(activeProperty.agreementTemplates || []), { id, name, body }],
+    });
+  };
+
+  const updateAgreementTemplate = (id: string, updates: Partial<AgreementTemplateConfig>) => {
+    if (!activeProperty) return Promise.reject(new Error('No active property'));
+    return updatePropertySettings({
+      agreementTemplates: (activeProperty.agreementTemplates || []).map((t) => (t.id === id ? { ...t, ...updates } : t)),
+    });
+  };
+
+  const deleteAgreementTemplate = (id: string) => {
+    if (!activeProperty) return Promise.reject(new Error('No active property'));
+    return updatePropertySettings({
+      agreementTemplates: (activeProperty.agreementTemplates || []).filter((t) => t.id !== id),
     });
   };
 
@@ -1110,6 +1145,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         deleteDuesCategory,
         charges,
         addDueCharge,
+        addAgreementTemplate,
+        updateAgreementTemplate,
+        deleteAgreementTemplate,
         settings,
         updateSettings,
         rooms,
