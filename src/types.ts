@@ -187,6 +187,22 @@ export interface DailyMenu {
 
 // One PG/hostel property owned by an owner account. An owner can have several -
 // everything else (rooms, tenants, payments, notices, tickets) is scoped to one.
+// A billable fee category an owner defines, e.g. "Rent", "Security Deposit",
+// "3 Months Rent Package", "Manual Late Fine", "Joining Fee" - separate from
+// room/sharing pricing so a charge can be added to a tenant's account
+// on-demand (see DueCharge below) rather than only ever being the
+// auto-computed monthly rent.
+export type DuesCategoryType = 'rent' | 'deposit' | 'fee';
+
+export interface DuesCategoryConfig {
+  id: string;
+  name: string;
+  categoryType: DuesCategoryType;
+  amountType: 'fixed' | 'variable';
+  fixedAmount?: number; // only meaningful when amountType === 'fixed'
+  active: boolean;
+}
+
 export interface Property {
   id: string;
   ownerId: string; // Firebase Auth uid of the owning account
@@ -201,8 +217,27 @@ export interface Property {
   rentDueDay: number; // e.g., 5th of every month
   roomTypes: RoomTypeConfig[];
   sharingOptions: SharingConfig[];
+  duesCategories: DuesCategoryConfig[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+// A charge added to a tenant's account against one of the property's
+// DuesCategoryConfig entries (e.g. "add a Late Fine of ₹200"). Increases the
+// tenant's dueAmount immediately - distinct from PaymentRecord, which
+// represents money actually received (or reported) against that due.
+export interface DueCharge {
+  id: string;
+  propertyId: string;
+  tenantId: string;
+  tenantName: string;
+  categoryId: string;
+  categoryName: string;
+  categoryType: DuesCategoryType;
+  amount: number;
+  date: string;
+  notes?: string;
+  addedBy: 'owner';
 }
 
 // Backward-compatible flattened view of the active Property's settings, kept so

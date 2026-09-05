@@ -125,5 +125,14 @@ match /databases/{database}/documents {
     allow create: if isSignedIn();
     allow update, delete: if isOwnerOfProperty(resource.data.propertyId);
   }
+
+  // Dues charges (Settings > Dues Packages, added via Financial Reports >
+  // Add Dues): owner-only, both to create and to read/manage. Unlike
+  // payments, a tenant never creates or needs to read these directly.
+  match /charges/{chargeId} {
+    allow read: if isOwnerOfProperty(resource.data.propertyId);
+    allow create: if isOwnerOfProperty(request.resource.data.propertyId);
+    allow update, delete: if isOwnerOfProperty(resource.data.propertyId);
+  }
 }
 }

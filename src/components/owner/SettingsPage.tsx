@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { usePG } from '../../context/PGContext';
 import { createTeamMember } from '../../services/authService';
-import { Building2, Plus, Trash2, Save, Home, Users2, IndianRupee, MapPin, UserPlus, Copy, Check } from 'lucide-react';
+import { DuesCategoryConfig } from '../../types';
+import { Building2, Plus, Trash2, Save, Home, Users2, IndianRupee, MapPin, UserPlus, Copy, Check, Receipt } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const {
@@ -17,6 +18,9 @@ export const SettingsPage: React.FC = () => {
     addSharingOption,
     updateSharingOption,
     deleteSharingOption,
+    addDuesCategory,
+    updateDuesCategory,
+    deleteDuesCategory,
   } = usePG();
 
   const [isAddingProperty, setIsAddingProperty] = useState(properties.length === 0);
@@ -30,6 +34,10 @@ export const SettingsPage: React.FC = () => {
   const [newRoomTypeName, setNewRoomTypeName] = useState('');
   const [newSharingOccupancy, setNewSharingOccupancy] = useState(2);
   const [newSharingRent, setNewSharingRent] = useState(8000);
+  const [newDuesName, setNewDuesName] = useState('');
+  const [newDuesType, setNewDuesType] = useState<DuesCategoryConfig['categoryType']>('fee');
+  const [newDuesAmountType, setNewDuesAmountType] = useState<DuesCategoryConfig['amountType']>('variable');
+  const [newDuesFixedAmount, setNewDuesFixedAmount] = useState(0);
   const [settingsError, setSettingsError] = useState('');
 
   // Room-type/sharing writes are Firestore calls that can be rejected (e.g.
@@ -225,6 +233,114 @@ export const SettingsPage: React.FC = () => {
                 <span>Add Sharing Option</span>
               </button>
             </div>
+          </div>
+
+          {/* Dues packages: Rent / Deposit / custom fee categories */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+            <h2 className="text-sm font-black text-slate-900 flex items-center space-x-2 mb-1">
+              <Receipt className="w-4 h-4 text-blue-700" />
+              <span>Dues Packages</span>
+            </h2>
+            <p className="text-[11px] text-slate-500 mb-4">
+              Separate billable categories (Rent, Security Deposit, custom fees like "3 Months Rent" or "Late Fine")
+              you can charge to a tenant's account from Financial Reports.
+            </p>
+            <div className="space-y-2 mb-4">
+              {(activeProperty.duesCategories || []).map((c) => (
+                <div key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                  <input
+                    value={c.name}
+                    onChange={(e) => runOrShowError(updateDuesCategory(c.id, { name: e.target.value }))}
+                    className="text-xs font-bold text-slate-900 bg-transparent focus:outline-none w-40"
+                  />
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 font-bold capitalize">
+                    {c.categoryType}
+                  </span>
+                  <label className="flex items-center space-x-1.5 text-[11px] text-slate-500">
+                    <input
+                      type="checkbox"
+                      checked={c.active}
+                      onChange={(e) => runOrShowError(updateDuesCategory(c.id, { active: e.target.checked }))}
+                      className="w-3.5 h-3.5"
+                    />
+                    <span>Active</span>
+                  </label>
+                  {c.amountType === 'fixed' ? (
+                    <div className="flex items-center">
+                      <IndianRupee className="w-3 h-3 text-slate-400 mr-0.5" />
+                      <input
+                        type="number"
+                        value={c.fixedAmount || 0}
+                        onChange={(e) => runOrShowError(updateDuesCategory(c.id, { fixedAmount: Number(e.target.value) }))}
+                        className="w-20 text-xs font-mono font-bold text-slate-900 bg-transparent focus:outline-none border-b border-transparent focus:border-blue-600"
+                      />
+                      <span className="text-[10px] text-slate-500 ml-1">fixed</span>
+                    </div>
+                  ) : (
+                    <span className="text-[10px] text-slate-500">Variable Amount</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => runOrShowError(deleteDuesCategory(c.id))}
+                    className="text-rose-500 hover:text-rose-700 ml-auto"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2 items-center">
+              <input
+                value={newDuesName}
+                onChange={(e) => setNewDuesName(e.target.value)}
+                placeholder="e.g. Late Fine, Joining Fee"
+                className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600 flex-1 min-w-[160px]"
+              />
+              <select
+                value={newDuesType}
+                onChange={(e) => setNewDuesType(e.target.value as DuesCategoryConfig['categoryType'])}
+                className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600"
+              >
+                <option value="rent">Rent</option>
+                <option value="deposit">Deposit</option>
+                <option value="fee">Fee</option>
+              </select>
+              <select
+                value={newDuesAmountType}
+                onChange={(e) => setNewDuesAmountType(e.target.value as DuesCategoryConfig['amountType'])}
+                className="px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-blue-600"
+              >
+                <option value="variable">Variable Amount</option>
+                <option value="fixed">Fixed Amount</option>
+              </select>
+              {newDuesAmountType === 'fixed' && (
+                <div className="flex items-center px-3 py-2 rounded-xl border border-slate-300">
+                  <IndianRupee className="w-3.5 h-3.5 text-slate-400 mr-1" />
+                  <input
+                    type="number"
+                    value={newDuesFixedAmount}
+                    onChange={(e) => setNewDuesFixedAmount(Number(e.target.value))}
+                    className="w-20 text-xs font-mono focus:outline-none"
+                  />
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!newDuesName.trim()) return;
+                  runOrShowError(addDuesCategory(newDuesName.trim(), newDuesType, newDuesAmountType, newDuesFixedAmount));
+                  setNewDuesName('');
+                  setNewDuesFixedAmount(0);
+                }}
+                className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Category</span>
+              </button>
+            </div>
+            {settingsError && (
+              <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">{settingsError}</div>
+            )}
           </div>
         </>
       )}

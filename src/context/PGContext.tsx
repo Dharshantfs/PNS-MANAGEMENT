@@ -15,6 +15,8 @@ import {
   Property,
   RoomTypeConfig,
   SharingConfig,
+  DuesCategoryConfig,
+  DueCharge,
   OwnerProfile,
 } from '../types';
 import {
@@ -24,6 +26,7 @@ import {
   subscribePayments,
   subscribeNotices,
   subscribeTickets,
+  subscribeCharges,
   createProperty as fsCreateProperty,
   updateProperty as fsUpdateProperty,
   createRoom,
@@ -37,6 +40,7 @@ import {
   removeNotice,
   createTicket,
   saveTicket,
+  createCharge,
   getOwnerProfile,
   getPropertiesByIds,
   findTenantByPhone,
@@ -84,6 +88,11 @@ const DEFAULT_SHARING_OPTIONS: SharingConfig[] = [1, 2, 3, 4].map((occupancy) =>
   label: SHARING_LABELS[occupancy],
   defaultRent: 8000,
 }));
+
+const DEFAULT_DUES_CATEGORIES: DuesCategoryConfig[] = [
+  { id: 'due-rent', name: 'Rent', categoryType: 'rent', amountType: 'variable', active: true },
+  { id: 'due-deposit', name: 'Security Deposit', categoryType: 'deposit', amountType: 'variable', active: true },
+];
 
 const emptyKYC = (): TenantKYC => ({
   status: 'unsubmitted',
@@ -137,6 +146,16 @@ interface PGContextType {
   addSharingOption: (occupancy: number, defaultRent: number, label?: string) => Promise<void>;
   updateSharingOption: (id: string, updates: Partial<SharingConfig>) => Promise<void>;
   deleteSharingOption: (id: string) => Promise<void>;
+  addDuesCategory: (
+    name: string,
+    categoryType: DuesCategoryConfig['categoryType'],
+    amountType: DuesCategoryConfig['amountType'],
+    fixedAmount?: number
+  ) => Promise<void>;
+  updateDuesCategory: (id: string, updates: Partial<DuesCategoryConfig>) => Promise<void>;
+  deleteDuesCategory: (id: string) => Promise<void>;
+  charges: DueCharge[];
+  addDueCharge: (tenantId: string, categoryId: string, amount: number, notes?: string) => Promise<void>;
 
   // Backward-compatible flattened settings (derived from activeProperty)
   settings: PGSettings;
@@ -250,6 +269,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
+  const [charges, setCharges] = useState<DueCharge[]>([]);
 
   // --- Firebase Auth session -------------------------------------------------
   useEffect(() => {
@@ -357,6 +377,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       setPayments([]);
       setNotices([]);
       setTickets([]);
+      setCharges([]);
       return;
     }
     const unsubs = [
@@ -365,6 +386,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       subscribePayments(activePropertyId, setPayments),
       subscribeNotices(activePropertyId, setNotices),
       subscribeTickets(activePropertyId, setTickets),
+      subscribeCharges(activePropertyId, setCharges),
     ];
     return () => unsubs.forEach((u) => u());
   }, [activePropertyId]);
@@ -429,6 +451,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       rentDueDay: 5,
       roomTypes: DEFAULT_ROOM_TYPES,
       sharingOptions: DEFAULT_SHARING_OPTIONS,
+      duesCategories: DEFAULT_DUES_CATEGORIES,
     });
     // No need to also record this on the profile's propertyIds - the
     // creator is granted access via the property's own `ownerId` field
@@ -490,6 +513,63 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const deleteSharingOption = (id: string) => {
     if (!activeProperty) return Promise.reject(new Error('No active property'));
     return updatePropertySettings({ sharingOptions: activeProperty.sharingOptions.filter((s) => s.id !== id) });
+  };
+
+  // --- Dues packages (Rent / Deposit / custom fee categories) ------------------
+
+  const addDuesCategory = (
+    name: string,
+    categoryType: DuesCategoryConfig['categoryType'],
+    amountType: DuesCategoryConfig['amountType'],
+    fixedAmount?: number
+  ) => {
+    if (!activeProperty) return Promise.reject(new Error('No active property'));
+    const id = `due-${Date.now()}`;
+    const newCategory: DuesCategoryConfig =
+      amountType === 'fixed'
+        ? { id, name, categoryType, amountType, fixedAmount: fixedAmount || 0, active: true }
+        : { id, name, categoryType, amountType, active: true };
+    return updatePropertySettings({ duesCategories: [...(activeProperty.duesCategories || []), newCategory] });
+  };
+
+  const updateDuesCategory = (id: string, updates: Partial<DuesCategoryConfig>) => {
+    if (!activeProperty) return Promise.reject(new Error('No active property'));
+    return updatePropertySettings({
+      duesCategories: (activeProperty.duesCategories || []).map((c) => (c.id === id ? { ...c, ...updates } : c)),
+    });
+  };
+
+  const deleteDuesCategory = (id: string) => {
+    if (!activeProperty) return Promise.reject(new Error('No active property'));
+    return updatePropertySettings({ duesCategories: (activeProperty.duesCategories || []).filter((c) => c.id !== id) });
+  };
+
+  // Charges a tenant's account against a dues category (e.g. "add a Late
+  // Fine of ₹200") - increases dueAmount immediately. Distinct from a
+  // PaymentRecord, which represents money actually received against a due.
+  const addDueCharge = async (tenantId: string, categoryId: string, amount: number, notes?: string): Promise<void> => {
+    if (!activePropertyId || !activeProperty) throw new Error('No active property selected');
+    const tenant = tenants.find((t) => t.id === tenantId);
+    const category = (activeProperty.duesCategories || []).find((c) => c.id === categoryId);
+    if (!tenant || !category) throw new Error('Tenant or dues category not found');
+
+    const charge: Omit<DueCharge, 'id'> = {
+      propertyId: activePropertyId,
+      tenantId,
+      tenantName: tenant.name,
+      categoryId,
+      categoryName: category.name,
+      categoryType: category.categoryType,
+      amount,
+      date: nowIso().split('T')[0],
+      notes,
+      addedBy: 'owner',
+    };
+    await createCharge(charge);
+    await saveTenant(tenantId, {
+      dueAmount: tenant.dueAmount + amount,
+      rentStatus: 'due',
+    });
   };
 
   // --- Backward-compatible flattened settings ---------------------------------
@@ -1021,6 +1101,11 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         addSharingOption,
         updateSharingOption,
         deleteSharingOption,
+        addDuesCategory,
+        updateDuesCategory,
+        deleteDuesCategory,
+        charges,
+        addDueCharge,
         settings,
         updateSettings,
         rooms,

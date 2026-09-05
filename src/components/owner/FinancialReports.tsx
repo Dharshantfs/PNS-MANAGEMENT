@@ -18,19 +18,29 @@ import {
   FileSpreadsheet,
   ShieldCheck,
   AlertCircle,
+  ReceiptText,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { ReceiptModal } from '../common/ReceiptModal';
 
 export const FinancialReports: React.FC = () => {
-  const { payments, tenants, settings, getStats, recordPayment, confirmPendingPayment } = usePG();
+  const { payments, tenants, settings, activeProperty, getStats, recordPayment, confirmPendingPayment, addDueCharge, charges } = usePG();
   const pendingPayments = payments.filter((p) => p.status === 'pending');
   const stats = getStats();
+  const activeDuesCategories = (activeProperty?.duesCategories || []).filter((c) => c.active);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
   const [selectedReceiptPayment, setSelectedReceiptPayment] = useState<PaymentRecord | null>(null);
+
+  // Add Dues (charge) form state
+  const [isAddDuesOpen, setIsAddDuesOpen] = useState(false);
+  const [dueTenantId, setDueTenantId] = useState('');
+  const [dueCategoryId, setDueCategoryId] = useState('');
+  const [dueAmount, setDueAmount] = useState<number>(0);
+  const [dueNotes, setDueNotes] = useState('');
+  const [dueError, setDueError] = useState('');
 
   // New payment form state
   const [payTenantId, setPayTenantId] = useState('');
@@ -84,6 +94,29 @@ export const FinancialReports: React.FC = () => {
     }
   };
 
+  const handleSelectDuesCategory = (categoryId: string) => {
+    setDueCategoryId(categoryId);
+    const cat = activeDuesCategories.find((c) => c.id === categoryId);
+    if (cat?.amountType === 'fixed') setDueAmount(cat.fixedAmount || 0);
+  };
+
+  const handleAddDues = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDueError('');
+    if (!dueTenantId || !dueCategoryId || dueAmount <= 0) return;
+    try {
+      await addDueCharge(dueTenantId, dueCategoryId, dueAmount, dueNotes.trim() || undefined);
+      setIsAddDuesOpen(false);
+      setDueTenantId('');
+      setDueCategoryId('');
+      setDueAmount(0);
+      setDueNotes('');
+      confetti({ particleCount: 30, spread: 60, origin: { y: 0.7 } });
+    } catch (err: any) {
+      setDueError(err?.message || 'Failed to add due.');
+    }
+  };
+
   const handleSendWhatsAppReminder = async (tenant: Tenant) => {
     setSendingWa(tenant.id);
     try {
@@ -124,15 +157,26 @@ export const FinancialReports: React.FC = () => {
             </p>
           </div>
 
-          <button
-            id="record-manual-payment-btn"
-            type="button"
-            onClick={() => setIsRecordPaymentOpen(true)}
-            className="px-4 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs flex items-center space-x-2 shadow-md shadow-blue-700/20 transition"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Record Rent Payment</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              id="add-dues-btn"
+              type="button"
+              onClick={() => setIsAddDuesOpen(true)}
+              className="px-4 py-2.5 bg-white hover:bg-slate-50 text-blue-700 border border-blue-200 font-bold rounded-xl text-xs flex items-center space-x-2 shadow-sm transition"
+            >
+              <ReceiptText className="w-4 h-4" />
+              <span>Add Dues</span>
+            </button>
+            <button
+              id="record-manual-payment-btn"
+              type="button"
+              onClick={() => setIsRecordPaymentOpen(true)}
+              className="px-4 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs flex items-center space-x-2 shadow-md shadow-blue-700/20 transition"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Record Rent Payment</span>
+            </button>
+          </div>
         </div>
 
         {/* 4 Financial KPIs */}
@@ -263,6 +307,31 @@ export const FinancialReports: React.FC = () => {
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Dues Added (charges) */}
+      {charges.length > 0 && (
+        <div className="bg-white border border-blue-100 rounded-3xl p-6 shadow-sm space-y-3">
+          <h3 className="font-bold text-sm text-slate-900 flex items-center space-x-2">
+            <ReceiptText className="w-4 h-4 text-blue-700" />
+            <span>Recent Dues Added</span>
+          </h3>
+          <div className="space-y-1.5">
+            {charges
+              .slice()
+              .sort((a, b) => (a.date < b.date ? 1 : -1))
+              .slice(0, 6)
+              .map((c) => (
+                <div key={c.id} className="flex items-center justify-between text-xs px-3.5 py-2 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-slate-700">
+                    <span className="font-bold text-slate-900">{c.tenantName}</span> - {c.categoryName}
+                    {c.notes ? ` (${c.notes})` : ''}
+                  </span>
+                  <span className="font-bold text-rose-600">+₹{c.amount.toLocaleString('en-IN')}</span>
+                </div>
+              ))}
           </div>
         </div>
       )}
@@ -428,6 +497,91 @@ export const FinancialReports: React.FC = () => {
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Save Payment & Issue Receipt</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Dues (Charge) Modal */}
+      {isAddDuesOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-950/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-blue-100 text-slate-900 overflow-hidden">
+            <div className="bg-blue-700 text-white px-6 py-4 flex items-center justify-between shadow-sm">
+              <div className="flex items-center space-x-2">
+                <ReceiptText className="w-4 h-4 text-white" />
+                <h3 className="font-bold text-sm text-white">Add Dues to Tenant Account</h3>
+              </div>
+              <button type="button" onClick={() => setIsAddDuesOpen(false)} className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddDues} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Select Tenant *</label>
+                <select
+                  required
+                  value={dueTenantId}
+                  onChange={(e) => setDueTenantId(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                >
+                  <option value="">-- Choose Tenant --</option>
+                  {tenants.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name} (Room {t.roomNumber || 'Unassigned'})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Dues Category *</label>
+                <select
+                  required
+                  value={dueCategoryId}
+                  onChange={(e) => handleSelectDuesCategory(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                >
+                  <option value="">-- Choose Category --</option>
+                  {activeDuesCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.amountType === 'fixed' ? `(₹${c.fixedAmount})` : '(Variable)'}
+                    </option>
+                  ))}
+                </select>
+                {activeDuesCategories.length === 0 && (
+                  <p className="text-[11px] text-amber-700 mt-1">No active dues categories yet - add one under Settings &gt; Dues Packages.</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Amount (₹) *</label>
+                <input
+                  type="number"
+                  required
+                  value={dueAmount}
+                  onChange={(e) => setDueAmount(Number(e.target.value))}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Notes (optional)</label>
+                <input
+                  type="text"
+                  value={dueNotes}
+                  onChange={(e) => setDueNotes(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                />
+              </div>
+
+              {dueError && <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">{dueError}</div>}
+
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-700/20 flex items-center justify-center space-x-2"
+              >
+                <ReceiptText className="w-4 h-4" />
+                <span>Add to Tenant's Due</span>
               </button>
             </form>
           </div>

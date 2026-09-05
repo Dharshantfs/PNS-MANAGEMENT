@@ -22,6 +22,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import {
+  DueCharge,
   MaintenanceTicket,
   Notice,
   OwnerProfile,
@@ -225,4 +226,16 @@ export async function createTicket(ticket: Omit<MaintenanceTicket, 'id'>): Promi
 
 export async function saveTicket(ticketId: string, updates: Partial<MaintenanceTicket>): Promise<void> {
   await updateDoc(doc(db, 'tickets', ticketId), updates as DocumentData);
+}
+
+// ---------------------------------------------------------------------------
+// Dues charges - see DueCharge in types.ts.
+// ---------------------------------------------------------------------------
+
+export const subscribeCharges = (propertyId: string, cb: (charges: DueCharge[]) => void) =>
+  subscribeScoped<DueCharge>('charges', propertyId, cb);
+
+export async function createCharge(charge: Omit<DueCharge, 'id'>): Promise<string> {
+  const ref = await addDoc(collection(db, 'charges'), charge);
+  return ref.id;
 }
