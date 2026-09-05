@@ -55,7 +55,7 @@ export const TenantStatementModal: React.FC<TenantStatementModalProps> = ({
   const handlePrint = () => window.print();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in print-area">
       <div className="bg-white text-slate-900 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-brand-100 max-h-[90vh] flex flex-col">
         <div className="bg-brand-700 px-6 py-3.5 flex items-center justify-between text-white shadow-sm print:hidden shrink-0">
           <span className="text-xs font-bold text-white flex items-center space-x-1.5">

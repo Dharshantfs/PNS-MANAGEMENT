@@ -19,7 +19,7 @@ export const AgreementModal: React.FC<AgreementModalProps> = ({ tenant, onClose 
   const filled = template ? fillAgreementTemplate(template.body, tenant, activeProperty, settings, room) : '';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in print-area">
       <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-brand-100 text-slate-900">
         <div className="sticky top-0 bg-brand-700 text-white px-6 py-4 flex items-center justify-between z-10 shadow-sm print:hidden">
           <div className="flex items-center space-x-2.5">

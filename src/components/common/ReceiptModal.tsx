@@ -37,7 +37,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in print-area">
       <div className="bg-white text-slate-900 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-brand-100">
         
         {/* Actions bar at top - Royal Blue */}

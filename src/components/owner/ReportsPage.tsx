@@ -88,7 +88,7 @@ export const ReportsPage: React.FC = () => {
   };
 
   return (
-    <div id="reports-view" className="space-y-6 animate-in fade-in text-slate-900">
+    <div id="reports-view" className="space-y-6 animate-in fade-in text-slate-900 print-area">
       <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-5 print:hidden">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>

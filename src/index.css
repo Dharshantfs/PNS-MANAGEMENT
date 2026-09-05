@@ -17,3 +17,36 @@
   --color-brand-900: #74000f;
   --color-brand-950: #450009;
 }
+
+/* Print isolation for every window.print() screen in the app (receipts,
+   tenant statements, rental agreements, Reports). Without this, printing
+   captured the whole page - sidebar, navbar, footer, and the dark modal
+   backdrop all printed on top of the actual content (only the receipt's
+   own action bar was hidden via print:hidden). Mark the printable root
+   `print-area` and everything else is hidden instead of rendering. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    background: white !important;
+  }
+  /* Modals nest a scrollable card (max-h-[90vh] overflow-y-auto) inside the
+     print-area - without resetting those too, only what fit on-screen at
+     the moment of printing would render instead of the full content. */
+  .print-area * {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+}
