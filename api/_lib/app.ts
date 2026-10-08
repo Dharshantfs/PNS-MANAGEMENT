@@ -139,21 +139,21 @@ async function admitTenant(
   const tenantRef = db.collection("tenants").doc();
   const { room, bed } = await allocateVacantBed(db, propertyId, fields.preferredRoomId, tenantRef.id, fields.name, phone);
 
-  const rent = bed?.pricePerMonth || room?.pricePerBed || 8000;
+  const rent = bed?.pricePerMonth || room?.pricePerBed || 0; // 0 = owner sets it
   const tenant = {
     id: tenantRef.id,
     propertyId,
     name: fields.name,
     email: fields.email || `${fields.name.toLowerCase().replace(/\s+/g, "")}@gmail.com`,
     phone,
-    photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80",
+    photoUrl: "", // no photo yet - the app shows initials
     roomId: room?.id,
     roomNumber: room?.roomNumber,
     bedId: bed?.id,
     bedLabel: bed?.bedLabel,
     floor: room?.floor || 1,
     monthlyRent: rent,
-    securityDeposit: room?.securityDeposit || 15000,
+    securityDeposit: room?.securityDeposit || 0,
     depositPaid: false,
     checkInDate: nowIso().split("T")[0],
     rentStatus: "due",
@@ -300,6 +300,57 @@ export function createApiApp() {
     }
   });
 
+  // Called right after an owner creates a property (PGContext.createNewProperty)
+  // so the rest of the team gets it too, without re-inviting anyone. "The
+  // team" = everyone who already shares one of the caller's other properties:
+  // team members listing them in their propertyIds, plus those properties'
+  // creators (ownerId), who get the new one added to their propertyIds.
+  app.post("/api/team/share-property", async (req, res) => {
+    const db = requireAdminDb(res);
+    if (!db) return;
+    try {
+      const authHeader = req.headers.authorization || "";
+      if (!authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ success: false, error: "Missing Authorization bearer token." });
+      }
+      const decoded = await admin.auth().verifyIdToken(authHeader.slice(7));
+      const propertyId = String(req.body?.propertyId || "");
+      const propSnap = await db.collection("properties").doc(propertyId).get();
+      if (!propSnap.exists || propSnap.data()?.ownerId !== decoded.uid) {
+        return res.status(403).json({ success: false, error: "Only the property's creator can share it." });
+      }
+
+      const callerProfile = (await db.collection("users").doc(decoded.uid).get()).data() || {};
+      const ownedSnap = await db.collection("properties").where("ownerId", "==", decoded.uid).get();
+      const otherIds = Array.from(
+        new Set([...ownedSnap.docs.map((d) => d.id), ...(callerProfile.propertyIds || [])])
+      ).filter((id) => id !== propertyId);
+
+      const teamUids = new Set<string>();
+      for (let i = 0; i < otherIds.length; i += 30) {
+        const chunk = otherIds.slice(i, i + 30);
+        const members = await db.collection("users").where("propertyIds", "array-contains-any", chunk).get();
+        members.docs.forEach((d) => teamUids.add(d.id));
+      }
+      const otherProps = await Promise.all(otherIds.map((id) => db.collection("properties").doc(id).get()));
+      otherProps.forEach((p) => p.data()?.ownerId && teamUids.add(p.data()!.ownerId));
+      teamUids.delete(decoded.uid);
+
+      let shared = 0;
+      for (const uid of teamUids) {
+        const ref = db.collection("users").doc(uid);
+        const snap = await ref.get();
+        if (!snap.exists) continue;
+        await ref.update({ propertyIds: admin.firestore.FieldValue.arrayUnion(propertyId) });
+        shared++;
+      }
+      res.json({ success: true, sharedWith: shared });
+    } catch (err: any) {
+      console.error("share-property error:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // ----------------------------------------------------
   // Google Forms bulk-admission (single response, batch import, webhook sim)
   // These are the only flows that still need a server: they must write many
@@ -361,8 +412,16 @@ export function createApiApp() {
       const snap = await ref.get();
       const tenant = snap.data();
       const last10 = (p: string) => String(p || "").replace(/\D/g, "").slice(-10);
-      if (!snap.exists || !tenant || last10(tenant.phone) !== last10(phone)) {
-        return res.status(404).json({ success: false, error: "No tenant found for this link and mobile number." });
+      if (!snap.exists || !tenant) {
+        console.warn("onboard/kyc: no tenant", tenantId);
+        return res.status(404).json({ success: false, error: "This KYC link is no longer valid - ask the PG office for a new link." });
+      }
+      if (last10(tenant.phone) !== last10(phone)) {
+        console.warn("onboard/kyc: phone mismatch for", tenantId);
+        return res.status(403).json({
+          success: false,
+          error: "This mobile number doesn't match the one the PG office registered for this link.",
+        });
       }
 
       const str = (v: any) => (v == null ? "" : String(v));

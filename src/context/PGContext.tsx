@@ -523,6 +523,18 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     // invited team members, set server-side at invite time.
     setActivePropertyId(id);
     logActivity('property.create', `Created property "${data.name}"`, id);
+    // Give the rest of the team (co-owners/staff on this owner's other
+    // properties) access too - api/_lib/app.ts POST /api/team/share-property.
+    authUser
+      .getIdToken()
+      .then((token) =>
+        fetch('/api/team/share-property', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ propertyId: id }),
+        })
+      )
+      .catch((e) => console.warn('Sharing the new property with the team failed', e));
     return id;
   };
 
@@ -889,8 +901,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const targetRoom = tenantData.roomId ? rooms.find((r) => r.id === tenantData.roomId) : undefined;
     const targetBed = targetRoom && tenantData.bedId ? targetRoom.beds.find((b) => b.id === tenantData.bedId) : undefined;
 
-    const rent = tenantData.monthlyRent || targetBed?.pricePerMonth || targetRoom?.pricePerBed || 8000;
-    const deposit = tenantData.securityDeposit || targetRoom?.securityDeposit || 15000;
+    // No made-up fallback amounts - 0 means "not set yet" for the owner to fill in.
+    const rent = tenantData.monthlyRent || targetBed?.pricePerMonth || targetRoom?.pricePerBed || 0;
+    const deposit = tenantData.securityDeposit || targetRoom?.securityDeposit || 0;
     const floor = targetRoom ? targetRoom.floor : 1;
 
     const ref = doc(collection(db, 'tenants'));
@@ -900,7 +913,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       name: tenantData.name,
       email: tenantData.email || `${tenantData.name.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
       phone: normalizePhone(tenantData.phone),
-      photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+      photoUrl: '', // no photo yet - TenantAvatar shows initials
       // Firestore rejects a literal `undefined` field value - only include
       // room/bed fields when a room was actually assigned (an unassigned
       // walk-in registration is a normal, common case, not an edge case).

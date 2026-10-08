@@ -30,6 +30,7 @@ import confetti from 'canvas-confetti';
 import { AadhaarKYCModal } from './AadhaarKYCModal';
 import { ReceiptModal } from '../common/ReceiptModal';
 import { PaymentRecord } from '../../types';
+import { TenantAvatar } from '../common/TenantAvatar';
 
 interface TenantPortalProps {
   onNavigateToKYC: () => void;
@@ -75,11 +76,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
       {/* Top Welcome & KYC Status Banner - Royal Blue Gradient */}
       <div className="bg-gradient-to-r from-brand-700 via-brand-800 to-indigo-900 p-6 sm:p-8 rounded-3xl text-white shadow-lg border border-brand-600 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-center space-x-4">
-          <img
-            src={activeTenant.photoUrl}
-            alt={activeTenant.name}
-            className="w-16 h-16 rounded-2xl object-cover border-2 border-white/60 shadow-md shrink-0"
-          />
+          <TenantAvatar name={activeTenant?.name} photoUrl={activeTenant?.photoUrl} className="w-16 h-16 rounded-2xl object-cover border-2 border-white/60 shadow-md shrink-0" />
           <div>
             <div className="flex items-center space-x-2">
               <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-white/15 border border-white/20 font-bold text-brand-100">
@@ -216,11 +213,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
                     key={rm.id}
                     className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center space-x-2.5 text-xs text-slate-900"
                   >
-                    <img
-                      src={rm.photoUrl}
-                      alt={rm.name}
-                      className="w-8 h-8 rounded-lg object-cover border border-brand-400"
-                    />
+                    <TenantAvatar name={rm?.name} photoUrl={rm?.photoUrl} className="w-8 h-8 rounded-lg object-cover border border-brand-400" />
                     <div className="truncate">
                       <p className="font-bold truncate">{rm.name}</p>
                       <p className="text-[10px] text-slate-500 font-mono">+91 {rm.phone.replace(/\D/g, '')}</p>

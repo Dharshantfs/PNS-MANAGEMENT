@@ -20,6 +20,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { TenantAvatar } from '../common/TenantAvatar';
 
 interface OwnerDashboardProps {
   onNavigateToMatrix: () => void;
@@ -236,11 +237,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
                   className="bg-brand-50/60 border border-brand-200 rounded-2xl p-4 flex items-center justify-between gap-3 text-slate-900"
                 >
                   <div className="flex items-center space-x-3">
-                    <img
-                      src={t.photoUrl}
-                      alt={t.name}
-                      className="w-10 h-10 rounded-xl object-cover border border-brand-600 shrink-0"
-                    />
+                    <TenantAvatar name={t?.name} photoUrl={t?.photoUrl} className="w-10 h-10 rounded-xl object-cover border border-brand-600 shrink-0" />
                     <div>
                       <h4 className="font-bold text-xs text-slate-900">{t.name}</h4>
                       <p className="text-[11px] text-brand-800 font-semibold">

@@ -14,6 +14,7 @@ import {
   Sparkles,
   Info,
 } from 'lucide-react';
+import { TenantAvatar } from '../common/TenantAvatar';
 
 export const RoommatesView: React.FC = () => {
   const { activeTenant, getRoommates, rooms, activeProperty } = usePG();
@@ -98,11 +99,7 @@ export const RoommatesView: React.FC = () => {
                 {/* Top Profile Card */}
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-3.5">
-                    <img
-                      src={roommate.photoUrl}
-                      alt={roommate.name}
-                      className="w-14 h-14 rounded-2xl object-cover border-2 border-brand-600 shadow-sm shrink-0"
-                    />
+                    <TenantAvatar name={roommate?.name} photoUrl={roommate?.photoUrl} className="w-14 h-14 rounded-2xl object-cover border-2 border-brand-600 shadow-sm shrink-0" />
                     <div>
                       <h3 className="text-sm font-bold text-slate-900">{roommate.name}</h3>
                       <p className="text-xs text-brand-700 font-bold mt-0.5">

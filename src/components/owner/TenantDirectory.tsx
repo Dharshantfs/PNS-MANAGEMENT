@@ -33,6 +33,7 @@ import {
   Plus,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { TenantAvatar } from '../common/TenantAvatar';
 
 interface TenantDirectoryProps {
   onOpenKYCOnboarding?: (tenantId: string) => void;
@@ -132,6 +133,19 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
     e.preventDefault();
     if (!newTenantName.trim() || !newTenantPhone.trim()) return;
 
+    // The same mobile number twice usually means the same person added again
+    // (and the tenant login is tied to the number), so ask first.
+    const last10 = (p: string) => p.replace(/\D/g, '').slice(-10);
+    const sameNumber = tenants.filter((t) => last10(t.phone) === last10(newTenantPhone));
+    if (
+      sameNumber.length > 0 &&
+      !window.confirm(
+        `${sameNumber.map((t) => t.name).join(', ')} already ${sameNumber.length === 1 ? 'has' : 'have'} this mobile number. Add ${newTenantName.trim()} anyway?`
+      )
+    ) {
+      return;
+    }
+
     const newId = addTenant({
       name: newTenantName.trim(),
       phone: newTenantPhone.trim(),
@@ -152,6 +166,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
       // Find created tenant
       const created = tenants.find((t) => t.id === newId) || {
         id: newId,
+        propertyId: activeProperty?.id || '',
         name: newTenantName.trim(),
         phone: newTenantPhone.trim(),
         roomNumber: rooms.find((r) => r.id === selectedRoomId)?.roomNumber,
@@ -159,7 +174,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
         floor: rooms.find((r) => r.id === selectedRoomId)?.floor || 1,
         monthlyRent: customRent,
         securityDeposit: customDeposit,
-        photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+        photoUrl: '', // no photo yet - TenantAvatar shows initials
         email: '',
         depositPaid: false,
         checkInDate: new Date().toISOString().split('T')[0],
@@ -296,11 +311,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-3">
-                    <img
-                      src={t.photoUrl}
-                      alt={t.name}
-                      className="w-12 h-12 rounded-2xl object-cover border-2 border-brand-600 shadow-sm shrink-0"
-                    />
+                    <TenantAvatar name={t?.name} photoUrl={t?.photoUrl} className="w-12 h-12 rounded-2xl object-cover border-2 border-brand-600 shadow-sm shrink-0" />
                     <div>
                       <h3 className="font-bold text-slate-900 text-sm">{t.name}</h3>
                       <p className="text-xs text-brand-700 font-semibold flex items-center space-x-1">
@@ -624,11 +635,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
               {/* Tenant Hero Box */}
               <div className="bg-brand-50/80 border border-brand-200 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center space-x-4">
-                  <img
-                    src={selectedTenantDossier.photoUrl}
-                    alt={selectedTenantDossier.name}
-                    className="w-16 h-16 rounded-2xl object-cover border-2 border-brand-600 shadow-md shrink-0"
-                  />
+                  <TenantAvatar name={selectedTenantDossier?.name} photoUrl={selectedTenantDossier?.photoUrl} className="w-16 h-16 rounded-2xl object-cover border-2 border-brand-600 shadow-md shrink-0" />
                   <div>
                     <h3 className="text-lg font-black text-slate-900">{selectedTenantDossier.name}</h3>
                     <p className="text-xs text-brand-800 font-bold flex items-center space-x-1">

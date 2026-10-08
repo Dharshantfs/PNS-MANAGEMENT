@@ -8,15 +8,18 @@ rules_version = '2';
 // src/services/firestoreService.ts) but has not been tested against a live
 // project from this environment.
 //
-// Known trade-off, flagged deliberately rather than silently: the public
-// tenant self-onboarding page (TenantOnboardingForm.tsx) writes to `tenants`
-// and updates `rooms` WITHOUT the visitor being signed in - there is no
-// backend gating those writes yet. The rules below allow that (a `create` on
-// `tenants` and an `update` limited to the `beds` field on `rooms`) so
-// onboarding keeps working, but this means anyone with the onboarding link
-// can create tenant records. Before going live, consider requiring a
-// phone-OTP sign-in (already built - see authService.ts) before onboarding
-// writes are allowed, which would let these rules require `request.auth`.
+// The public tenant onboarding page (TenantOnboardingForm.tsx) no longer
+// writes `tenants` or `rooms` from the browser - new residents, KYC, Aadhaar
+// photos and tenant logins all go through the server (api/_lib/app.ts
+// /api/onboard/*, Admin SDK, which bypasses these rules). So creating a
+// tenant or changing a room's beds is owner/staff-only below.
+//
+// kycDocuments (Aadhaar photos) intentionally has no rule at all: Firestore
+// denies anything without a matching rule, so browsers can never read it -
+// only the server routes can.
+//
+// This file is published automatically on every Vercel deploy
+// (scripts/deployFirestoreRules.ts) - edit it here, never in the Console.
 //
 // Admin/staff accounts are invite-only (see server/app.ts
 // POST /api/admin/create-team-member) - there is no public sign-up. An
@@ -85,9 +88,8 @@ match /databases/{database}/documents {
   }
 
   // Rooms: readable by anyone (needed to show vacant beds during public
-  // onboarding). Full write requires being the owning property's account;
-  // a public onboarding write is only allowed to flip a bed from vacant to
-  // occupied (it may not touch price/deposit/amenity fields).
+  // onboarding). Writes are owner/staff-only; public onboarding allocates
+  // beds server-side.
   match /rooms/{roomId} {
     allow read: if true;
     // `resource` doesn't exist yet on a create - it must be checked against
@@ -95,8 +97,7 @@ match /databases/{database}/documents {
     // one), otherwise every create is silently denied.
     allow create: if isOwnerOfProperty(request.resource.data.propertyId);
     allow delete: if isOwnerOfProperty(resource.data.propertyId);
-    allow update: if isOwnerOfProperty(resource.data.propertyId) ||
-      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['beds']);
+    allow update: if isOwnerOfProperty(resource.data.propertyId);
   }
 
   // Tenants: hold PII/KYC data, so reads are locked down more than
@@ -113,7 +114,7 @@ match /databases/{database}/documents {
     // phone lookup. The owner check comes first so a full-list query never
     // depends on the `limit` comparison (null when no limit is set).
     allow list: if isOwnerOfProperty(resource.data.propertyId) || request.query.limit <= 1;
-    allow create: if true;
+    allow create: if isOwnerOfProperty(request.resource.data.propertyId);
     allow update: if isOwnerOfProperty(resource.data.propertyId) ||
       (isSignedIn() && request.auth.token.phone_number == resource.data.phone);
     allow delete: if isOwnerOfProperty(resource.data.propertyId);

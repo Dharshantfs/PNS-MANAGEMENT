@@ -16,6 +16,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { TenantAvatar } from '../common/TenantAvatar';
 
 interface TenantInviteModalProps {
   tenant: Tenant;
@@ -130,11 +131,7 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
           {/* Tenant Summary Banner */}
           <div className="bg-brand-50/80 border border-brand-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-3">
-              <img
-                src={tenant.photoUrl}
-                alt={tenant.name}
-                className="w-12 h-12 rounded-xl object-cover border-2 border-brand-600 shadow-sm shrink-0"
-              />
+              <TenantAvatar name={tenant?.name} photoUrl={tenant?.photoUrl} className="w-12 h-12 rounded-xl object-cover border-2 border-brand-600 shadow-sm shrink-0" />
               <div>
                 <h3 className="font-bold text-slate-900 text-sm">{tenant.name}</h3>
                 <p className="text-xs text-brand-800 font-semibold flex items-center space-x-1">

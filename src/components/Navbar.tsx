@@ -5,6 +5,7 @@ import {
   ShieldCheck,
   LogOut,
 } from 'lucide-react';
+import { TenantAvatar } from './common/TenantAvatar';
 
 interface NavbarProps {}
 
@@ -48,11 +49,7 @@ export const Navbar: React.FC<NavbarProps> = () => {
             {/* If Tenant Mode: Display Current Tenant Profile */}
             {role === 'tenant' && (
               <div className="flex items-center space-x-2.5 bg-brand-800/90 border border-brand-600/80 px-3 py-1.5 rounded-xl text-xs text-left text-white shadow-sm">
-                <img
-                  src={activeTenant?.photoUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'}
-                  alt={activeTenant?.name || 'Tenant'}
-                  className="w-7 h-7 rounded-xl object-cover border-2 border-white/40"
-                />
+                <TenantAvatar name={activeTenant?.name} photoUrl={activeTenant?.photoUrl} className="w-7 h-7 rounded-xl object-cover border-2 border-white/40" />
                 <div className="hidden md:block">
                   <p className="font-bold text-white leading-none">{activeTenant?.name || 'Tenant Profile'}</p>
                   <p className="text-[10px] text-brand-200 leading-tight mt-0.5 font-medium">

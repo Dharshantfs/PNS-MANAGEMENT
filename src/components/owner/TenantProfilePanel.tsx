@@ -83,6 +83,7 @@ import {
   FileText,
   CheckCircle2,
 } from 'lucide-react';
+import { TenantAvatar } from '../common/TenantAvatar';
 
 interface TenantProfilePanelProps {
   tenant: Tenant;
@@ -157,7 +158,7 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
         <div className="p-5 space-y-5 text-slate-900">
           {/* Identity block */}
           <div className="flex items-center space-x-3.5">
-            <img src={tenant.photoUrl} alt={tenant.name} className="w-16 h-16 rounded-2xl object-cover border-2 border-brand-600 shadow-sm shrink-0" />
+            <TenantAvatar name={tenant?.name} photoUrl={tenant?.photoUrl} className="w-16 h-16 rounded-2xl object-cover border-2 border-brand-600 shadow-sm shrink-0" />
             <div className="min-w-0">
               <h3 className="text-base font-black text-slate-900 truncate">{tenant.name}</h3>
               <p className="text-xs text-slate-500 font-mono">+91 {cleanPhone}</p>
