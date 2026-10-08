@@ -419,6 +419,113 @@ export function createApiApp() {
     }
   });
 
+  // ----------------------------------------------------
+  // Aadhaar front/back copies. Stored server-side only, in
+  // kycDocuments/{tenantId} (compressed JPEG data URLs, well under
+  // Firestore's 1 MB document limit) - no Firebase Storage bucket or extra
+  // firestore.rules needed: firestore.rules has no kycDocuments rule, so
+  // browsers can't read or write it directly; only these two routes can.
+  // ----------------------------------------------------
+
+  // Returns the uid's access to a property: the creator (ownerId) or an
+  // invited team member (users/{uid}.propertyIds).
+  const canAccessProperty = async (db: FirebaseFirestore.Firestore, uid: string, propertyId: string) => {
+    const [propSnap, profileSnap] = await Promise.all([
+      db.collection("properties").doc(propertyId).get(),
+      db.collection("users").doc(uid).get(),
+    ]);
+    if (!profileSnap.exists) return false;
+    return propSnap.data()?.ownerId === uid || (profileSnap.data()?.propertyIds || []).includes(propertyId);
+  };
+
+  const bearerUid = async (req: express.Request) => {
+    const h = req.headers.authorization || "";
+    if (!h.startsWith("Bearer ")) return null;
+    try {
+      return (await admin.auth().verifyIdToken(h.slice(7))).uid;
+    } catch {
+      return null;
+    }
+  };
+
+  const MAX_DOC_CHARS = 450_000; // per image, ~330 KB JPEG - both fit in one Firestore doc
+
+  // Upload from the tenant onboarding form. Allowed for the tenant (tenant id
+  // + phone on file, same check as /api/onboard/kyc) or for a signed-in
+  // owner/staff account with access to the tenant's property.
+  app.post("/api/onboard/kyc-docs", async (req, res) => {
+    const db = requireAdminDb(res);
+    if (!db) return;
+    try {
+      const { tenantId, phone, front, back } = req.body || {};
+      if (!tenantId || (!front && !back)) {
+        return res.status(400).json({ success: false, error: "tenantId and at least one image are required." });
+      }
+      for (const img of [front, back]) {
+        if (img && (typeof img !== "string" || !img.startsWith("data:image/") || img.length > MAX_DOC_CHARS)) {
+          return res.status(400).json({ success: false, error: "Each Aadhaar copy must be an image under about 300 KB." });
+        }
+      }
+
+      // A tenant just created from the browser may take a moment to land.
+      const ref = db.collection("tenants").doc(String(tenantId));
+      let snap = await ref.get();
+      for (let i = 0; i < 3 && !snap.exists; i++) {
+        await new Promise((r) => setTimeout(r, 700));
+        snap = await ref.get();
+      }
+      const tenant = snap.data();
+      if (!snap.exists || !tenant) {
+        return res.status(404).json({ success: false, error: "Tenant not found." });
+      }
+
+      const last10 = (p: string) => String(p || "").replace(/\D/g, "").slice(-10);
+      const phoneOk = !!phone && last10(tenant.phone) === last10(phone);
+      const uid = phoneOk ? null : await bearerUid(req);
+      if (!phoneOk && !(uid && (await canAccessProperty(db, uid, tenant.propertyId)))) {
+        return res.status(403).json({ success: false, error: "Not allowed to upload documents for this tenant." });
+      }
+
+      const docData: Record<string, any> = { tenantId: snap.id, propertyId: tenant.propertyId, uploadedAt: nowIso() };
+      const tenantUpdates: Record<string, any> = { updatedAt: nowIso() };
+      if (front) {
+        docData.front = front;
+        tenantUpdates["kyc.aadhaar.frontImageUrl"] = "uploaded";
+      }
+      if (back) {
+        docData.back = back;
+        tenantUpdates["kyc.aadhaar.backImageUrl"] = "uploaded";
+      }
+      await db.collection("kycDocuments").doc(snap.id).set(docData, { merge: true });
+      await ref.update(tenantUpdates);
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("KYC documents upload error:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Owner/staff viewing a tenant's Aadhaar copies (Tenant profile > KYC).
+  app.get("/api/kyc/documents/:tenantId", async (req, res) => {
+    const db = requireAdminDb(res);
+    if (!db) return;
+    try {
+      const uid = await bearerUid(req);
+      if (!uid) return res.status(401).json({ success: false, error: "Sign in required." });
+      const tenantSnap = await db.collection("tenants").doc(req.params.tenantId).get();
+      const tenant = tenantSnap.data();
+      if (!tenant || !(await canAccessProperty(db, uid, tenant.propertyId))) {
+        return res.status(403).json({ success: false, error: "Not allowed." });
+      }
+      const docSnap = await db.collection("kycDocuments").doc(tenantSnap.id).get();
+      const d = docSnap.data() || {};
+      res.json({ success: true, front: d.front || null, back: d.back || null, uploadedAt: d.uploadedAt || null });
+    } catch (err: any) {
+      console.error("KYC documents read error:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   app.post("/api/webhook/google-form", async (req, res) => {
     const db = requireAdminDb(res);
     if (!db) return;

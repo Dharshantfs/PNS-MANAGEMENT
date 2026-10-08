@@ -4,6 +4,67 @@ import { Tenant } from '../../types';
 import { getSharingLabel } from '../../lib/roomLabels';
 import { AgreementModal } from './AgreementModal';
 import { NumberField } from '../common/NumberField';
+import { auth } from '../../lib/firebase';
+
+// Aadhaar front/back photos uploaded from the tenant onboarding form. They
+// live server-side only (kycDocuments/{tenantId}), so they're fetched through
+// the API with the signed-in owner/staff account's token - see
+// api/_lib/app.ts GET /api/kyc/documents/:tenantId.
+const AadhaarCopies: React.FC<{ tenant: Tenant }> = ({ tenant }) => {
+  const [docs, setDocs] = useState<{ front: string | null; back: string | null } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [enlarged, setEnlarged] = useState<string | null>(null);
+  const hasUploads = !!tenant.kyc?.aadhaar?.frontImageUrl || !!tenant.kyc?.aadhaar?.backImageUrl;
+
+  const load = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch(`/api/kyc/documents/${tenant.id}`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || 'Could not load the Aadhaar photos.');
+      setDocs({ front: data.front, back: data.back });
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!hasUploads) return <p className="text-[11px] text-slate-500">No Aadhaar photos uploaded yet.</p>;
+
+  return (
+    <div className="space-y-2">
+      {!docs && (
+        <button type="button" onClick={load} disabled={loading} className="text-[11px] text-brand-700 hover:text-brand-900 font-bold">
+          {loading ? 'Loading Aadhaar photos...' : 'View Aadhaar photos'}
+        </button>
+      )}
+      {error && <p className="text-[11px] text-rose-700">{error}</p>}
+      {docs && (
+        <div className="grid grid-cols-2 gap-2">
+          {(['front', 'back'] as const).map((side) =>
+            docs[side] ? (
+              <button key={side} type="button" onClick={() => setEnlarged(docs[side])} className="text-left">
+                <img src={docs[side] as string} alt={`Aadhaar ${side}`} className="w-full h-20 object-cover rounded-lg border border-slate-200" />
+                <span className="text-[10px] text-slate-500 capitalize">{side} - tap to enlarge</span>
+              </button>
+            ) : (
+              <p key={side} className="text-[10px] text-slate-400 capitalize">No {side} photo</p>
+            )
+          )}
+        </div>
+      )}
+      {enlarged && (
+        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4" onClick={() => setEnlarged(null)}>
+          <img src={enlarged} alt="Aadhaar" className="max-w-full max-h-full rounded-xl" />
+        </div>
+      )}
+    </div>
+  );
+};
 import {
   X,
   Phone,
@@ -145,6 +206,7 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
                 <span>Full Dossier</span>
               </button>
             </div>
+            <AadhaarCopies key={tenant.id} tenant={tenant} />
             {kycStatus !== 'verified' && (
               <div className="flex items-center space-x-2">
                 <button

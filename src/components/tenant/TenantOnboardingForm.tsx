@@ -26,6 +26,7 @@ import {
 import confetti from 'canvas-confetti';
 import { findTenantByPhone, getFirstProperty, getTenant } from '../../services/firestoreService';
 import { getSharingLabel } from '../../lib/roomLabels';
+import { compressImage } from '../../lib/imageCompress';
 
 interface TenantOnboardingFormProps {
   tenantId?: string;
@@ -38,7 +39,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
   onCompletedLogin,
   onBackToLogin,
 }) => {
-  const { tenants, submitKYC, settings, rooms, addTenant, activePropertyId, activeProperty, switchProperty, authUser } = usePG();
+  const { tenants, submitKYC, settings, rooms, activePropertyId, activeProperty, switchProperty, authUser } = usePG();
 
   // Find targeted tenant if exists
   const [selectedTenantId, setSelectedTenantId] = useState<string>(tenantId || '');
@@ -98,12 +99,12 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
   // Aadhaar Form State
   const [aadhaarNum, setAadhaarNum] = useState('');
   const [nameOnAadhaar, setNameOnAadhaar] = useState('');
-  const [dob, setDob] = useState('2000-01-01');
-  const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Male');
+  const [dob, setDob] = useState('');
+  const [gender, setGender] = useState<'Male' | 'Female' | 'Other' | ''>('');
   const [aadhaarAddress, setAadhaarAddress] = useState('');
-  const [city, setCity] = useState('Bengaluru');
-  const [stateName, setStateName] = useState('Karnataka');
-  const [pincode, setPincode] = useState('560103');
+  const [city, setCity] = useState('');
+  const [stateName, setStateName] = useState('');
+  const [pincode, setPincode] = useState('');
 
   // Emergency & Family State
   const [fatherName, setFatherName] = useState('');
@@ -116,6 +117,12 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
   const [companyOrCollege, setCompanyOrCollege] = useState('');
   const [foodPref, setFoodPref] = useState<'Veg' | 'Non-Veg' | 'Eggetarian'>('Veg');
   const [bloodGroup, setBloodGroup] = useState('B+');
+
+  // Aadhaar copies as compressed JPEG data URLs (see lib/imageCompress.ts),
+  // uploaded after the KYC details are saved.
+  const [frontDoc, setFrontDoc] = useState('');
+  const [backDoc, setBackDoc] = useState('');
+  const [docBusy, setDocBusy] = useState<'' | 'front' | 'back'>('');
 
   const [validationError, setValidationError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -145,18 +152,14 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
       setFullName(existingTenant.name);
       setMobileNumber(existingTenant.phone.replace(/\D/g, ''));
       setEmail(existingTenant.email || '');
-      setNameOnAadhaar(existingTenant.kyc?.aadhaar?.nameOnAadhaar || existingTenant.name.toUpperCase());
+      setNameOnAadhaar(existingTenant.kyc?.aadhaar?.nameOnAadhaar || '');
       setAadhaarNum(existingTenant.kyc?.aadhaar?.aadhaarNumber || '');
-      setDob(existingTenant.kyc?.aadhaar?.dob || '2000-05-15');
-      setGender(existingTenant.kyc?.aadhaar?.gender || 'Male');
-      setAadhaarAddress(
-        existingTenant.kyc?.aadhaar?.address ||
-        existingTenant.kyc?.permanentAddress ||
-        '104, Green Park Residency, Outer Ring Road, Bengaluru'
-      );
-      setCity(existingTenant.kyc?.city || 'Bengaluru');
-      setStateName(existingTenant.kyc?.state || 'Karnataka');
-      setPincode(existingTenant.kyc?.pincode || '560103');
+      setDob(existingTenant.kyc?.aadhaar?.dob || '');
+      setGender(existingTenant.kyc?.aadhaar?.gender || '');
+      setAadhaarAddress(existingTenant.kyc?.aadhaar?.address || existingTenant.kyc?.permanentAddress || '');
+      setCity(existingTenant.kyc?.city || '');
+      setStateName(existingTenant.kyc?.state || '');
+      setPincode(existingTenant.kyc?.pincode || '');
       setFatherName(existingTenant.kyc?.fatherName || '');
       setEmergencyName(existingTenant.kyc?.emergencyContactName || '');
       setEmergencyPhone(existingTenant.kyc?.emergencyContactPhone || '');
@@ -227,6 +230,23 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
       setValidationError('Please enter your full name.');
       return;
     }
+    if (!dob) {
+      setValidationError('Please enter your date of birth.');
+      return;
+    }
+    if (!gender) {
+      setValidationError('Please select your gender.');
+      return;
+    }
+    if (!/^\d{6}$/.test(pincode.trim())) {
+      setValidationError('Please enter a valid 6-digit pincode.');
+      return;
+    }
+    const alreadyUploaded = !!existingTenant?.kyc?.aadhaar?.frontImageUrl && !!existingTenant?.kyc?.aadhaar?.backImageUrl;
+    if (!alreadyUploaded && (!frontDoc || !backDoc)) {
+      setValidationError('Please attach photos of both the front and back of your Aadhaar card.');
+      return;
+    }
 
     setValidationError('');
     setStep(2);
@@ -278,43 +298,59 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
       let allocatedRoom = existingTenant ? rooms.find((r) => r.id === existingTenant.roomId) : undefined;
       let allocatedBed = allocatedRoom?.beds.find((b) => b.id === existingTenant?.bedId);
 
-      if (!targetId) {
-        // Auto-allocate a vacant bed: preferred room first, then any vacant bed
-        const preferredRoom = preferredRoomId ? rooms.find((r) => r.id === preferredRoomId) : undefined;
-        const scanOrder = preferredRoom ? [preferredRoom, ...rooms.filter((r) => r.id !== preferredRoom.id)] : rooms;
-        for (const r of scanOrder) {
-          const vacant = r.beds.find((b) => b.status === 'vacant');
-          if (vacant) {
-            allocatedRoom = r;
-            allocatedBed = vacant;
-            break;
-          }
-        }
-        targetId = addTenant({
-          name: targetName,
-          email,
-          phone: targetPhone,
-          hometown: `${city}, ${stateName}`,
-          roomId: allocatedRoom?.id,
-          bedId: allocatedBed?.id,
-        });
-      }
+      const postJson = async (url: string, body: any) => {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (authUser) headers.Authorization = `Bearer ${await authUser.getIdToken()}`;
+        const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) throw new Error(data.error || 'Submission failed - please try again.');
+        return data;
+      };
 
       // KYC always lands as 'pending' - even a fully self-reported submission
       // needs an owner glance before it's treated as verified.
-      if (existingTenant && !authUser) {
+      if (!targetId) {
+        // New resident: the server creates the tenant, allocates a bed and
+        // saves the KYC in one go (api/_lib/app.ts POST /api/onboard/submit).
+        // Done server-side because a signed-out visitor can't write a full
+        // tenant record, and so the photos below have a tenant to attach to.
+        const data = await postJson('/api/onboard/submit', {
+          ...kycPayload,
+          propertyId: activePropertyId,
+          roomId: preferredRoomId || undefined,
+          permanentAddress: aadhaarAddress,
+        });
+        targetId = data.tenant.id as string;
+        // If the photo upload below fails, a retry must update this tenant,
+        // not create a second one.
+        setFetchedTenant(data.tenant);
+        setSelectedTenantId(data.tenant.id);
+        allocatedRoom = rooms.find((r) => r.id === data.tenant.roomId);
+        allocatedBed = allocatedRoom?.beds.find((b) => b.id === data.tenant.bedId);
+      } else if (!authUser) {
         // Invited tenant on their own phone, not signed in: firestore.rules
         // won't let them update their tenant doc directly, so the server
         // saves it (api/_lib/app.ts POST /api/onboard/kyc).
-        const res = await fetch('/api/onboard/kyc', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tenantId: existingTenant.id, phone: phoneLookup || existingTenant.phone, kyc: kycPayload }),
+        await postJson('/api/onboard/kyc', {
+          tenantId: targetId,
+          phone: phoneLookup || existingTenant?.phone,
+          kyc: kycPayload,
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.success) throw new Error(data.error || 'KYC submission failed');
       } else {
         submitKYC(targetId, kycPayload as any);
+      }
+
+      if (frontDoc || backDoc) {
+        try {
+          await postJson('/api/onboard/kyc-docs', {
+            tenantId: targetId,
+            phone: existingTenant?.phone || targetPhone,
+            front: frontDoc || undefined,
+            back: backDoc || undefined,
+          });
+        } catch (docErr: any) {
+          throw new Error(`Your details were saved, but the Aadhaar photos did not upload (${docErr.message}). Please submit again.`);
+        }
       }
 
       setCreatedTenantData({
@@ -477,6 +513,18 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
             <span>Admission Activated</span>
           </div>
         </div>
+
+        {/* Admin/staff session in this browser: the success buttons below lead
+            back to the admin dashboard, not the tenant portal - say so up front. */}
+        {authUser?.email && (
+          <div className="px-8 pt-6">
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900">
+              You're signed in as admin ({authUser.email}) in this browser, so after submitting you'll return to the
+              admin dashboard. Tenants should open this link on their own phone. To test it as a tenant, use an
+              incognito/private window.
+            </div>
+          </div>
+        )}
 
         {/* Status / Stay Banner */}
         <div className="px-8 pt-6">
@@ -648,6 +696,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                     onChange={(e) => setGender(e.target.value as any)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                   >
+                    <option value="" disabled>Select</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
                     <option value="Other">Other</option>
@@ -704,33 +753,61 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
               </div>
             </div>
 
-            {/* Document upload simulation */}
+            {/* Aadhaar photos - compressed in the browser, uploaded on submit */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Scanned Aadhaar Card (Front & Back)
+                Aadhaar Card Photos (Front & Back) *
               </label>
+              {existingTenant?.kyc?.aadhaar?.frontImageUrl && existingTenant?.kyc?.aadhaar?.backImageUrl && (
+                <p className="text-[11px] text-emerald-700">Already uploaded earlier - attach new photos only to replace them.</p>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-3.5 bg-brand-50/60 border border-brand-200 rounded-xl flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">Aadhaar Front Copy</p>
-                      <p className="text-[10px] text-emerald-700 font-medium">aadhaar_front.jpg ready</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] bg-brand-600 text-white px-2 py-0.5 rounded font-bold">Attached</span>
-                </div>
-
-                <div className="p-3.5 bg-brand-50/60 border border-brand-200 rounded-xl flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">Aadhaar Back Copy</p>
-                      <p className="text-[10px] text-emerald-700 font-medium">aadhaar_back.jpg ready</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] bg-brand-600 text-white px-2 py-0.5 rounded font-bold">Attached</span>
-                </div>
+                {(['front', 'back'] as const).map((side) => {
+                  const value = side === 'front' ? frontDoc : backDoc;
+                  const setValue = side === 'front' ? setFrontDoc : setBackDoc;
+                  return (
+                    <label
+                      key={side}
+                      className={`p-3.5 border rounded-xl flex items-center justify-between cursor-pointer transition ${
+                        value ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-dashed border-slate-300 hover:border-brand-500'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2.5 min-w-0">
+                        {value ? (
+                          <img src={value} alt={`Aadhaar ${side}`} className="w-12 h-8 object-cover rounded border border-emerald-200 shrink-0" />
+                        ) : (
+                          <Upload className="w-4 h-4 text-brand-700 shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-900">Aadhaar {side === 'front' ? 'Front' : 'Back'}</p>
+                          <p className="text-[10px] text-slate-500">
+                            {docBusy === side ? 'Processing...' : value ? 'Attached - tap to change' : 'Tap to take or choose a photo'}
+                          </p>
+                        </div>
+                      </div>
+                      {value && <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = '';
+                          if (!file) return;
+                          setDocBusy(side);
+                          setValidationError('');
+                          try {
+                            setValue(await compressImage(file));
+                          } catch (err: any) {
+                            setValidationError(err?.message || 'Could not use that photo.');
+                          } finally {
+                            setDocBusy('');
+                          }
+                        }}
+                      />
+                    </label>
+                  );
+                })}
               </div>
             </div>
 
@@ -977,7 +1054,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                 onClick={() => onCompletedLogin(activeTenantObj)}
                 className="w-full sm:w-auto px-8 py-3.5 bg-brand-700 hover:bg-brand-800 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-brand-700/25 flex items-center justify-center space-x-2"
               >
-                <span>Login to Tenant Portal Now</span>
+                <span>{authUser?.email ? 'Back to Admin Dashboard' : 'Login to Tenant Portal Now'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
