@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePG } from '../../context/PGContext';
-import { createTeamMember } from '../../services/authService';
+import { createTeamMember, TeamInviteResult } from '../../services/authService';
 import { DuesCategoryConfig } from '../../types';
 import { AGREEMENT_FIELD_GROUPS, DEFAULT_AGREEMENT_BODY, fillSampleTemplate } from '../../lib/agreementFill';
 import { NumberField } from '../common/NumberField';
@@ -432,7 +432,7 @@ const TeamAccessCard: React.FC = () => {
   const [role, setRole] = useState<'owner' | 'staff'>('staff');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<{ email: string; tempPassword: string } | null>(null);
+  const [result, setResult] = useState<TeamInviteResult | null>(null);
   const [copied, setCopied] = useState(false);
 
   const handleInvite = async (e: React.FormEvent) => {
@@ -468,8 +468,9 @@ const TeamAccessCard: React.FC = () => {
           <span>Team Access</span>
         </h2>
         <p className="text-[11px] text-slate-500 mt-1">
-          Admin login is invite-only - there's no public sign-up. Add a co-owner or staff account here; they'll get a
-          one-time temporary password to log in with, then set their own.
+          Admin login is invite-only - there's no public sign-up. Add a co-owner or staff account here; they get an
+          email with a link to set their password, then sign in and see all your properties. Adding someone again
+          refreshes their access (e.g. after you create a new property).
         </p>
       </div>
 
@@ -509,10 +510,26 @@ const TeamAccessCard: React.FC = () => {
 
       {error && <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">{error}</div>}
 
-      {result && (
+      {result && result.existing && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-900">
+          <p className="font-bold">Access updated for {result.email}.</p>
+          <p className="mt-1">
+            They now have access to {result.propertyCount} {result.propertyCount === 1 ? 'property' : 'properties'}.
+            Ask them to log out and log in again to see it.
+          </p>
+        </div>
+      )}
+
+      {result && !result.existing && (
         <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs space-y-2">
           <p className="font-bold text-amber-900">
-            Account created. Share this password with them now - it won't be shown again:
+            {result.setupEmailSent
+              ? `Account created. An email with a "set your password" link was sent to ${result.email} (ask them to check Spam too).`
+              : `Account created, but the set-password email could not be sent.`}
+          </p>
+          <p className="text-amber-800">
+            They get access to {result.propertyCount} {result.propertyCount === 1 ? 'property' : 'properties'}. If the
+            email doesn't arrive, share this one-time password instead - it won't be shown again:
           </p>
           <div className="flex items-center justify-between bg-white border border-amber-200 rounded-xl px-3 py-2 font-mono">
             <span>
@@ -522,7 +539,7 @@ const TeamAccessCard: React.FC = () => {
               {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
           </div>
-          <p className="text-amber-700">They'll be asked to set their own password the first time they sign in.</p>
+          <p className="text-amber-700">With the temporary password, they'll be asked to set their own the first time they sign in.</p>
         </div>
       )}
     </div>

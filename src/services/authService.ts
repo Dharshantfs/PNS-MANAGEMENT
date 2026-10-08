@@ -4,6 +4,7 @@ import {
   ConfirmationResult,
   createUserWithEmailAndPassword,
   RecaptchaVerifier,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPhoneNumber,
   signOut as fbSignOut,
@@ -38,15 +39,29 @@ export async function ownerSignUp(email: string, password: string) {
   return cred.user;
 }
 
+export interface TeamInviteResult {
+  email: string;
+  // true = the email already had a team account; its access was refreshed
+  // and no new password was created.
+  existing: boolean;
+  tempPassword: string | null;
+  propertyCount: number;
+  // Whether Firebase sent the "set your password" email to a new account.
+  setupEmailSent: boolean;
+}
+
 // Invite a new admin/staff account. Only callable while signed in as an
 // existing owner - the backend re-checks this, this isn't just a UI gate.
-// Returns a one-time temporary password to share with the new person
-// out-of-band; they're forced to change it on first login (mustChangePassword).
+// A new account gets every property the inviter can access, plus an email
+// from Firebase with a link to set their own password (no SMTP setup needed -
+// it's Firebase Auth's built-in password-reset mail). The one-time temporary
+// password is still returned as a fallback in case that email doesn't arrive.
+// Adding an email that already has a team account just refreshes its access.
 export async function createTeamMember(
   name: string,
   email: string,
   role: 'owner' | 'staff'
-): Promise<{ email: string; tempPassword: string }> {
+): Promise<TeamInviteResult> {
   if (!auth.currentUser) throw new Error('You must be signed in to add a team member.');
   const idToken = await auth.currentUser.getIdToken();
   const res = await fetch('/api/team/invite', {
@@ -56,7 +71,23 @@ export async function createTeamMember(
   });
   const data = await res.json();
   if (!data.success) throw new Error(data.error || 'Failed to create team member.');
-  return { email: data.email, tempPassword: data.tempPassword };
+
+  let setupEmailSent = false;
+  if (!data.existing) {
+    try {
+      await sendPasswordResetEmail(auth, data.email, { url: window.location.origin });
+      setupEmailSent = true;
+    } catch (e) {
+      console.warn('Set-password email failed', e);
+    }
+  }
+  return {
+    email: data.email,
+    existing: !!data.existing,
+    tempPassword: data.tempPassword || null,
+    propertyCount: data.propertyCount || 0,
+    setupEmailSent,
+  };
 }
 
 export async function changeOwnPassword(newPassword: string) {

@@ -24,7 +24,7 @@ import {
   FileCheck2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { findTenantByPhone, getFirstProperty } from '../../services/firestoreService';
+import { findTenantByPhone, getFirstProperty, getTenant } from '../../services/firestoreService';
 import { getSharingLabel } from '../../lib/roomLabels';
 
 interface TenantOnboardingFormProps {
@@ -38,19 +38,38 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
   onCompletedLogin,
   onBackToLogin,
 }) => {
-  const { tenants, submitKYC, settings, rooms, addTenant, activePropertyId, activeProperty, switchProperty } = usePG();
+  const { tenants, submitKYC, settings, rooms, addTenant, activePropertyId, activeProperty, switchProperty, authUser } = usePG();
 
   // Find targeted tenant if exists
   const [selectedTenantId, setSelectedTenantId] = useState<string>(tenantId || '');
   const [phoneLookup, setPhoneLookup] = useState('');
   const [isSelfRegisterMode, setIsSelfRegisterMode] = useState(false);
+  // A visitor opening the invite link isn't signed in, so the property's
+  // tenant list (`tenants` from context) can't load for them - firestore.rules
+  // only allow reading one tenant doc at a time. The tenant found by the
+  // link's id or by phone lookup is kept here instead.
+  const [fetchedTenant, setFetchedTenant] = useState<Tenant | null>(null);
+
+  // Invite link (?onboard=<tenantId>): load that tenant directly and use
+  // their own property, so the link works whichever property they belong to.
+  useEffect(() => {
+    if (!tenantId) return;
+    getTenant(tenantId)
+      .then((t) => {
+        if (!t) return;
+        setFetchedTenant(t);
+        if (t.propertyId) switchProperty(t.propertyId);
+      })
+      .catch((e) => console.warn('Invite link tenant lookup failed', e));
+  }, [tenantId]);
 
   // This form is reachable via a public link before anyone is signed in, so
   // there's no property scope from auth yet. Resolve one from a `?property=`
   // link param, falling back to whichever property was created first (fine
   // for an owner running a single property).
   useEffect(() => {
-    if (activePropertyId) return;
+    // An invite link resolves its property from the tenant itself (above).
+    if (activePropertyId || tenantId) return;
     const params = new URLSearchParams(window.location.search);
     const urlPropertyId = params.get('property');
     if (urlPropertyId) {
@@ -63,7 +82,9 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
   }, [activePropertyId, switchProperty]);
 
   // Look in existing tenants list
-  const existingTenant = tenants.find((t) => t.id === selectedTenantId);
+  const existingTenant =
+    tenants.find((t) => t.id === selectedTenantId) ||
+    (fetchedTenant && fetchedTenant.id === selectedTenantId ? fetchedTenant : undefined);
 
   // Step 1: Basic & Aadhaar Identity, Step 2: Emergency & Occupation, Step 3: Success Confirmation
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -179,6 +200,8 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
     // be loaded into local context, e.g. right after being invited)
     const serverMatch = await findTenantByPhone(clean);
     if (serverMatch) {
+      setFetchedTenant(serverMatch);
+      if (serverMatch.propertyId) switchProperty(serverMatch.propertyId);
       setSelectedTenantId(serverMatch.id);
       setIsSelfRegisterMode(false);
       return;
@@ -279,7 +302,20 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
 
       // KYC always lands as 'pending' - even a fully self-reported submission
       // needs an owner glance before it's treated as verified.
-      submitKYC(targetId, kycPayload as any);
+      if (existingTenant && !authUser) {
+        // Invited tenant on their own phone, not signed in: firestore.rules
+        // won't let them update their tenant doc directly, so the server
+        // saves it (api/_lib/app.ts POST /api/onboard/kyc).
+        const res = await fetch('/api/onboard/kyc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenantId: existingTenant.id, phone: phoneLookup || existingTenant.phone, kyc: kycPayload }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) throw new Error(data.error || 'KYC submission failed');
+      } else {
+        submitKYC(targetId, kycPayload as any);
+      }
 
       setCreatedTenantData({
         id: targetId,
@@ -305,8 +341,8 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
 
       setStep(3);
       confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
-    } catch (err) {
-      setValidationError('Something went wrong submitting your registration. Please try again.');
+    } catch (err: any) {
+      setValidationError(err?.message || 'Something went wrong submitting your registration. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

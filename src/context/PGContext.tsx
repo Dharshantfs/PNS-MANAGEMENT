@@ -393,6 +393,21 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       setActivityLogs([]);
       return;
     }
+    // Signed-out visitor (public onboarding / invite link): firestore.rules
+    // only let them read rooms and notices, so subscribing to the rest just
+    // fails with permission-denied in the console.
+    if (!authUser) {
+      setTenants([]);
+      setPayments([]);
+      setTickets([]);
+      setCharges([]);
+      setActivityLogs([]);
+      const publicUnsubs = [
+        subscribeRooms(activePropertyId, setRooms),
+        subscribeNotices(activePropertyId, setNotices),
+      ];
+      return () => publicUnsubs.forEach((u) => u());
+    }
     const unsubs = [
       subscribeRooms(activePropertyId, setRooms),
       subscribeTenants(activePropertyId, setTenants),
@@ -405,7 +420,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       ...(role === 'owner' ? [subscribeActivityLogs(activePropertyId, setActivityLogs)] : []),
     ];
     return () => unsubs.forEach((u) => u());
-  }, [activePropertyId, role]);
+  }, [activePropertyId, role, authUser]);
 
   useEffect(() => {
     if (authUser?.uid && activePropertyId) {

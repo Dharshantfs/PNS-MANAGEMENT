@@ -40,7 +40,7 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
   if (!isOpen) return null;
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const inviteUrl = `${origin}/?onboard=${tenant.id}`;
+  const inviteUrl = `${origin}/?onboard=${tenant.id}&property=${tenant.propertyId}`;
   const cleanPhone = tenant.phone.replace(/\D/g, '');
 
   const whatsappMessage = `Hello ${tenant.name}! 👋\n\nWelcome to PNS Luxury PG.\nYou have been allocated Room ${tenant.roomNumber || 'Assigned'} (${tenant.bedLabel || 'Bed Assigned'}).\n\nPlease fill out your mandatory Digital KYC (Aadhaar Card, Date of Birth, Emergency Contact, and Occupation) by opening this secure link:\n\n${inviteUrl}\n\nAfter submitting, you can immediately log in to the PNS PG Tenant Portal using your mobile number (+91 ${cleanPhone}) to pay rent via UPI and access PG amenities.`;

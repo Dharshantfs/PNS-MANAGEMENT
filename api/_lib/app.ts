@@ -224,22 +224,55 @@ export function createApiApp() {
         return res.status(400).json({ success: false, error: "name, email, and role ('owner' or 'staff') are required." });
       }
 
-      const tempPassword = generateTempPassword();
-      const newUser = await admin.auth().createUser({ email, password: tempPassword, displayName: name });
+      // Every property the caller can access: the ones they created (their
+      // uid is the property's `ownerId` - creating a property never adds it
+      // to the creator's own propertyIds, see PGContext.createNewProperty)
+      // plus the ones they were themselves invited to. Copying only
+      // callerProfile.propertyIds left an invited co-owner with no
+      // properties at all whenever the inviter was the property's creator.
+      const ownedSnap = await db.collection("properties").where("ownerId", "==", decoded.uid).get();
+      const propertyIds: string[] = Array.from(
+        new Set([...ownedSnap.docs.map((d) => d.id), ...(callerProfile.propertyIds || [])])
+      );
 
-      await db.collection("users").doc(newUser.uid).set({
-        name,
-        email,
-        role,
-        propertyIds: callerProfile.propertyIds || [],
-        mustChangePassword: true,
-        createdAt: nowIso(),
-      });
+      // Adding someone who already has an account just refreshes their access
+      // (e.g. to properties created after they were first invited) instead of
+      // failing with "email already exists".
+      let existingUser: admin.auth.UserRecord | null = null;
+      try {
+        existingUser = await admin.auth().getUserByEmail(email);
+      } catch (err: any) {
+        if (err.code !== "auth/user-not-found") throw err;
+      }
+
+      let tempPassword: string | null = null;
+      if (existingUser) {
+        const profileRef = db.collection("users").doc(existingUser.uid);
+        const profileSnap = await profileRef.get();
+        if (!profileSnap.exists) {
+          return res.status(409).json({ success: false, error: "That email is already registered (not as a team member)." });
+        }
+        await profileRef.update({
+          role,
+          propertyIds: Array.from(new Set([...(profileSnap.data()?.propertyIds || []), ...propertyIds])),
+        });
+      } else {
+        tempPassword = generateTempPassword();
+        const newUser = await admin.auth().createUser({ email, password: tempPassword, displayName: name });
+
+        await db.collection("users").doc(newUser.uid).set({
+          name,
+          email,
+          role,
+          propertyIds,
+          mustChangePassword: true,
+          createdAt: nowIso(),
+        });
+      }
 
       // Best-effort: one Activity Log entry per property the caller has
       // access to (see ActivityLog in src/types.ts). Never let a logging
-      // failure fail the actual invite - the new account is already created.
-      const propertyIds: string[] = callerProfile.propertyIds || [];
+      // failure fail the actual invite - the account is already created.
       await Promise.all(
         propertyIds.map((propertyId) =>
           db
@@ -250,14 +283,16 @@ export function createApiApp() {
               actorName: callerProfile.name || callerProfile.email || "Unknown",
               actorRole: callerProfile.role,
               action: "team.invite",
-              summary: `Invited ${name} (${role}) to the team`,
+              summary: existingUser
+                ? `Updated ${name}'s team access (${role})`
+                : `Invited ${name} (${role}) to the team`,
               createdAt: nowIso(),
             })
             .catch((err: any) => console.warn("team.invite activity log failed:", err))
         )
       );
 
-      res.json({ success: true, email, tempPassword });
+      res.json({ success: true, email, existing: !!existingUser, tempPassword, propertyCount: propertyIds.length });
     } catch (err: any) {
       console.error("create-team-member error:", err);
       const message = err.code === "auth/email-already-exists" ? "That email is already registered." : err.message;
@@ -305,6 +340,81 @@ export function createApiApp() {
       res.json({ success: true, message: "Tenant admitted - pending owner KYC review.", tenant });
     } catch (err: any) {
       console.error("Onboarding error:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // KYC submitted from a tenant's invite link (?onboard=<tenantId>). The
+  // tenant isn't signed in at that point, and firestore.rules only let a
+  // signed-in owner or the tenant's own phone session update an existing
+  // tenant doc - so the write happens here instead. The caller must know both
+  // the tenant id (from the invite link) and the phone number on file.
+  app.post("/api/onboard/kyc", async (req, res) => {
+    const db = requireAdminDb(res);
+    if (!db) return;
+    try {
+      const { tenantId, phone, kyc } = req.body || {};
+      if (!tenantId || !phone || !kyc) {
+        return res.status(400).json({ success: false, error: "tenantId, phone and kyc are required." });
+      }
+      const ref = db.collection("tenants").doc(String(tenantId));
+      const snap = await ref.get();
+      const tenant = snap.data();
+      const last10 = (p: string) => String(p || "").replace(/\D/g, "").slice(-10);
+      if (!snap.exists || !tenant || last10(tenant.phone) !== last10(phone)) {
+        return res.status(404).json({ success: false, error: "No tenant found for this link and mobile number." });
+      }
+
+      const str = (v: any) => (v == null ? "" : String(v));
+      const aadhaarNumber = str(kyc.aadhaar?.aadhaarNumber).replace(/\D/g, "");
+      const updatedKyc = {
+        ...(tenant.kyc || {}),
+        fatherName: str(kyc.fatherName),
+        emergencyContactName: str(kyc.emergencyContactName),
+        emergencyContactPhone: str(kyc.emergencyContactPhone),
+        emergencyContactRelation: str(kyc.emergencyContactRelation),
+        permanentAddress: str(kyc.permanentAddress),
+        city: str(kyc.city),
+        state: str(kyc.state),
+        pincode: str(kyc.pincode),
+        occupation: str(kyc.occupation),
+        companyOrCollege: str(kyc.companyOrCollege),
+        foodPreference: str(kyc.foodPreference),
+        bloodGroup: str(kyc.bloodGroup),
+        // Always lands as pending - the owner reviews it (same as PGContext.submitKYC).
+        status: "pending",
+        submittedAt: nowIso().split("T")[0],
+        aadhaar: {
+          ...(tenant.kyc?.aadhaar || {}),
+          aadhaarNumber,
+          aadhaarLast4: aadhaarNumber.slice(-4),
+          nameOnAadhaar: str(kyc.aadhaar?.nameOnAadhaar),
+          dob: str(kyc.aadhaar?.dob),
+          gender: str(kyc.aadhaar?.gender),
+          address: str(kyc.aadhaar?.address),
+          verificationMethod: "manual",
+        },
+      };
+      const updates: Record<string, any> = { kyc: updatedKyc, updatedAt: nowIso() };
+      if (kyc.email) updates.email = str(kyc.email);
+      await ref.update(updates);
+
+      await db
+        .collection("activityLogs")
+        .add({
+          propertyId: tenant.propertyId,
+          actorUid: "",
+          actorName: tenant.name || "Tenant",
+          actorRole: "tenant",
+          action: "kyc.submit",
+          summary: `${tenant.name || "Tenant"} submitted KYC from the invite link`,
+          createdAt: nowIso(),
+        })
+        .catch((err: any) => console.warn("kyc.submit activity log failed:", err));
+
+      res.json({ success: true, tenant: { id: snap.id, ...tenant, ...updates } });
+    } catch (err: any) {
+      console.error("Onboarding KYC error:", err);
       res.status(500).json({ success: false, error: err.message });
     }
   });

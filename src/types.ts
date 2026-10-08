@@ -295,7 +295,7 @@ export interface ActivityLog {
   propertyId: string;
   actorUid: string;
   actorName: string;
-  actorRole: 'owner' | 'staff';
+  actorRole: 'owner' | 'staff' | 'tenant'; // 'tenant' = KYC submitted from an invite link
   action: ActivityAction;
   summary: string; // human-readable, e.g. "Recorded ₹8,500 UPI payment for Ramesh (Room 101)"
   createdAt: string; // ISO timestamp

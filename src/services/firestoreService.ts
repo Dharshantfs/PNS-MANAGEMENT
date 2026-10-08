@@ -100,6 +100,14 @@ export async function getFirstProperty(): Promise<Property | null> {
   return d ? ({ id: d.id, ...d.data() } as Property) : null;
 }
 
+// Single tenant by id - used by the public onboarding page, where the
+// visitor isn't signed in and so can't list the property's tenants (see the
+// tenants rule in firestore.rules: `get` is open, `list` is limited to 1).
+export async function getTenant(tenantId: string): Promise<Tenant | null> {
+  const snap = await getDoc(doc(db, 'tenants', tenantId));
+  return snap.exists() ? ({ id: snap.id, ...snap.data() } as Tenant) : null;
+}
+
 export async function getProperty(propertyId: string): Promise<Property | null> {
   const snap = await getDoc(doc(db, 'properties', propertyId));
   return snap.exists() ? ({ id: snap.id, ...snap.data() } as Property) : null;
