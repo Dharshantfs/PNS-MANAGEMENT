@@ -108,7 +108,11 @@ match /databases/{database}/documents {
   // query, not a collection scan, so this doesn't expose the whole list).
   match /tenants/{tenantId} {
     allow get: if true;
-    allow list: if request.query.limit <= 1;
+    // Owner/staff list their own property's tenants (Tenant Directory,
+    // dashboard counts); everyone else may only run the single-result
+    // phone lookup. The owner check comes first so a full-list query never
+    // depends on the `limit` comparison (null when no limit is set).
+    allow list: if isOwnerOfProperty(resource.data.propertyId) || request.query.limit <= 1;
     allow create: if true;
     allow update: if isOwnerOfProperty(resource.data.propertyId) ||
       (isSignedIn() && request.auth.token.phone_number == resource.data.phone);
