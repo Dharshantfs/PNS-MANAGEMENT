@@ -67,6 +67,7 @@ export interface Tenant {
   rentStatus: PaymentStatus;
   dueAmount: number;
   lastPaymentDate?: string;
+  authUid?: string; // Tenant Portal login (Firebase Auth uid), created at KYC submit
   kyc: TenantKYC;
   hometown: string;
   createdAt?: string;

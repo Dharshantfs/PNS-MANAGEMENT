@@ -286,6 +286,26 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   // --- Firebase Auth session -------------------------------------------------
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
+      // Tenant logins are email + password too (created at KYC submit - see
+      // api/_lib/app.ts POST /api/onboard/tenant-login), told apart from
+      // owner/staff by their `role: tenant` claim. Phone-only accounts are
+      // from the older phone-OTP login. Worked out before publishing the
+      // user so the owner view never flashes for a tenant.
+      if (user) {
+        const claims = await user
+          .getIdTokenResult()
+          .then((r) => r.claims)
+          .catch(() => ({} as Record<string, unknown>));
+        if (claims.role === 'tenant' || (user.phoneNumber && !user.email)) {
+          // Their property is discovered once their tenant record loads (see
+          // tenant-lookup effect below).
+          setRole('tenant');
+          setAuthUser(user);
+          setAuthLoading(false);
+          return;
+        }
+      }
+
       setAuthUser(user);
       setAuthLoading(false);
 
@@ -294,13 +314,6 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         setProperties([]);
         setActivePropertyId(null);
         setRole('owner');
-        return;
-      }
-
-      if (user.phoneNumber && !user.email) {
-        // Tenant sign-in (phone OTP). Their property is discovered once their
-        // tenant record loads (see tenant-lookup effect below).
-        setRole('tenant');
         return;
       }
 

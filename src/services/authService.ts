@@ -90,6 +90,12 @@ export async function createTeamMember(
   };
 }
 
+// Firebase's built-in "reset your password" email - free, no SMTP setup.
+// Used for "Forgot password?" and for a tenant's first login after KYC.
+export async function sendPasswordSetupEmail(email: string) {
+  await sendPasswordResetEmail(auth, email, { url: window.location.origin });
+}
+
 export async function changeOwnPassword(newPassword: string) {
   if (!auth.currentUser) throw new Error('Not signed in.');
   await updatePassword(auth.currentUser, newPassword);

@@ -505,6 +505,86 @@ export function createApiApp() {
     }
   });
 
+  // Tenant portal login, created when the tenant submits their KYC form.
+  // Email + password (Phone OTP needs Firebase's paid Blaze plan for SMS).
+  // The account is created with a random password the tenant never sees;
+  // the browser then has Firebase email them a free "set your password"
+  // link (authService.sendPasswordSetupEmail). The account also carries the
+  // tenant's phone number, so the ID token's `phone_number` claim matches
+  // tenants/{id}.phone and the existing firestore.rules tenant checks work
+  // unchanged, plus a `role: tenant` claim so PGContext opens the tenant
+  // portal instead of the owner view.
+  // Allowed for the tenant (tenant id + phone on file) or an owner/staff
+  // account with access to the tenant's property. A tenant that already
+  // has a login is left alone - the owner can't be locked out by someone
+  // re-submitting the form with a different email.
+  app.post("/api/onboard/tenant-login", async (req, res) => {
+    const db = requireAdminDb(res);
+    if (!db) return;
+    try {
+      const { tenantId, phone } = req.body || {};
+      const email = String(req.body?.email || "").trim().toLowerCase();
+      if (!tenantId || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        return res.status(400).json({ success: false, error: "tenantId and a valid email are required." });
+      }
+      const ref = db.collection("tenants").doc(String(tenantId));
+      let snap = await ref.get();
+      for (let i = 0; i < 3 && !snap.exists; i++) {
+        await new Promise((r) => setTimeout(r, 700));
+        snap = await ref.get();
+      }
+      const tenant = snap.data();
+      if (!snap.exists || !tenant) return res.status(404).json({ success: false, error: "Tenant not found." });
+
+      const last10 = (p: string) => String(p || "").replace(/\D/g, "").slice(-10);
+      const phoneOk = !!phone && last10(tenant.phone) === last10(phone);
+      const uid = phoneOk ? null : await bearerUid(req);
+      if (!phoneOk && !(uid && (await canAccessProperty(db, uid, tenant.propertyId)))) {
+        return res.status(403).json({ success: false, error: "Not allowed." });
+      }
+
+      if (tenant.authUid) {
+        const existing = await admin.auth().getUser(tenant.authUid).catch(() => null);
+        if (existing) return res.json({ success: true, email: existing.email, existing: true });
+      }
+
+      const byEmail = await admin.auth().getUserByEmail(email).catch(() => null);
+      if (byEmail) {
+        return res.status(409).json({
+          success: false,
+          error: "That email already has a login in this app. Please use a different email.",
+        });
+      }
+
+      const phoneNumber = `+91${last10(tenant.phone)}`;
+      let user: admin.auth.UserRecord;
+      const byPhone = await admin.auth().getUserByPhoneNumber(phoneNumber).catch(() => null);
+      if (byPhone && !byPhone.email) {
+        // Left over from the old phone-OTP login - reuse it, add the email.
+        user = await admin.auth().updateUser(byPhone.uid, {
+          email,
+          password: generateTempPassword() + generateTempPassword(),
+          displayName: tenant.name,
+        });
+      } else if (byPhone) {
+        return res.status(409).json({ success: false, error: "This mobile number already has a different login." });
+      } else {
+        user = await admin.auth().createUser({
+          email,
+          phoneNumber,
+          password: generateTempPassword() + generateTempPassword(),
+          displayName: tenant.name,
+        });
+      }
+      await admin.auth().setCustomUserClaims(user.uid, { role: "tenant", tenantId: snap.id });
+      await ref.update({ authUid: user.uid, email, updatedAt: nowIso() });
+      res.json({ success: true, email, existing: false });
+    } catch (err: any) {
+      console.error("Tenant login creation error:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // Owner/staff viewing a tenant's Aadhaar copies (Tenant profile > KYC).
   app.get("/api/kyc/documents/:tenantId", async (req, res) => {
     const db = requireAdminDb(res);

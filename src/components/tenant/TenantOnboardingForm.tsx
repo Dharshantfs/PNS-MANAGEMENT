@@ -27,6 +27,7 @@ import confetti from 'canvas-confetti';
 import { findTenantByPhone, getFirstProperty, getTenant } from '../../services/firestoreService';
 import { getSharingLabel } from '../../lib/roomLabels';
 import { compressImage } from '../../lib/imageCompress';
+import { sendPasswordSetupEmail } from '../../services/authService';
 
 interface TenantOnboardingFormProps {
   tenantId?: string;
@@ -127,6 +128,8 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
   const [validationError, setValidationError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdTenantData, setCreatedTenantData] = useState<Tenant | null>(null);
+  // Tenant portal login outcome, shown on the success screen.
+  const [loginNote, setLoginNote] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Check URL query parameters for ?phone=XXXX or ?onboard=XXXX
   useEffect(() => {
@@ -151,7 +154,8 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
     if (existingTenant) {
       setFullName(existingTenant.name);
       setMobileNumber(existingTenant.phone.replace(/\D/g, ''));
-      setEmail(existingTenant.email || '');
+      const generated = `${existingTenant.name.toLowerCase().replace(/\s+/g, '')}@gmail.com`;
+      setEmail(existingTenant.email && existingTenant.email !== generated ? existingTenant.email : '');
       setNameOnAadhaar(existingTenant.kyc?.aadhaar?.nameOnAadhaar || '');
       setAadhaarNum(existingTenant.kyc?.aadhaar?.aadhaarNumber || '');
       setDob(existingTenant.kyc?.aadhaar?.dob || '');
@@ -228,6 +232,10 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
     }
     if (isSelfRegisterMode && !fullName.trim()) {
       setValidationError('Please enter your full name.');
+      return;
+    }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
+      setValidationError('Please enter a valid email - your Tenant Portal login is sent there.');
       return;
     }
     if (!dob) {
@@ -351,6 +359,25 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
         } catch (docErr: any) {
           throw new Error(`Your details were saved, but the Aadhaar photos did not upload (${docErr.message}). Please submit again.`);
         }
+      }
+
+      // Tenant portal login (free - no SMS): the server creates it, then
+      // Firebase emails a "set your password" link. A failure here must not
+      // undo the saved KYC, so it's reported on the success screen instead.
+      try {
+        const login = await postJson('/api/onboard/tenant-login', {
+          tenantId: targetId,
+          phone: existingTenant?.phone || targetPhone,
+          email: email.trim(),
+        });
+        if (login.existing) {
+          setLoginNote({ ok: true, text: `You already have a Tenant Portal login (${login.email}). Use "Forgot password?" on the login screen if you need a new password.` });
+        } else {
+          await sendPasswordSetupEmail(login.email);
+          setLoginNote({ ok: true, text: `We've emailed ${login.email} a link to set your password (check Spam too). Then log in on the Tenant Portal with this email.` });
+        }
+      } catch (loginErr: any) {
+        setLoginNote({ ok: false, text: `Your KYC is saved, but your login could not be set up: ${loginErr.message} Please contact the PG office.` });
       }
 
       setCreatedTenantData({
@@ -604,10 +631,11 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Email Address (Optional)
+                      Email (login details are sent here) *
                     </label>
                     <input
                       type="email"
+                      required
                       placeholder="e.g. rahul@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -636,6 +664,25 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                     </select>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {existingTenant && !isSelfRegisterMode && (
+              <div className="bg-brand-50/60 border border-brand-200 p-4 rounded-2xl">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Your Email (login details are sent here) *
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. rahul@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  After you submit, we email you a link to set your Tenant Portal password.
+                </p>
               </div>
             )}
 
@@ -1025,12 +1072,22 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                 KYC Registration Successful
               </span>
               <h2 className="text-2xl font-black text-slate-900">
-                Welcome to PNS Luxury PG, {activeTenantObj.name}!
+                Welcome to {activeProperty?.name || 'the PG'}, {activeTenantObj.name}!
               </h2>
               <p className="text-xs text-slate-600 leading-relaxed">
                 Your Aadhaar card details ({aadhaarNum}), DOB ({dob}), emergency contact ({emergencyName} - {emergencyPhone}), and occupation records have been securely registered to your mobile number (+91 {activeTenantObj.phone.replace(/\D/g, '')}).
               </p>
             </div>
+
+            {loginNote && (
+              <div
+                className={`max-w-md mx-auto p-3 rounded-xl border text-xs text-left ${
+                  loginNote.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'
+                }`}
+              >
+                {loginNote.text}
+              </div>
+            )}
 
             {/* Account Information Card */}
             <div className="bg-brand-50 border border-brand-200 rounded-2xl p-4 max-w-md mx-auto text-left space-y-2 text-xs">

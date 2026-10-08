@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Tenant } from '../../types';
+import { usePG } from '../../context/PGContext';
 import {
   MessageSquare,
   Copy,
@@ -29,6 +30,7 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
   onClose,
   onOpenFormDirectly,
 }) => {
+  const { activeProperty } = usePG();
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [isSendingTwilio, setIsSendingTwilio] = useState(false);
@@ -43,7 +45,7 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
   const inviteUrl = `${origin}/?onboard=${tenant.id}&property=${tenant.propertyId}`;
   const cleanPhone = tenant.phone.replace(/\D/g, '');
 
-  const whatsappMessage = `Hello ${tenant.name}! 👋\n\nWelcome to PNS Luxury PG.\nYou have been allocated Room ${tenant.roomNumber || 'Assigned'} (${tenant.bedLabel || 'Bed Assigned'}).\n\nPlease fill out your mandatory Digital KYC (Aadhaar Card, Date of Birth, Emergency Contact, and Occupation) by opening this secure link:\n\n${inviteUrl}\n\nAfter submitting, you can immediately log in to the PNS PG Tenant Portal using your mobile number (+91 ${cleanPhone}) to pay rent via UPI and access PG amenities.`;
+  const whatsappMessage = `Hello ${tenant.name}! 👋\n\nWelcome to ${activeProperty?.name || 'our PG'}.\nYou have been allocated Room ${tenant.roomNumber || 'Assigned'} (${tenant.bedLabel || 'Bed Assigned'}).\n\nPlease fill out your mandatory Digital KYC (Aadhaar Card, Date of Birth, Emergency Contact, and Occupation) by opening this secure link:\n\n${inviteUrl}\n\nAfter submitting, you will get an email with a link to set your password. Then log in to the Tenant Portal (${origin}) with that email to pay rent and access PG amenities.`;
 
   const waMeUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(whatsappMessage)}`;
 
