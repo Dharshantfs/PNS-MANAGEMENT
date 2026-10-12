@@ -5,6 +5,7 @@ import { getSharingLabel } from '../../lib/roomLabels';
 import { AgreementModal } from './AgreementModal';
 import { NumberField } from '../common/NumberField';
 import { auth } from '../../lib/firebase';
+import { ExitFormalitiesModal } from './ExitFormalitiesModal';
 
 // Aadhaar front/back photos uploaded from the tenant onboarding form. They
 // live server-side only (kycDocuments/{tenantId}), so they're fetched through
@@ -82,6 +83,7 @@ import {
   AlertCircle,
   FileText,
   CheckCircle2,
+  LogOut,
 } from 'lucide-react';
 import { TenantAvatar } from '../common/TenantAvatar';
 
@@ -111,6 +113,7 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
   const [rejectReason, setRejectReason] = useState('');
   const [showReject, setShowReject] = useState(false);
   const [showAgreement, setShowAgreement] = useState(false);
+  const [showExit, setShowExit] = useState(false);
   const [showPayForm, setShowPayForm] = useState(false);
   const [payAmount, setPayAmount] = useState(tenant.dueAmount || tenant.monthlyRent);
   const [payMode, setPayMode] = useState<'UPI' | 'Cash' | 'Bank Transfer' | 'Card'>('Cash');
@@ -300,6 +303,31 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
             <span>Generate Rental Agreement</span>
           </button>
 
+          {/* Exit formalities - only for residents still staying */}
+          {isActive && (
+            <button
+              type="button"
+              onClick={() => setShowExit(true)}
+              className="w-full py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Start Exit Formalities</span>
+            </button>
+          )}
+          {tenant.exitSettlement && (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-[11px] text-slate-700 space-y-1">
+              <p className="text-xs font-bold text-slate-800">Exit settlement</p>
+              <p>Deposit held ₹{tenant.exitSettlement.depositHeld.toLocaleString('en-IN')} · deductions ₹{tenant.exitSettlement.deductions.toLocaleString('en-IN')}</p>
+              <p className="font-bold">Refunded ₹{tenant.exitSettlement.refundAmount.toLocaleString('en-IN')}{tenant.exitSettlement.refundMode ? ` via ${tenant.exitSettlement.refundMode}` : ''}</p>
+              {tenant.exitSettlement.duesOutstanding ? (
+                <p className="font-bold text-rose-700">
+                  Left with ₹{tenant.exitSettlement.duesOutstanding.toLocaleString('en-IN')} unpaid (admin override): {tenant.exitSettlement.duesOverrideReason}
+                </p>
+              ) : null}
+              {tenant.exitSettlement.deductionNotes && <p className="text-slate-500">{tenant.exitSettlement.deductionNotes}</p>}
+            </div>
+          )}
+
           {/* Room info */}
           <div className="bg-brand-50/60 border border-brand-200 rounded-2xl p-4 space-y-2">
             <div className="flex items-center justify-between">
@@ -385,6 +413,7 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
         </div>
       </div>
 
+      {showExit && <ExitFormalitiesModal tenantId={tenant.id} onClose={() => setShowExit(false)} />}
       {showAgreement && <AgreementModal tenant={tenant} onClose={() => setShowAgreement(false)} />}
     </div>
   );

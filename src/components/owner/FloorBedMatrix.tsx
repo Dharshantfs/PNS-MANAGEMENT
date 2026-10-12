@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { usePG } from '../../context/PGContext';
 import { Room, Bed, Tenant } from '../../types';
+import { ExitFormalitiesModal } from './ExitFormalitiesModal';
 import { FACILITY_OPTIONS, facilityLabel } from '../../lib/facilities';
 import {
   Layers,
@@ -74,6 +75,7 @@ export const FloorBedMatrix: React.FC = () => {
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [assigningBedInfo, setAssigningBedInfo] = useState<{ room: Room; bed: Bed } | null>(null);
   const [transferringTenant, setTransferringTenant] = useState<Tenant | null>(null);
+  const [exitingTenant, setExitingTenant] = useState<Tenant | null>(null);
 
   // New room form state
   const [newFloor, setNewFloor] = useState<number>(1);
@@ -477,7 +479,8 @@ export const FloorBedMatrix: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    if (window.confirm(`Vacate ${bed.bedLabel} in Room ${room.roomNumber}?`)) {
+                                    if (occupant) setExitingTenant(occupant);
+                                    else if (window.confirm(`Vacate ${bed.bedLabel} in Room ${room.roomNumber}?`)) {
                                       vacateBed(room.id, bed.id);
                                     }
                                   }}
@@ -809,6 +812,8 @@ export const FloorBedMatrix: React.FC = () => {
       )}
 
       {/* MODAL 4: TRANSFER TENANT TO ANOTHER BED */}
+      {exitingTenant && <ExitFormalitiesModal tenantId={exitingTenant.id} onClose={() => setExitingTenant(null)} />}
+
       {transferringTenant && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-950/75 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-brand-100 text-slate-900">

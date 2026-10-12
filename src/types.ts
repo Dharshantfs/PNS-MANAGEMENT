@@ -47,6 +47,19 @@ export interface TenantKYC {
   verifiedByOwner?: boolean;
 }
 
+export interface ExitSettlement {
+  completedAt: string;
+  depositHeld: number;
+  deductions: number; // damages / other charges taken from the deposit
+  deductionNotes?: string;
+  // Set only when an admin let the resident leave with dues still pending.
+  duesOutstanding?: number;
+  duesOverrideReason?: string;
+  refundAmount: number; // depositHeld - deductions (0 if the deposit was never paid)
+  refundMode?: 'UPI' | 'Cash' | 'Bank Transfer';
+  checklist: { keyReturned: boolean; roomInspected: boolean; noticeGiven: boolean };
+}
+
 export interface Tenant {
   id: string;
   propertyId: string;
@@ -64,6 +77,8 @@ export interface Tenant {
   depositPaid: boolean;
   checkInDate: string;
   checkOutDate?: string;
+  // Exit formalities, filled in when the owner completes a move-out.
+  exitSettlement?: ExitSettlement;
   rentStatus: PaymentStatus;
   dueAmount: number;
   lastPaymentDate?: string;
