@@ -6,6 +6,7 @@ interface LoginScreenProps {
   onLoginSuccess?: () => void;
   onOpenKYCOnboarding?: (phone?: string) => void;
 }
+import { ThemeToggle } from '../common/ThemeToggle';
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onOpenKYCOnboarding }) => {
   const [loginMode, setLoginMode] = useState<'tenant' | 'owner'>('tenant');
@@ -152,7 +153,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onOpenKYCOnboarding })
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4 selection:bg-brand-600 selection:text-white font-sans">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4 selection:bg-brand-600 selection:text-white font-sans relative">
+      <ThemeToggle className="absolute top-4 right-4 bg-white border-slate-300 text-slate-700 shadow-sm" />
       <div className="mb-6 text-center animate-in slide-in-from-bottom-4 duration-500">
         <div className="w-16 h-16 mx-auto rounded-3xl bg-brand-700 text-white flex items-center justify-center shadow-xl shadow-brand-700/20 mb-3 border-2 border-brand-600">
           <Building2 className="w-8 h-8" />

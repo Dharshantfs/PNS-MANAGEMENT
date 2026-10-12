@@ -50,3 +50,78 @@
     max-height: none !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Night view. Everything in the app is styled with hard-coded slate / brand /
+   emerald / rose / amber utility classes, so instead of touching every file we
+   re-map those palettes while <html class="dark"> is set (see lib/theme.ts).
+   Solid buttons (bg-brand-700, bg-emerald-600 ...) keep their colours - only
+   the light tints, borders and text shades change.
+   --------------------------------------------------------------------------- */
+html.dark {
+  color-scheme: dark;
+  --dk-card: #131c2e;
+
+  --color-slate-50: #0a101c;
+  --color-slate-100: #1a2438;
+  --color-slate-200: #243049;
+  --color-slate-300: #34425a;
+  --color-slate-400: #64748b;
+  --color-slate-500: #94a3b8;
+  --color-slate-600: #a9b6c9;
+  --color-slate-700: #c5d0df;
+  --color-slate-800: #dde4ee;
+  --color-slate-900: #f1f5f9;
+
+  --color-brand-50: #2b1013;
+  --color-brand-100: #3a1418;
+  --color-brand-200: #5c1e26;
+
+  --color-emerald-50: #0c2a22;
+  --color-emerald-100: #11382d;
+  --color-emerald-200: #1a5042;
+  --color-rose-50: #2d1117;
+  --color-rose-100: #411820;
+  --color-rose-200: #6b2631;
+  --color-rose-300: #9f3a4a;
+  --color-amber-50: #2b2008;
+  --color-amber-100: #3d2c0a;
+  --color-amber-200: #5c4310;
+  --color-indigo-50: #1b1d3d;
+  --color-indigo-100: #25285a;
+  --color-indigo-200: #3a3f86;
+}
+
+html.dark body { background-color: var(--color-slate-50); color: var(--color-slate-900); }
+html.dark .bg-white { background-color: var(--dk-card); }
+html.dark .border-white { border-color: var(--dk-card); }
+
+/* Coloured text: the light-mode shades are too dark on a dark card. */
+html.dark .text-brand-700 { color: #f0707c; }
+html.dark .text-brand-800,
+html.dark .text-brand-900,
+html.dark .text-brand-950 { color: #f4b7bc; }
+html.dark .text-emerald-600 { color: #34d399; }
+html.dark .text-emerald-700 { color: #4ade9f; }
+html.dark .text-emerald-800 { color: #a7f3d0; }
+html.dark .text-emerald-900 { color: #d1fae5; }
+html.dark .text-rose-500,
+html.dark .text-rose-600 { color: #fb7185; }
+html.dark .text-rose-700 { color: #fda4af; }
+html.dark .text-rose-800 { color: #fecdd3; }
+html.dark .text-rose-900 { color: #ffe4e6; }
+html.dark .text-amber-600 { color: #fbbf24; }
+html.dark .text-amber-700 { color: #fcd34d; }
+html.dark .text-amber-800 { color: #fde68a; }
+html.dark .text-amber-900 { color: #fef3c7; }
+html.dark .text-indigo-700 { color: #a5b4fc; }
+html.dark .text-indigo-800,
+html.dark .text-indigo-900 { color: #c7d2fe; }
+/* Light-tinted backgrounds with a slash opacity (e.g. bg-brand-50/60). */
+html.dark [class*="bg-brand-50/"] { background-color: rgb(43 16 19 / 0.7); }
+html.dark [class*="bg-rose-50/"] { background-color: rgb(45 17 23 / 0.7); }
+html.dark [class*="bg-emerald-50/"] { background-color: rgb(12 42 34 / 0.7); }
+html.dark [class*="bg-slate-50/"] { background-color: rgb(15 23 41 / 0.7); }
+html.dark input::placeholder,
+html.dark textarea::placeholder { color: var(--color-slate-400); }
+html.dark input[type="date"] { color-scheme: dark; }

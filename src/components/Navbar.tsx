@@ -6,6 +6,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { TenantAvatar } from './common/TenantAvatar';
+import { ThemeToggle } from './common/ThemeToggle';
 
 interface NavbarProps {}
 
@@ -58,6 +59,8 @@ export const Navbar: React.FC<NavbarProps> = () => {
                 </div>
               </div>
             )}
+
+            <ThemeToggle className="bg-white/10 hover:bg-white/20 border-white/20 text-white shadow-sm" />
 
             {/* Logout Button */}
             <button
