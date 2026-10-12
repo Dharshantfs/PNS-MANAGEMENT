@@ -644,6 +644,39 @@ export function createApiApp() {
     }
   });
 
+  // Deleting a tenant record must also free their login, otherwise the same
+  // email/phone can never be used again ("That email already has a login").
+  // Only ever removes an account whose claims say it is a tenant login - never
+  // an owner/staff account.
+  app.post("/api/tenant/remove-login", async (req, res) => {
+    const db = requireAdminDb(res);
+    if (!db) return;
+    try {
+      const uid = await bearerUid(req);
+      if (!uid) return res.status(401).json({ success: false, error: "Sign in required." });
+      const callerProfile = (await db.collection("users").doc(uid).get()).data();
+      if (!callerProfile || callerProfile.role !== "owner") {
+        return res.status(403).json({ success: false, error: "Only an admin can remove a tenant login." });
+      }
+      const tenant = (await db.collection("tenants").doc(String(req.body?.tenantId)).get()).data();
+      if (!tenant) return res.json({ success: true, removed: false });
+      if (!(await canAccessProperty(db, uid, tenant.propertyId))) {
+        return res.status(403).json({ success: false, error: "Not allowed." });
+      }
+      if (!tenant.authUid) return res.json({ success: true, removed: false });
+      const user = await admin.auth().getUser(tenant.authUid).catch(() => null);
+      if (!user) return res.json({ success: true, removed: false });
+      if (user.customClaims?.role !== "tenant") {
+        return res.json({ success: true, removed: false, note: "Linked account is not a tenant login - left untouched." });
+      }
+      await admin.auth().deleteUser(user.uid);
+      res.json({ success: true, removed: true });
+    } catch (err: any) {
+      console.error("Tenant login removal error:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // Owner/staff viewing a tenant's Aadhaar copies (Tenant profile > KYC).
   app.get("/api/kyc/documents/:tenantId", async (req, res) => {
     const db = requireAdminDb(res);

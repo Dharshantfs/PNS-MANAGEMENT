@@ -965,6 +965,15 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     if (!tenant || role !== 'owner' || ownerProfile?.role !== 'owner') return;
     // A resident still in a bed must go through exit formalities first.
     if (tenant.roomId && tenant.bedId) throw new Error('This resident still has a bed. Complete their exit first.');
+    // Free the tenant's login first so the same email can be registered again.
+    const token = await auth.currentUser?.getIdToken();
+    const res = await fetch('/api/tenant/remove-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ tenantId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.error || 'Could not remove the tenant login.');
     await removeTenant(tenantId);
     logActivity('tenant.delete', `Permanently deleted tenant ${tenant.name}`);
   };
