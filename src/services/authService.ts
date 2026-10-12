@@ -75,7 +75,7 @@ export async function createTeamMember(
   let setupEmailSent = false;
   if (!data.existing) {
     try {
-      await sendPasswordResetEmail(auth, data.email, { url: window.location.origin });
+      await sendResetEmail(data.email);
       setupEmailSent = true;
     } catch (e) {
       console.warn('Set-password email failed', e);
@@ -93,7 +93,19 @@ export async function createTeamMember(
 // Firebase's built-in "reset your password" email - free, no SMTP setup.
 // Used for "Forgot password?" and for a tenant's first login after KYC.
 export async function sendPasswordSetupEmail(email: string) {
-  await sendPasswordResetEmail(auth, email, { url: window.location.origin });
+  await sendResetEmail(email);
+}
+
+// The "back to the app" link in the email needs the site's domain listed under
+// Firebase Console > Authentication > Settings > Authorized domains. If it
+// isn't, still send the email (without the link) rather than failing outright.
+async function sendResetEmail(email: string) {
+  try {
+    await sendPasswordResetEmail(auth, email, { url: window.location.origin });
+  } catch (e: any) {
+    if (e?.code !== 'auth/unauthorized-continue-uri') throw e;
+    await sendPasswordResetEmail(auth, email);
+  }
 }
 
 export async function changeOwnPassword(newPassword: string) {
