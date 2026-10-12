@@ -40,7 +40,9 @@ interface TenantDirectoryProps {
 }
 
 export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboarding }) => {
-  const { tenants, rooms, approveKYC, rejectKYC, addTenant, activeProperty } = usePG();
+  const { tenants: allTenants, rooms, approveKYC, rejectKYC, addTenant, activeProperty } = usePG();
+  // Residents who have completed exit live on the Exited page, not here.
+  const tenants = allTenants.filter((t) => !t.checkOutDate);
   const [searchTerm, setSearchTerm] = useState('');
   const [kycFilter, setKycFilter] = useState<'all' | 'verified' | 'pending' | 'unsubmitted'>('all');
   const [floorFilter, setFloorFilter] = useState<number | 'all'>('all');
@@ -570,7 +572,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
       {/* TENANT PROFILE SLIDE-OVER (opened by clicking a tenant card) */}
       {profileTenant && (
         <TenantProfilePanel
-          tenant={tenants.find((t) => t.id === profileTenant.id) || profileTenant}
+          tenant={allTenants.find((t) => t.id === profileTenant.id) || profileTenant}
           onClose={() => setProfileTenant(null)}
           onViewDossier={() => {
             setSelectedTenantDossier(profileTenant);

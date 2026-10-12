@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Layers,
   Users,
+  UserMinus,
   IndianRupee,
   Bell,
   FileText,
@@ -13,7 +14,7 @@ import {
   Building2,
 } from 'lucide-react';
 
-export type OwnerTab = 'dashboard' | 'matrix' | 'tenants' | 'finance' | 'reports' | 'activity' | 'notices' | 'googleforms' | 'settings';
+export type OwnerTab = 'dashboard' | 'matrix' | 'tenants' | 'exited' | 'finance' | 'reports' | 'activity' | 'notices' | 'googleforms' | 'settings';
 
 interface SidebarProps {
   activeTab: OwnerTab;
@@ -30,6 +31,7 @@ const NAV_ITEMS: Array<{ tab: OwnerTab; label: string; icon: React.ElementType; 
   { tab: 'dashboard', label: 'Home', icon: LayoutDashboard },
   { tab: 'matrix', label: 'Rooms', icon: Layers },
   { tab: 'tenants', label: 'Tenants', icon: Users },
+  { tab: 'exited', label: 'Exited', icon: UserMinus },
   { tab: 'finance', label: 'Money', icon: IndianRupee, ownerOnly: true },
   { tab: 'reports', label: 'Reports', icon: FileBarChart, ownerOnly: true },
   { tab: 'activity', label: 'Activity', icon: History, ownerOnly: true },

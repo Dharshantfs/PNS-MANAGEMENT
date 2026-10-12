@@ -184,6 +184,10 @@ export async function createTenant(tenant: Omit<Tenant, 'id'>): Promise<string> 
   return ref.id;
 }
 
+export async function removeTenant(tenantId: string): Promise<void> {
+  await deleteDoc(doc(db, 'tenants', tenantId));
+}
+
 export async function saveTenant(tenantId: string, updates: Partial<Tenant>): Promise<void> {
   await updateDoc(doc(db, 'tenants', tenantId), { ...updates, updatedAt: nowIso() } as DocumentData);
 }

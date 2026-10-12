@@ -7,6 +7,7 @@ import { TenantOnboardingForm } from './components/tenant/TenantOnboardingForm';
 import { OwnerDashboard } from './components/owner/OwnerDashboard';
 import { FloorBedMatrix } from './components/owner/FloorBedMatrix';
 import { TenantDirectory } from './components/owner/TenantDirectory';
+import { ExitedTenants } from './components/owner/ExitedTenants';
 import { FinancialReports } from './components/owner/FinancialReports';
 import { ReportsPage } from './components/owner/ReportsPage';
 import { ActivityLogPage } from './components/owner/ActivityLogPage';
@@ -213,6 +214,7 @@ const AppContent: React.FC = () => {
             {ownerTab === 'tenants' && (
               <TenantDirectory onOpenKYCOnboarding={(id) => handleOpenOnboarding(id)} />
             )}
+            {ownerTab === 'exited' && <ExitedTenants />}
             {ownerTab === 'finance' && isOwnerRole && <FinancialReports />}
             {ownerTab === 'reports' && isOwnerRole && <ReportsPage />}
             {ownerTab === 'activity' && isOwnerRole && <ActivityLogPage />}

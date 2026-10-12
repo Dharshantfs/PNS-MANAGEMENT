@@ -298,7 +298,7 @@ export type ActivityAction =
   | 'agreement.add' | 'agreement.update' | 'agreement.delete'
   | 'room.add' | 'room.update' | 'room.delete'
   | 'bed.assign' | 'bed.vacate'
-  | 'tenant.add' | 'tenant.update'
+  | 'tenant.add' | 'tenant.update' | 'tenant.delete'
   | 'kyc.submit' | 'kyc.approve' | 'kyc.reject'
   | 'charge.add'
   | 'payment.record' | 'payment.confirm'

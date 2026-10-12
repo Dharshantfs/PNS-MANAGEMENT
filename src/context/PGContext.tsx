@@ -38,6 +38,7 @@ import {
   removeRoom,
   createTenant,
   saveTenant,
+  removeTenant,
   createPayment,
   nextReceiptNumber,
   createNotice,
@@ -212,6 +213,8 @@ interface PGContextType {
     checkInDate?: string;
   }) => string;
   updateTenant: (tenantId: string, updates: Partial<Tenant>) => void;
+  // Permanently deletes the tenant record (admin only, see ExitedTenants).
+  deleteTenant: (tenantId: string) => Promise<void>;
   submitKYC: (tenantId: string, kycData: Partial<TenantKYC>) => void;
   approveKYC: (tenantId: string) => void;
   rejectKYC: (tenantId: string, reason: string) => void;
@@ -839,7 +842,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       securityDeposit: room.securityDeposit,
       dueAmount: tenant.dueAmount > 0 ? tenant.dueAmount : bed.pricePerMonth || room.pricePerBed,
       rentStatus: tenant.rentStatus === 'paid' ? 'paid' : 'due',
-    })
+      // Re-admitting someone who had moved out brings them back to Tenants.
+      ...(tenant.checkOutDate ? { checkOutDate: deleteField(), exitSettlement: deleteField() } : {}),
+    } as unknown as Partial<Tenant>)
       .then(() => logActivity('bed.assign', `Assigned ${tenant.name} to Room ${room.roomNumber} (${bed.bedLabel})`))
       .catch((e) => console.warn('assignBed(tenant) failed', e));
 
@@ -953,6 +958,15 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     saveTenant(tenantId, updates)
       .then(() => logActivity('tenant.update', `Updated tenant ${tenant?.name || tenantId}`))
       .catch((e) => console.warn('updateTenant failed', e));
+  };
+
+  const deleteTenant = async (tenantId: string): Promise<void> => {
+    const tenant = tenants.find((t) => t.id === tenantId);
+    if (!tenant || role !== 'owner' || ownerProfile?.role !== 'owner') return;
+    // A resident still in a bed must go through exit formalities first.
+    if (tenant.roomId && tenant.bedId) throw new Error('This resident still has a bed. Complete their exit first.');
+    await removeTenant(tenantId);
+    logActivity('tenant.delete', `Permanently deleted tenant ${tenant.name}`);
   };
 
   const submitKYC = (tenantId: string, kycData: Partial<TenantKYC>) => {
@@ -1294,6 +1308,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         transferBed,
         addTenant,
         updateTenant,
+        deleteTenant,
         submitKYC,
         approveKYC,
         rejectKYC,

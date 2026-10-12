@@ -90,7 +90,7 @@ import { TenantAvatar } from '../common/TenantAvatar';
 interface TenantProfilePanelProps {
   tenant: Tenant;
   onClose: () => void;
-  onViewDossier: () => void;
+  onViewDossier?: () => void;
 }
 
 const stayingSince = (checkInDate: string): string => {
@@ -205,10 +205,10 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
                 )}
                 <span>KYC: {kycStatus}</span>
               </span>
-              <button type="button" onClick={onViewDossier} className="text-[11px] text-brand-700 hover:text-brand-900 font-bold flex items-center space-x-1">
+              {onViewDossier && <button type="button" onClick={onViewDossier} className="text-[11px] text-brand-700 hover:text-brand-900 font-bold flex items-center space-x-1">
                 <FileCheck2 className="w-3.5 h-3.5" />
                 <span>Full Dossier</span>
-              </button>
+              </button>}
             </div>
             <AadhaarCopies key={tenant.id} tenant={tenant} />
             {kycStatus !== 'verified' && (
