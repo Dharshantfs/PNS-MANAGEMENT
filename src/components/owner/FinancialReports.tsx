@@ -23,6 +23,8 @@ import {
 import confetti from 'canvas-confetti';
 import { ReceiptModal } from '../common/ReceiptModal';
 import { NumberField } from '../common/NumberField';
+import { auth } from '../../lib/firebase';
+import { monthLabelIST, todayIST } from '../../services/firestoreService';
 
 export const FinancialReports: React.FC = () => {
   const { payments, tenants, settings, activeProperty, getStats, recordPayment, confirmPendingPayment, addDueCharge, charges } = usePG();
@@ -46,7 +48,10 @@ export const FinancialReports: React.FC = () => {
   // New payment form state
   const [payTenantId, setPayTenantId] = useState('');
   const [payAmount, setPayAmount] = useState<number>(8500);
-  const [payMonth, setPayMonth] = useState('August 2026');
+  const [payMonth, setPayMonth] = useState(monthLabelIST());
+  const [payPurpose, setPayPurpose] = useState<'rent' | 'deposit'>('rent');
+  const [payError, setPayError] = useState('');
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [payMode, setPayMode] = useState<'UPI' | 'Cash' | 'Bank Transfer' | 'Card'>('UPI');
   const [payTxnId, setPayTxnId] = useState('');
   const [payNotes, setPayNotes] = useState('');
@@ -71,27 +76,54 @@ export const FinancialReports: React.FC = () => {
 
   const handleCreatePayment = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPayError('');
     if (!payTenantId || payAmount <= 0) return;
 
-    const newPayment = await recordPayment({
-      tenantId: payTenantId,
-      amount: Number(payAmount),
-      month: payMonth,
-      paymentMode: payMode,
-      transactionId: payTxnId.trim() || undefined,
-      notes: payNotes.trim() || undefined,
-    });
-
-    setIsRecordPaymentOpen(false);
-    confetti({ particleCount: 40, spread: 70, origin: { y: 0.6 } });
-    setSelectedReceiptPayment(newPayment);
+    try {
+      const newPayment = await recordPayment({
+        tenantId: payTenantId,
+        amount: Number(payAmount),
+        month: payMonth,
+        paymentMode: payMode,
+        transactionId: payTxnId.trim() || undefined,
+        notes: payNotes.trim() || undefined,
+        purpose: payPurpose,
+      });
+      setIsRecordPaymentOpen(false);
+      confetti({ particleCount: 40, spread: 70, origin: { y: 0.6 } });
+      setSelectedReceiptPayment(newPayment);
+    } catch (err: any) {
+      setPayError(err?.message || 'Could not record the payment.');
+    }
   };
+
+  const suggestedAmount = (t: Tenant, purpose: 'rent' | 'deposit') =>
+    purpose === 'deposit'
+      ? Math.max(0, (t.securityDeposit || 0) - (t.depositReceived ?? 0))
+      : t.dueAmount > 0
+        ? t.dueAmount
+        : t.monthlyRent;
 
   const handleSelectTenantForPayment = (tenantId: string) => {
     setPayTenantId(tenantId);
     const t = tenants.find((item) => item.id === tenantId);
-    if (t) {
-      setPayAmount(t.dueAmount > 0 ? t.dueAmount : t.monthlyRent);
+    if (t) setPayAmount(suggestedAmount(t, payPurpose));
+  };
+
+  const handleSelectPurpose = (purpose: 'rent' | 'deposit') => {
+    setPayPurpose(purpose);
+    const t = tenants.find((item) => item.id === payTenantId);
+    if (t) setPayAmount(suggestedAmount(t, purpose));
+  };
+
+  const handleConfirmPending = async (paymentId: string) => {
+    setConfirmingId(paymentId);
+    try {
+      await confirmPendingPayment(paymentId);
+    } catch (err: any) {
+      window.alert(err?.message || 'Could not confirm the payment.');
+    } finally {
+      setConfirmingId(null);
     }
   };
 
@@ -121,21 +153,15 @@ export const FinancialReports: React.FC = () => {
   const handleSendWhatsAppReminder = async (tenant: Tenant) => {
     setSendingWa(tenant.id);
     try {
+      const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/send-whatsapp-reminder', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: tenant.phone,
-          tenantName: tenant.name,
-          amountDue: tenant.dueAmount,
-          dueDate: '5th of the month',
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tenantId: tenant.id }),
       });
       const data = await response.json();
-      if (data.success) {
-        setWaToast(`WhatsApp reminder dispatched to ${tenant.name}!`);
-        setTimeout(() => setWaToast(null), 3500);
-      }
+      setWaToast(data.success ? `WhatsApp reminder sent to ${tenant.name}.` : data.error || 'Could not send the reminder.');
+      setTimeout(() => setWaToast(null), 5000);
     } catch {
       setWaToast('Failed to dispatch reminder.');
     }
@@ -198,7 +224,7 @@ export const FinancialReports: React.FC = () => {
               ₹{stats.totalReceivedRevenue.toLocaleString('en-IN')}
             </div>
             <p className="text-[11px] text-emerald-700 font-medium mt-0.5">
-              {payments.length} successful payments recorded
+              This month - {payments.filter((p) => p.status === 'paid' && (p.paymentDate || '').slice(0, 7) === todayIST().slice(0, 7)).length} confirmed payments
             </p>
           </div>
 
@@ -217,7 +243,8 @@ export const FinancialReports: React.FC = () => {
             <div className="text-xl font-black text-brand-900 mt-1">
               ₹
               {tenants
-                .reduce((sum, t) => sum + (t.depositPaid ? t.securityDeposit : 0), 0)
+                .filter((t) => !t.checkOutDate)
+                .reduce((sum, t) => sum + (t.depositReceived ?? (t.depositPaid ? t.securityDeposit : 0)), 0)
                 .toLocaleString('en-IN')}
             </div>
             <p className="text-[11px] text-brand-700 font-medium mt-0.5">Refundable safety deposits</p>
@@ -300,11 +327,12 @@ export const FinancialReports: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => confirmPendingPayment(p.id)}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center space-x-1"
+                  disabled={confirmingId === p.id}
+                  onClick={() => handleConfirmPending(p.id)}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center space-x-1"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Confirm Received</span>
+                  <span>{confirmingId === p.id ? 'Confirming...' : 'Confirm Received'}</span>
                 </button>
               </div>
             ))}
@@ -381,7 +409,7 @@ export const FinancialReports: React.FC = () => {
             <tbody className="divide-y divide-slate-100 font-medium">
               {filteredPayments.map((p) => (
                 <tr key={p.id} className="hover:bg-brand-50/30 transition">
-                  <td className="py-3.5 px-3 font-mono font-bold text-brand-900">{p.receiptNumber}</td>
+                  <td className="py-3.5 px-3 font-mono font-bold text-brand-900">{p.receiptNumber || 'Pending'}</td>
                   <td className="py-3.5 px-3">
                     <p className="font-bold text-slate-900">{p.tenantName}</p>
                     <p className="text-[10px] text-slate-500">Room {p.roomNumber}</p>
@@ -437,6 +465,20 @@ export const FinancialReports: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreatePayment} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Payment For *</label>
+                <select
+                  value={payPurpose}
+                  onChange={(e) => handleSelectPurpose(e.target.value as 'rent' | 'deposit')}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-brand-600"
+                >
+                  <option value="rent">Rent / dues</option>
+                  <option value="deposit">Security deposit (held, refundable)</option>
+                </select>
+              </div>
+              {payError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">{payError}</div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Select Tenant *</label>
                 <select

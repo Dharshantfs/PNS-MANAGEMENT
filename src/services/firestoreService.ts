@@ -35,6 +35,24 @@ import {
 
 export const nowIso = () => new Date().toISOString();
 
+// Calendar dates are always India time. `toISOString()` is UTC, which gives
+// the previous day for anything done between 00:00 and 05:30 IST.
+export const todayIST = (): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(
+    new Date()
+  );
+
+// "October 2026" - the month label used on payments and charges.
+export const monthLabelIST = (date: Date = new Date()): string =>
+  new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', month: 'long', year: 'numeric' }).format(date);
+
+// Secret part of a tenant's KYC invite link - see api/_lib/app.ts.
+export const newInviteToken = (): string => {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+
 // Canonical phone format used everywhere a tenant's number is stored
 // (+91XXXXXXXXXX, no spaces) so exact-match Firestore queries on `phone`
 // work reliably instead of needing a full-collection client-side scan.
@@ -90,34 +108,14 @@ export async function updateProperty(propertyId: string, updates: Partial<Proper
   await updateDoc(doc(db, 'properties', propertyId), { ...updates, updatedAt: nowIso() });
 }
 
-// Used by the public tenant self-onboarding page when no `?property=` id is
-// given in the link - falls back to whichever property was created first.
-// Fine for an owner running a single property; owners with several should
-// share onboarding links that include `?property=<id>`.
-export async function getFirstProperty(): Promise<Property | null> {
-  const snap = await getDocs(query(collection(db, 'properties'), orderBy('createdAt', 'asc'), limit(1)));
-  const d = snap.docs[0];
-  return d ? ({ id: d.id, ...d.data() } as Property) : null;
-}
-
-// Single tenant by id - used by the public onboarding page, where the
-// visitor isn't signed in and so can't list the property's tenants (see the
-// tenants rule in firestore.rules: `get` is open, `list` is limited to 1).
-export async function getTenant(tenantId: string): Promise<Tenant | null> {
-  const snap = await getDoc(doc(db, 'tenants', tenantId));
-  return snap.exists() ? ({ id: snap.id, ...snap.data() } as Tenant) : null;
-}
-
 export async function getProperty(propertyId: string): Promise<Property | null> {
   const snap = await getDoc(doc(db, 'properties', propertyId));
   return snap.exists() ? ({ id: snap.id, ...snap.data() } as Property) : null;
 }
 
-// Cross-property phone lookup used by tenant login and public onboarding (a
-// tenant doesn't know their own doc id ahead of time). Uses an exact-match
-// query - not a full collection scan - so Firestore rules can restrict reads
-// to "one matching document by phone" instead of exposing the whole
-// `tenants` collection (which holds Aadhaar/KYC data) to anyone.
+// Finds an older phone-OTP tenant login's own record by its verified phone
+// number (newer tenant logins carry their tenant id as a claim instead).
+// firestore.rules only allow this query for the caller's own phone.
 export async function findTenantByPhone(phone: string): Promise<Tenant | null> {
   const normalized = normalizePhone(phone);
   if (normalized === '+91') return null;
@@ -136,7 +134,7 @@ function subscribeScoped<T>(
   cb: (items: T[]) => void
 ): () => void {
   const q = query(collection(db, collectionName), where('propertyId', '==', propertyId));
-  return onSnapshot(q, (snap) => cb(fromDocs<T>(snap)));
+  return onSnapshot(q, (snap) => cb(fromDocs<T>(snap)), (err) => console.warn(`${collectionName} subscription failed`, err));
 }
 
 export const subscribeRooms = (propertyId: string, cb: (rooms: Room[]) => void) =>
@@ -153,6 +151,33 @@ export const subscribeNotices = (propertyId: string, cb: (notices: Notice[]) => 
 
 export const subscribeTickets = (propertyId: string, cb: (tickets: MaintenanceTicket[]) => void) =>
   subscribeScoped<MaintenanceTicket>('tickets', propertyId, cb);
+
+// A signed-in tenant may only read their own records (see firestore.rules),
+// so their screens subscribe by tenant id instead of by property.
+export function subscribeForTenant<T>(
+  collectionName: 'payments' | 'tickets' | 'charges',
+  tenantId: string,
+  cb: (items: T[]) => void
+): () => void {
+  const q = query(collection(db, collectionName), where('tenantId', '==', tenantId));
+  return onSnapshot(q, (snap) => cb(fromDocs<T>(snap)), (err) => console.warn(`${collectionName} subscription failed`, err));
+}
+
+export function subscribeTenantDoc(tenantId: string, cb: (tenant: Tenant | null) => void): () => void {
+  return onSnapshot(
+    doc(db, 'tenants', tenantId),
+    (snap) => cb(snap.exists() ? ({ id: snap.id, ...snap.data() } as Tenant) : null),
+    (err) => console.warn('tenant subscription failed', err)
+  );
+}
+
+export function subscribeRoomDoc(roomId: string, cb: (room: Room | null) => void): () => void {
+  return onSnapshot(
+    doc(db, 'rooms', roomId),
+    (snap) => cb(snap.exists() ? ({ id: snap.id, ...snap.data() } as Room) : null),
+    (err) => console.warn('room subscription failed', err)
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Rooms
@@ -198,11 +223,16 @@ export async function saveTenant(tenantId: string, updates: Partial<Tenant>): Pr
 // (the old client-side `payments.length + 1` numbering could).
 // ---------------------------------------------------------------------------
 
-export async function nextReceiptNumber(propertyId: string): Promise<string> {
-  const counterRef = doc(db, 'properties', propertyId, 'counters', 'receipts');
-  const year = new Date().getFullYear();
-  const month = String(new Date().getMonth() + 1).padStart(2, '0');
+export const receiptCounterRef = (propertyId: string) => doc(db, 'properties', propertyId, 'counters', 'receipts');
 
+// Receipt number for counter value `seq`, dated in India time.
+export function formatReceiptNumber(seq: number): string {
+  const [year, month] = todayIST().split('-');
+  return `PG-REC-${year}-${month}-${String(seq).padStart(3, '0')}`;
+}
+
+export async function nextReceiptNumber(propertyId: string): Promise<string> {
+  const counterRef = receiptCounterRef(propertyId);
   const seq = await runTransaction(db, async (tx) => {
     const snap = await tx.get(counterRef);
     const current = snap.exists() ? (snap.data().value as number) : 0;
@@ -210,8 +240,7 @@ export async function nextReceiptNumber(propertyId: string): Promise<string> {
     tx.set(counterRef, { value: next }, { merge: true });
     return next;
   });
-
-  return `PG-REC-${year}-${month}-${String(seq).padStart(3, '0')}`;
+  return formatReceiptNumber(seq);
 }
 
 export async function createPayment(payment: Omit<PaymentRecord, 'id'>): Promise<string> {

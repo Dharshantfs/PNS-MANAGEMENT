@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { TenantAvatar } from '../common/TenantAvatar';
+import { auth } from '../../lib/firebase';
 
 interface OwnerDashboardProps {
   onNavigateToMatrix: () => void;
@@ -45,15 +46,11 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
   const handleSendWhatsApp = async (tenantId: string, phone: string, name: string, dueAmount: number) => {
     setSendingWa(tenantId);
     try {
+      const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/send-whatsapp-reminder', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone,
-          tenantName: name,
-          amountDue: dueAmount,
-          dueDate: '5th of the month',
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tenantId }),
       });
       const data = await response.json();
       if (data.success) {
@@ -61,7 +58,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
         confetti({ particleCount: 25, spread: 50, origin: { y: 0.7 } });
         setTimeout(() => setWaToast(null), 3500);
       } else {
-        setWaToast({ id: tenantId, msg: `Failed: ${data.error}` });
+        setWaToast({ id: tenantId, msg: data.error || 'Could not send the reminder.' });
       }
     } catch {
       setWaToast({ id: tenantId, msg: 'Network error sending WhatsApp reminder.' });

@@ -191,24 +191,37 @@ export const FloorBedMatrix: React.FC = () => {
     setEditingRoom(null);
   };
 
-  const handleConfirmAssign = () => {
+  const handleConfirmAssign = async () => {
     if (!assigningBedInfo || !selectedTenantIdToAssign) return;
-    const success = assignBed(assigningBedInfo.room.id, assigningBedInfo.bed.id, selectedTenantIdToAssign);
-    if (success) {
+    try {
+      await assignBed(assigningBedInfo.room.id, assigningBedInfo.bed.id, selectedTenantIdToAssign);
       confetti({ particleCount: 40, spread: 70, origin: { y: 0.6 } });
       setAssigningBedInfo(null);
       setSelectedTenantIdToAssign('');
+    } catch (e: any) {
+      window.alert(e?.message || 'Could not assign the bed.');
     }
   };
 
-  const handleConfirmTransfer = () => {
+  const handleConfirmTransfer = async () => {
     if (!transferringTenant || !targetRoomId || !targetBedId) return;
-    const success = transferBed(transferringTenant.id, targetRoomId, targetBedId);
-    if (success) {
+    try {
+      await transferBed(transferringTenant.id, targetRoomId, targetBedId);
       confetti({ particleCount: 40, spread: 70, origin: { y: 0.6 } });
       setTransferringTenant(null);
       setTargetRoomId('');
       setTargetBedId('');
+    } catch (e: any) {
+      window.alert(e?.message || 'Could not transfer the resident.');
+    }
+  };
+
+  const handleDeleteRoom = async (roomId: string, roomNumber: string) => {
+    if (!window.confirm(`Delete Room ${roomNumber}? This cannot be undone.`)) return;
+    try {
+      await deleteRoom(roomId);
+    } catch (e: any) {
+      window.alert(e?.message || 'Could not delete the room.');
     }
   };
 
@@ -377,7 +390,7 @@ export const FloorBedMatrix: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => deleteRoom(room.id)}
+                      onClick={() => handleDeleteRoom(room.id, room.roomNumber)}
                       className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
                       title="Delete Room"
                     >
@@ -481,7 +494,9 @@ export const FloorBedMatrix: React.FC = () => {
                                   onClick={() => {
                                     if (occupant) setExitingTenant(occupant);
                                     else if (window.confirm(`Vacate ${bed.bedLabel} in Room ${room.roomNumber}?`)) {
-                                      vacateBed(room.id, bed.id);
+                                      vacateBed(room.id, bed.id).catch((e: any) =>
+                                        window.alert(e?.message || 'Could not vacate the bed.')
+                                      );
                                     }
                                   }}
                                   className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold rounded-lg transition flex items-center space-x-1"

@@ -28,14 +28,24 @@ export const TenantStatementModal: React.FC<TenantStatementModalProps> = ({
 }) => {
   const rows = useMemo<StatementRow[]>(() => {
     if (!tenant) return [];
+    // A pending (tenant-reported) payment isn't money received yet, and a
+    // security deposit only counts against dues when it was billed as a
+    // 'deposit' charge - otherwise it is held separately.
+    const depositBilled = charges.some((c) => c.tenantId === tenant.id && c.categoryType === 'deposit');
     const paymentRows: StatementRow[] = payments
       .filter((p) => p.tenantId === tenant.id)
-      .map((p) => ({
-        date: p.paymentDate,
-        description: `Rent payment - ${p.month} (${p.paymentMode}${p.status === 'pending' ? ', awaiting confirmation' : ''})`,
-        debit: 0,
-        credit: p.amount,
-      }));
+      .map((p) => {
+        const isDeposit = p.purpose === 'deposit';
+        const counts = p.status !== 'pending' && (!isDeposit || depositBilled);
+        return {
+          date: p.paymentDate,
+          description: `${isDeposit ? 'Security deposit' : 'Payment'} - ${p.month} (${p.paymentMode}${
+            p.status === 'pending' ? ', awaiting confirmation - not counted yet' : ''
+          }${isDeposit && !depositBilled ? ', held as deposit' : ''})`,
+          debit: 0,
+          credit: counts ? p.amount : 0,
+        };
+      });
     const chargeRows: StatementRow[] = charges
       .filter((c) => c.tenantId === tenant.id)
       .map((c) => ({

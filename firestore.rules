@@ -2,30 +2,24 @@ rules_version = '2';
 
 // Security rules for the PG management app's Firestore database.
 //
-// IMPORTANT - please review and test this in the Firebase Console's Rules
-// Playground before relying on it in production. It was written to match
-// the app's current data model (see src/types.ts and
-// src/services/firestoreService.ts) but has not been tested against a live
-// project from this environment.
-//
-// The public tenant onboarding page (TenantOnboardingForm.tsx) no longer
-// writes `tenants` or `rooms` from the browser - new residents, KYC, Aadhaar
-// photos and tenant logins all go through the server (api/_lib/app.ts
-// /api/onboard/*, Admin SDK, which bypasses these rules). So creating a
-// tenant or changing a room's beds is owner/staff-only below.
-//
-// kycDocuments (Aadhaar photos) intentionally has no rule at all: Firestore
-// denies anything without a matching rule, so browsers can never read it -
-// only the server routes can.
-//
 // This file is published automatically on every Vercel deploy
 // (scripts/deployFirestoreRules.ts) - edit it here, never in the Console.
 //
-// Admin/staff accounts are invite-only (see server/app.ts
-// POST /api/admin/create-team-member) - there is no public sign-up. An
-// invited account's users/{uid} profile lists which properties it can
-// access (`propertyIds`), which is what "owns" a property for rules
-// purposes below, not just the original creator's uid.
+// Who is who:
+// - Owner / staff: email+password accounts with a users/{uid} profile
+//   (created only by the Admin SDK - bootstrap script or Settings > Team
+//   Access). They reach a property either by creating it (its `ownerId`) or
+//   by being invited to it (their profile's `propertyIds`).
+// - Tenant: email+password account created by POST /api/onboard/tenant-login
+//   with custom claims { role: 'tenant', tenantId }. Older phone-OTP tenant
+//   accounts are matched by their verified phone number instead.
+// - Signed-out visitors (invite links, self-registration) never read or
+//   write Firestore directly any more - everything they need goes through
+//   the server (api/_lib/app.ts /api/onboard/*), which checks the invite
+//   token and returns only non-sensitive fields.
+//
+// Collections with no rule at all are server-only (Admin SDK bypasses
+// rules): kycDocuments (Aadhaar photos), propertySecrets (webhook keys).
 service cloud.firestore {
 match /databases/{database}/documents {
 
@@ -33,38 +27,72 @@ match /databases/{database}/documents {
     return request.auth != null;
   }
 
+  function tokenTenantId() {
+    return request.auth.token.get('tenantId', '');
+  }
+
+  // Only a phone number proven by an SMS sign-in counts. Email/password
+  // accounts can carry any phone number, so it proves nothing.
+  function tokenPhone() {
+    return request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'phone'
+      ? request.auth.token.get('phone_number', '')
+      : '';
+  }
+
+  function isTenantAccount() {
+    return isSignedIn() && request.auth.token.get('role', '') == 'tenant' && tokenTenantId() != '';
+  }
+
+  // An owner/staff account: signed in, not a tenant login, and has a
+  // users/{uid} profile (only the Admin SDK can create one).
+  function isStaff() {
+    return isSignedIn() &&
+      request.auth.token.get('role', '') != 'tenant' &&
+      exists(/databases/$(database)/documents/users/$(request.auth.uid));
+  }
+
   function callerProfile() {
     return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
   }
 
-  // A property is accessible either to the account that directly created it
-  // (its own `ownerId` field - checked here so the creator's access never
-  // depends on their users/{uid} profile being separately kept in sync,
-  // which the client is intentionally not allowed to do - see the users/{uid}
-  // rule below) or to an invited team member listed in their own profile's
+  // A property is accessible to the account that created it (its own
+  // `ownerId`) or to an invited team member listed in their profile's
   // `propertyIds` (set server-side only, at invite time).
   function isOwnerOfProperty(propertyId) {
-    return isSignedIn() && (
+    return isStaff() && (
       get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid ||
-      propertyId in callerProfile().propertyIds
+      propertyId in callerProfile().get('propertyIds', [])
     );
   }
 
-  // Property/business SETTINGS (room types, sharing options, dues packages,
-  // agreement templates, rent due day, etc.) are owner-only - a "staff" role
-  // account can run day-to-day operations (rooms/tenants/payments/notices/
-  // tickets, all still gated by isOwnerOfProperty above) but not reconfigure
-  // the property itself or invite more team members (that's also enforced
-  // server-side in server/app.ts's create-team-member endpoint).
+  // Property SETTINGS are owner-role only; staff run day-to-day operations.
   function isOwnerRole() {
-    return isSignedIn() && callerProfile().role == 'owner';
+    return isStaff() && callerProfile().role == 'owner';
+  }
+
+  // The signed-in tenant's own tenant document.
+  function myTenant() {
+    return get(/databases/$(database)/documents/tenants/$(tokenTenantId())).data;
+  }
+
+  // Is `tenantId` the signed-in tenant? By claim, or (older phone-OTP
+  // accounts) by the tenant document's phone matching the verified phone.
+  function isTenantSelf(tenantId) {
+    return isSignedIn() && (
+      (tokenTenantId() != '' && tokenTenantId() == tenantId) ||
+      (tokenPhone() != '' &&
+        get(/databases/$(database)/documents/tenants/$(tenantId)).data.phone == tokenPhone())
+    );
+  }
+
+  // Does the signed-in tenant live in `propertyId`?
+  function isTenantOfProperty(propertyId) {
+    return isTenantAccount() && myTenant().propertyId == propertyId;
   }
 
   // Owner/staff profile. The account may read/update its own profile, but
   // NOT its own `role` or `propertyIds` - those are only ever set by the
-  // Admin SDK (server/app.ts, which bypasses rules), preventing a staff
-  // account from self-promoting to owner or granting itself other
-  // properties. `mustChangePassword` and `name` remain self-editable.
+  // Admin SDK, preventing self-promotion to owner.
   match /users/{uid} {
     allow read: if isSignedIn() && request.auth.uid == uid;
     allow create: if false; // only the Admin SDK creates profiles
@@ -73,94 +101,110 @@ match /databases/{database}/documents {
       request.resource.data.propertyIds == resource.data.propertyIds;
   }
 
-  // Properties: readable by anyone (needed for the public onboarding page to
-  // show room types/sharing options before the visitor is signed in).
-  // Only the owning account may create/update/delete its own property.
+  // Properties: a single property can be read by id (the tenant portal and
+  // invite pages show its name / UPI id), but the collection can't be
+  // listed except for your own properties.
   match /properties/{propertyId} {
-    allow read: if true;
-    allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+    allow get: if true;
+    allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    allow create: if isStaff() && request.resource.data.ownerId == request.auth.uid;
     allow update, delete: if isOwnerOfProperty(propertyId) && isOwnerRole();
 
+    // Receipt-number counter - only owner/staff issue receipts.
     match /counters/{counterId} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow read, write: if isOwnerOfProperty(propertyId);
     }
   }
 
-  // Rooms: readable by anyone (needed to show vacant beds during public
-  // onboarding). Writes are owner/staff-only; public onboarding allocates
-  // beds server-side.
+  // Rooms: owner/staff of the property; a tenant may read only the room
+  // they live in. (Public onboarding gets vacant-room options from the
+  // server, without any resident names.)
   match /rooms/{roomId} {
-    allow read: if true;
-    // `resource` doesn't exist yet on a create - it must be checked against
-    // `request.resource` (the incoming document), not `resource` (the prior
-    // one), otherwise every create is silently denied.
+    allow get: if isOwnerOfProperty(resource.data.propertyId) ||
+      (isTenantAccount() && myTenant().get('roomId', '') == roomId);
+    allow list: if isOwnerOfProperty(resource.data.propertyId);
     allow create: if isOwnerOfProperty(request.resource.data.propertyId);
+    allow update: if isOwnerOfProperty(resource.data.propertyId) &&
+      request.resource.data.propertyId == resource.data.propertyId;
     allow delete: if isOwnerOfProperty(resource.data.propertyId);
-    allow update: if isOwnerOfProperty(resource.data.propertyId);
   }
 
-  // Tenants: hold PII/KYC data, so reads are locked down more than
-  // properties/rooms. A tenant may read/update only their own document
-  // (matched by their signed-in phone number); the owner may read/update any
-  // tenant on their own property. Public onboarding is allowed to `create`
-  // a new tenant document (see the trade-off note above) and `get` a single
-  // document by exact phone match (findTenantByPhone uses an exact-match
-  // query, not a collection scan, so this doesn't expose the whole list).
+  // Tenants hold KYC / Aadhaar data: readable only by owner/staff of the
+  // property and by the tenant themself.
   match /tenants/{tenantId} {
-    allow get: if true;
-    // Owner/staff list their own property's tenants (Tenant Directory,
-    // dashboard counts); everyone else may only run the single-result
-    // phone lookup. The owner check comes first so a full-list query never
-    // depends on the `limit` comparison (null when no limit is set).
-    allow list: if isOwnerOfProperty(resource.data.propertyId) || request.query.limit <= 1;
+    allow get: if isOwnerOfProperty(resource.data.propertyId) || isTenantSelf(tenantId);
+    // Owner/staff list their property's tenants; an older phone-OTP tenant
+    // account may look up its own record by its verified phone number.
+    allow list: if isOwnerOfProperty(resource.data.propertyId) ||
+      (isSignedIn() && tokenPhone() != '' && resource.data.phone == tokenPhone());
     allow create: if isOwnerOfProperty(request.resource.data.propertyId);
-    allow update: if isOwnerOfProperty(resource.data.propertyId) ||
-      (isSignedIn() && request.auth.token.phone_number == resource.data.phone);
+    // A tenant may only (re)submit their own KYC for review - never touch
+    // dues, rent, deposit, status or anything else, and never mark
+    // themselves verified.
+    allow update: if (isOwnerOfProperty(resource.data.propertyId) &&
+        request.resource.data.propertyId == resource.data.propertyId) ||
+      (isTenantSelf(tenantId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kyc', 'updatedAt']) &&
+        resource.data.kyc.get('status', 'unsubmitted') != 'verified' &&
+        request.resource.data.kyc.status == 'pending' &&
+        request.resource.data.kyc.get('verifiedByOwner', false) == false);
     allow delete: if isOwnerOfProperty(resource.data.propertyId);
   }
 
-  // Payments: owner has full access to their property's payments. A tenant
-  // may create a payment report for themself (see PGContext.payRentAsTenant)
-  // but cannot mark it 'paid' - only the owner can (confirmPendingPayment).
+  // Payments: owner/staff manage them. A tenant may read their own and
+  // report a UPI payment for themself - only as 'pending', for their own
+  // property. Only owner/staff can confirm it (mark it 'paid').
   match /payments/{paymentId} {
-    allow read: if isOwnerOfProperty(resource.data.propertyId) ||
-      (isSignedIn() &&
-        get(/databases/$(database)/documents/tenants/$(resource.data.tenantId)).data.phone == request.auth.token.phone_number);
-    allow create: if isOwnerOfProperty(request.resource.data.propertyId) || isSignedIn();
-    allow update, delete: if isOwnerOfProperty(resource.data.propertyId);
+    allow read: if isOwnerOfProperty(resource.data.propertyId) || isTenantSelf(resource.data.tenantId);
+    allow create: if isOwnerOfProperty(request.resource.data.propertyId) ||
+      (isTenantAccount() &&
+        request.resource.data.tenantId == tokenTenantId() &&
+        request.resource.data.propertyId == myTenant().propertyId &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.get('receiptNumber', '') == '' &&
+        request.resource.data.get('purpose', 'rent') == 'rent' &&
+        request.resource.data.get('verificationSource', 'manual') == 'manual' &&
+        request.resource.data.amount is number &&
+        request.resource.data.amount > 0);
+    allow update: if isOwnerOfProperty(resource.data.propertyId) &&
+      request.resource.data.propertyId == resource.data.propertyId;
+    allow delete: if isOwnerOfProperty(resource.data.propertyId);
   }
 
-  // Notices & maintenance tickets: owner manages fully; any signed-in tenant
-  // on the property can read notices and create/read their own tickets.
+  // Notices: owner/staff manage; tenants of the property read them.
   match /notices/{noticeId} {
-    allow read: if true;
-    allow write: if isOwnerOfProperty(request.resource.data.propertyId) ||
-      isOwnerOfProperty(resource.data.propertyId);
-  }
-
-  match /tickets/{ticketId} {
-    allow read: if isSignedIn();
-    allow create: if isSignedIn();
-    allow update, delete: if isOwnerOfProperty(resource.data.propertyId);
-  }
-
-  // Dues charges (Settings > Dues Packages, added via Financial Reports >
-  // Add Dues): owner-only, both to create and to read/manage. Unlike
-  // payments, a tenant never creates or needs to read these directly.
-  match /charges/{chargeId} {
-    allow read: if isOwnerOfProperty(resource.data.propertyId);
+    allow read: if isOwnerOfProperty(resource.data.propertyId) || isTenantOfProperty(resource.data.propertyId);
     allow create: if isOwnerOfProperty(request.resource.data.propertyId);
-    allow update, delete: if isOwnerOfProperty(resource.data.propertyId);
+    allow update: if isOwnerOfProperty(resource.data.propertyId) &&
+      request.resource.data.propertyId == resource.data.propertyId;
+    allow delete: if isOwnerOfProperty(resource.data.propertyId);
   }
 
-  // Activity log (Owner > Activity Log): records what staff/co-owner accounts
-  // did in the app. Owner-only to read (so staff can't see each other's/the
-  // owner's full history); any owner/staff account with property access may
-  // append an entry alongside the action it describes (see PGContext's
-  // `logActivity`). Immutable once written - no update/delete rule, and the
-  // one server-side writer (api/_lib/app.ts team invite) uses the Admin SDK,
-  // which bypasses these rules entirely.
+  // Maintenance tickets: owner/staff see all of their property's tickets;
+  // a tenant sees and raises only their own.
+  match /tickets/{ticketId} {
+    allow read: if isOwnerOfProperty(resource.data.propertyId) || isTenantSelf(resource.data.tenantId);
+    allow create: if isOwnerOfProperty(request.resource.data.propertyId) ||
+      (isTenantAccount() &&
+        request.resource.data.tenantId == tokenTenantId() &&
+        request.resource.data.propertyId == myTenant().propertyId &&
+        request.resource.data.status == 'Open');
+    allow update: if isOwnerOfProperty(resource.data.propertyId) &&
+      request.resource.data.propertyId == resource.data.propertyId;
+    allow delete: if isOwnerOfProperty(resource.data.propertyId);
+  }
+
+  // Dues charges: owner/staff create and manage; a tenant can read their own.
+  match /charges/{chargeId} {
+    allow read: if isOwnerOfProperty(resource.data.propertyId) || isTenantSelf(resource.data.tenantId);
+    allow create: if isOwnerOfProperty(request.resource.data.propertyId);
+    allow update: if isOwnerOfProperty(resource.data.propertyId) &&
+      request.resource.data.propertyId == resource.data.propertyId;
+    allow delete: if isOwnerOfProperty(resource.data.propertyId);
+  }
+
+  // Activity log: owner-role read; any owner/staff account with property
+  // access may append. Immutable once written.
   match /activityLogs/{logId} {
     allow read: if isOwnerOfProperty(resource.data.propertyId) && isOwnerRole();
     allow create: if isOwnerOfProperty(request.resource.data.propertyId);

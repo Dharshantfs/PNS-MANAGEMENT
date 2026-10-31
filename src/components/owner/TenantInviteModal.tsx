@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Tenant } from '../../types';
 import { usePG } from '../../context/PGContext';
 import {
@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { TenantAvatar } from '../common/TenantAvatar';
+import { auth } from '../../lib/firebase';
+import { newInviteToken, saveTenant } from '../../services/firestoreService';
 
 interface TenantInviteModalProps {
   tenant: Tenant;
@@ -31,7 +33,12 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
   onClose,
   onOpenFormDirectly,
 }) => {
-  const { activeProperty } = usePG();
+  const { activeProperty, tenants } = usePG();
+  // The live record carries the invite token; the `tenant` prop can be a
+  // placeholder built right after "Add tenant", before Firestore echoes it.
+  const liveTenant = tenants.find((t) => t.id === tenant.id);
+  const [inviteToken, setInviteToken] = useState<string>(tenant.inviteToken || '');
+  const [tokenError, setTokenError] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [isSendingTwilio, setIsSendingTwilio] = useState(false);
@@ -40,10 +47,25 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
     msg: string;
   }>({ type: 'idle', msg: '' });
 
+  // Every invite link carries the tenant's secret token - without it the
+  // KYC page refuses the link. Older tenants get one the first time.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (liveTenant?.inviteToken) {
+      setInviteToken(liveTenant.inviteToken);
+      return;
+    }
+    if (inviteToken || !liveTenant) return;
+    const token = newInviteToken();
+    saveTenant(tenant.id, { inviteToken: token })
+      .then(() => setInviteToken(token))
+      .catch((e) => setTokenError(e?.message || 'Could not create the invite link.'));
+  }, [isOpen, liveTenant?.inviteToken, !!liveTenant]);
+
   if (!isOpen) return null;
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const inviteUrl = `${origin}/?onboard=${tenant.id}&property=${tenant.propertyId}`;
+  const inviteUrl = inviteToken ? `${origin}/?onboard=${tenant.id}&t=${inviteToken}` : '';
   const cleanPhone = tenant.phone.replace(/\D/g, '');
 
   const whatsappMessage = `Hello ${tenant.name}! 👋\n\nWelcome to ${activeProperty?.name || 'our PG'}.\nYou have been allocated Room ${tenant.roomNumber || 'Assigned'} (${tenant.bedLabel || 'Bed Assigned'}).\n\nPlease fill out your mandatory Digital KYC (Aadhaar Card, Date of Birth, Emergency Contact, and Occupation) by opening this secure link:\n\n${inviteUrl}\n\nAfter submitting, you will get an email with a link to set your password. Then log in to the Tenant Portal (${origin}) with that email to pay rent and access PG amenities.`;
@@ -51,6 +73,7 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
   const waMeUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(whatsappMessage)}`;
 
   const handleCopyLink = () => {
+    if (!inviteUrl) return;
     navigator.clipboard.writeText(inviteUrl);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);
@@ -67,15 +90,11 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
     setTwilioStatus({ type: 'idle', msg: '' });
 
     try {
+      const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/send-whatsapp-invite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: cleanPhone,
-          tenantName: tenant.name,
-          roomNumber: tenant.roomNumber || 'Assigned',
-          inviteUrl,
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tenantId: tenant.id }),
       });
 
       const data = await response.json();
@@ -156,11 +175,15 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
               Tenant KYC Registration Link:
             </label>
+            <p className="text-[11px] text-slate-500">
+              This link is private to {tenant.name} - links sent before this update no longer work, so resend it if they
+              haven't completed KYC yet.
+            </p>
             <div className="flex items-center space-x-2">
               <input
                 type="text"
                 readOnly
-                value={inviteUrl}
+                value={inviteUrl || (tokenError ? `Error: ${tokenError}` : 'Preparing secure link...')}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-brand-900 font-medium select-all focus:outline-none focus:border-brand-600"
               />
               <button

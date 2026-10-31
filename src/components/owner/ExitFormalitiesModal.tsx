@@ -3,6 +3,7 @@ import { X, CheckCircle2, AlertTriangle, IndianRupee, LogOut } from 'lucide-reac
 import { usePG } from '../../context/PGContext';
 import { NumberField } from '../common/NumberField';
 import { ExitSettlement } from '../../types';
+import { monthLabelIST, todayIST } from '../../services/firestoreService';
 
 interface ExitFormalitiesModalProps {
   tenantId: string;
@@ -24,13 +25,13 @@ const Check: React.FC<{ checked: boolean; onChange: (v: boolean) => void; label:
 // are still due - the owner records the final payment here first, then settles
 // the security deposit and completes the exit (which frees the bed).
 export const ExitFormalitiesModal: React.FC<ExitFormalitiesModalProps> = ({ tenantId, onClose }) => {
-  const { tenants, recordPayment, vacateBed, updateTenant, ownerProfile } = usePG();
+  const { tenants, recordPayment, completeExit, ownerProfile } = usePG();
   // Only an admin (owner) may let a resident leave with dues pending; staff cannot.
   const isAdmin = ownerProfile?.role === 'owner';
   // Read the live tenant so the due amount refreshes right after a payment.
   const tenant = tenants.find((t) => t.id === tenantId);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayIST();
   const [payAmount, setPayAmount] = useState<number | null>(null);
   const [payMode, setPayMode] = useState<PayMode>('Cash');
   const [payBusy, setPayBusy] = useState(false);
@@ -45,6 +46,9 @@ export const ExitFormalitiesModal: React.FC<ExitFormalitiesModalProps> = ({ tena
   const [overrideDues, setOverrideDues] = useState(false);
   const [overrideReason, setOverrideReason] = useState('');
   const [done, setDone] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  // When leaving with dues still pending, take them out of the deposit first.
+  const [offsetFromDeposit, setOffsetFromDeposit] = useState(true);
   // Frozen at completion: after vacating, the live tenant's data changes.
   const [doneRefund, setDoneRefund] = useState(0);
 
@@ -52,12 +56,15 @@ export const ExitFormalitiesModal: React.FC<ExitFormalitiesModalProps> = ({ tena
 
   const due = tenant.dueAmount || 0;
   const duesCleared = due <= 0;
-  const depositHeld = tenant.depositPaid ? tenant.securityDeposit || 0 : 0;
+  // Deposit actually received (recorded as 'Security deposit' payments);
+  // older records only have the depositPaid flag.
+  const depositHeld = tenant.depositReceived ?? (tenant.depositPaid ? tenant.securityDeposit || 0 : 0);
   const safeDeductions = Math.min(Math.max(0, deductions), depositHeld);
-  const refund = depositHeld - safeDeductions;
   const checklistDone = keyReturned && roomInspected && noticeGiven;
   const duesOverridden = !duesCleared && isAdmin && overrideDues && !!overrideReason.trim();
-  const canComplete = (duesCleared || duesOverridden) && checklistDone && !!exitDate;
+  const depositOffset = duesOverridden && offsetFromDeposit ? Math.min(due, depositHeld - safeDeductions) : 0;
+  const refund = Math.max(0, depositHeld - safeDeductions - depositOffset);
+  const canComplete = (duesCleared || duesOverridden) && checklistDone && !!exitDate && !completing;
 
   const handlePay = async () => {
     const amount = payAmount ?? due;
@@ -65,8 +72,7 @@ export const ExitFormalitiesModal: React.FC<ExitFormalitiesModalProps> = ({ tena
     setPayBusy(true);
     setError('');
     try {
-      const month = new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' }).format(new Date());
-      await recordPayment({ tenantId: tenant.id, amount, month, paymentMode: payMode, notes: 'Final dues - exit formalities' });
+      await recordPayment({ tenantId: tenant.id, amount, month: monthLabelIST(), paymentMode: payMode, notes: 'Final dues - exit formalities' });
       setPayAmount(null);
     } catch (e: any) {
       setError(e?.message || 'Could not record the payment.');
@@ -75,24 +81,37 @@ export const ExitFormalitiesModal: React.FC<ExitFormalitiesModalProps> = ({ tena
     }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (!canComplete) return;
     const settlement: ExitSettlement = {
       completedAt: new Date().toISOString(),
       depositHeld,
       deductions: safeDeductions,
       refundAmount: refund,
-      ...(duesOverridden ? { duesOutstanding: due, duesOverrideReason: overrideReason.trim() } : {}),
+      ...(duesOverridden
+        ? {
+            duesOutstanding: due - depositOffset,
+            duesOverrideReason: overrideReason.trim(),
+            ...(depositOffset > 0 ? { depositAdjustedAgainstDues: depositOffset } : {}),
+          }
+        : {}),
       checklist: { keyReturned, roomInspected, noticeGiven },
       ...(safeDeductions > 0 && deductionNotes.trim() ? { deductionNotes: deductionNotes.trim() } : {}),
       ...(refund > 0 ? { refundMode } : {}),
     };
-    // vacateBed frees the bed and stamps today's date; the exit date and
-    // settlement are written right after so a back-dated exit date wins.
-    if (tenant.roomId && tenant.bedId) vacateBed(tenant.roomId, tenant.bedId);
-    updateTenant(tenant.id, { checkOutDate: exitDate, exitSettlement: settlement });
-    setDoneRefund(refund);
-    setDone(true);
+    setCompleting(true);
+    setError('');
+    try {
+      // Frees the bed, applies the deposit adjustment and stores the
+      // settlement in one transaction - nothing is half-done if it fails.
+      await completeExit(tenant.id, { exitDate, settlement, depositOffset });
+      setDoneRefund(refund);
+      setDone(true);
+    } catch (e: any) {
+      setError(e?.message || 'Could not complete the exit - please try again.');
+    } finally {
+      setCompleting(false);
+    }
   };
 
   return (
@@ -175,7 +194,20 @@ export const ExitFormalitiesModal: React.FC<ExitFormalitiesModalProps> = ({ tena
                       className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-rose-300 focus:outline-none focus:border-rose-600"
                     />
                   )}
-                  {overrideDues && <p className="text-[11px] text-rose-800">The {inr(due)} stays on the resident's record as unpaid.</p>}
+                  {overrideDues && depositHeld > 0 && (
+                    <Check
+                      checked={offsetFromDeposit}
+                      onChange={setOffsetFromDeposit}
+                      label={`Adjust the pending dues from the deposit (up to ${inr(Math.max(0, depositHeld - safeDeductions))})`}
+                    />
+                  )}
+                  {overrideDues && (
+                    <p className="text-[11px] text-rose-800">
+                      {due - depositOffset > 0
+                        ? `${inr(due - depositOffset)} stays on the resident's record as unpaid.`
+                        : 'The pending dues are fully covered by the deposit.'}
+                    </p>
+                  )}
                 </div>
               )}
               {!duesCleared && !isAdmin && <p className="text-[11px] text-rose-800">Only an admin can approve an exit with dues pending.</p>}
@@ -224,6 +256,12 @@ export const ExitFormalitiesModal: React.FC<ExitFormalitiesModalProps> = ({ tena
                       className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-brand-600"
                     />
                   )}
+                  {depositOffset > 0 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">Adjusted against pending dues</span>
+                      <span className="font-bold">- {inr(depositOffset)}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between text-xs border-t border-slate-100 pt-2">
                     <span className="font-bold">Refund to resident</span>
                     <span className="font-black text-emerald-700">{inr(refund)}</span>
@@ -241,7 +279,10 @@ export const ExitFormalitiesModal: React.FC<ExitFormalitiesModalProps> = ({ tena
                   )}
                 </>
               ) : (
-                <p className="text-[11px] text-slate-500">No security deposit was collected from this resident, so there is nothing to refund.</p>
+                <p className="text-[11px] text-slate-500">
+                  No security deposit is recorded for this resident, so there is nothing to refund. If one was collected
+                  earlier, record it first from their profile (Record Payment &gt; Security deposit).
+                </p>
               )}
             </div>
 
@@ -252,7 +293,7 @@ export const ExitFormalitiesModal: React.FC<ExitFormalitiesModalProps> = ({ tena
               className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Complete Exit &amp; Vacate Bed</span>
+              <span>{completing ? 'Completing...' : 'Complete Exit & Vacate Bed'}</span>
             </button>
             {!canComplete && (
               <p className="text-[11px] text-slate-500 text-center">

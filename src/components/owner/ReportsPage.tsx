@@ -41,7 +41,8 @@ export const ReportsPage: React.FC = () => {
       });
     return Array.from(byMonth.entries())
       .map(([month, v]) => ({ month, ...v }))
-      .sort((a, b) => (a.month < b.month ? 1 : -1));
+      // "October 2026" sorts by date, not alphabetically.
+      .sort((a, b) => (Date.parse(`1 ${b.month}`) || 0) - (Date.parse(`1 ${a.month}`) || 0));
   }, [payments]);
 
   const roomTypeName = (id: string) => activeProperty?.roomTypes.find((rt) => rt.id === id)?.name || '-';
@@ -162,7 +163,10 @@ export const ReportsPage: React.FC = () => {
               <div className="bg-brand-50/70 p-4 rounded-2xl border border-brand-200">
                 <span className="font-bold text-brand-800 uppercase tracking-wider">Deposits Held</span>
                 <div className="text-lg font-black text-brand-900 mt-1">
-                  ₹{tenants.reduce((sum, t) => sum + (t.depositPaid ? t.securityDeposit : 0), 0).toLocaleString('en-IN')}
+                  ₹{tenants
+                    .filter((t) => !t.checkOutDate)
+                    .reduce((sum, t) => sum + (t.depositReceived ?? (t.depositPaid ? t.securityDeposit : 0)), 0)
+                    .toLocaleString('en-IN')}
                 </div>
               </div>
             </div>

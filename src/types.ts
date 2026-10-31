@@ -55,6 +55,8 @@ export interface ExitSettlement {
   // Set only when an admin let the resident leave with dues still pending.
   duesOutstanding?: number;
   duesOverrideReason?: string;
+  // Part of the deposit used to clear dues at exit.
+  depositAdjustedAgainstDues?: number;
   refundAmount: number; // depositHeld - deductions (0 if the deposit was never paid)
   refundMode?: 'UPI' | 'Cash' | 'Bank Transfer';
   checklist: { keyReturned: boolean; roomInspected: boolean; noticeGiven: boolean };
@@ -81,8 +83,20 @@ export interface Tenant {
   exitSettlement?: ExitSettlement;
   rentStatus: PaymentStatus;
   dueAmount: number;
+  // Money paid beyond what was due - used up by the next rent / charges.
+  advanceBalance?: number;
+  // Security deposit actually received so far (deposit payments), and how
+  // much of it was billed into dueAmount through 'deposit' dues charges.
+  depositReceived?: number;
+  depositBilled?: number;
+  // Last month (YYYY-MM, India time) the monthly rent was billed for.
+  lastRentPeriod?: string;
   lastPaymentDate?: string;
   authUid?: string; // Tenant Portal login (Firebase Auth uid), created at KYC submit
+  // Secret part of the KYC invite link (?onboard=<id>&t=<token>).
+  inviteToken?: string;
+  // Room a self-registered applicant asked for (no bed until the owner assigns one).
+  preferredRoomId?: string;
   kyc: TenantKYC;
   hometown: string;
   createdAt?: string;
@@ -155,12 +169,16 @@ export interface PaymentRecord {
   amount: number;
   dueAmount: number;
   status: 'paid' | 'partial' | 'pending';
+  // What the money is for. Missing on older records = rent/dues.
+  purpose?: 'rent' | 'deposit';
   paymentMode: 'UPI' | 'Cash' | 'Bank Transfer' | 'Card';
   // 'manual' = owner reconciled it by hand (default today, no payment gateway keys yet).
   // 'gateway' is reserved for a future Cashfree order/webhook integration.
   verificationSource: PaymentVerificationSource;
   transactionId?: string;
   paymentDate: string;
+  // Issued when the payment is recorded or confirmed - empty while a
+  // tenant-reported payment is still pending.
   receiptNumber: string;
   notes?: string;
 }
@@ -242,6 +260,11 @@ export interface Property {
   totalFloors: number;
   gateClosingTime: string;
   rentDueDay: number; // e.g., 5th of every month
+  // Bill every staying resident one month's rent on the due day (server
+  // cron, api/_lib/app.ts /api/cron/monthly-rent).
+  autoMonthlyRent?: boolean;
+  // First month (YYYY-MM) automatic rent may bill - set when it's switched on.
+  autoRentFrom?: string;
   roomTypes: RoomTypeConfig[];
   sharingOptions: SharingConfig[];
   duesCategories: DuesCategoryConfig[];
@@ -265,7 +288,7 @@ export interface DueCharge {
   amount: number;
   date: string;
   notes?: string;
-  addedBy: 'owner';
+  addedBy: 'owner' | 'system';
 }
 
 // Backward-compatible flattened view of the active Property's settings, kept so
@@ -298,7 +321,7 @@ export type ActivityAction =
   | 'agreement.add' | 'agreement.update' | 'agreement.delete'
   | 'room.add' | 'room.update' | 'room.delete'
   | 'bed.assign' | 'bed.vacate'
-  | 'tenant.add' | 'tenant.update' | 'tenant.delete'
+  | 'tenant.add' | 'tenant.update' | 'tenant.delete' | 'tenant.exit'
   | 'kyc.submit' | 'kyc.approve' | 'kyc.reject'
   | 'charge.add'
   | 'payment.record' | 'payment.confirm'

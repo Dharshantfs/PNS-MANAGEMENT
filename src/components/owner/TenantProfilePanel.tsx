@@ -6,6 +6,7 @@ import { AgreementModal } from './AgreementModal';
 import { NumberField } from '../common/NumberField';
 import { auth } from '../../lib/firebase';
 import { ExitFormalitiesModal } from './ExitFormalitiesModal';
+import { monthLabelIST } from '../../services/firestoreService';
 
 // Aadhaar front/back photos uploaded from the tenant onboarding form. They
 // live server-side only (kycDocuments/{tenantId}), so they're fetched through
@@ -117,6 +118,7 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
   const [showPayForm, setShowPayForm] = useState(false);
   const [payAmount, setPayAmount] = useState(tenant.dueAmount || tenant.monthlyRent);
   const [payMode, setPayMode] = useState<'UPI' | 'Cash' | 'Bank Transfer' | 'Card'>('Cash');
+  const [payPurpose, setPayPurpose] = useState<'rent' | 'deposit'>('rent');
   const [payBusy, setPayBusy] = useState(false);
 
   const room = rooms.find((r) => r.id === tenant.roomId);
@@ -129,19 +131,24 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
     r.beds.filter((b) => b.status === 'vacant').map((b) => ({ room: r, bed: b }))
   );
 
-  const handleTransfer = (roomId: string, bedId: string) => {
+  const handleTransfer = async (roomId: string, bedId: string) => {
     if (!roomId || !bedId) return;
-    transferBed(tenant.id, roomId, bedId);
-    setChangingRoom(false);
+    try {
+      await transferBed(tenant.id, roomId, bedId);
+      setChangingRoom(false);
+    } catch (e: any) {
+      window.alert(e?.message || 'Could not change the room.');
+    }
   };
 
   const handleRecordPayment = async () => {
     if (payAmount <= 0) return;
     setPayBusy(true);
     try {
-      const month = new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' }).format(new Date());
-      await recordPayment({ tenantId: tenant.id, amount: payAmount, month, paymentMode: payMode });
+      await recordPayment({ tenantId: tenant.id, amount: payAmount, month: monthLabelIST(), paymentMode: payMode, purpose: payPurpose });
       setShowPayForm(false);
+    } catch (e: any) {
+      window.alert(e?.message || 'Could not record the payment.');
     } finally {
       setPayBusy(false);
     }
@@ -261,8 +268,29 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
                 {showPayForm ? 'Cancel' : 'Add'}
               </button>
             </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-emerald-900">
+              <span>Due: <b>₹{(tenant.dueAmount || 0).toLocaleString('en-IN')}</b></span>
+              {(tenant.advanceBalance || 0) > 0 && <span>Advance: <b>₹{(tenant.advanceBalance || 0).toLocaleString('en-IN')}</b></span>}
+              <span>
+                Deposit held: <b>₹{(tenant.depositReceived ?? (tenant.depositPaid ? tenant.securityDeposit : 0) ?? 0).toLocaleString('en-IN')}</b>
+                {tenant.securityDeposit ? ` of ₹${tenant.securityDeposit.toLocaleString('en-IN')}` : ''}
+              </span>
+            </div>
             {showPayForm && (
               <div className="space-y-2">
+                <select
+                  value={payPurpose}
+                  onChange={(e) => {
+                    const purpose = e.target.value as 'rent' | 'deposit';
+                    setPayPurpose(purpose);
+                    const held = tenant.depositReceived ?? 0;
+                    setPayAmount(purpose === 'deposit' ? Math.max(0, (tenant.securityDeposit || 0) - held) : tenant.dueAmount || tenant.monthlyRent);
+                  }}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-emerald-300 focus:outline-none focus:border-emerald-600"
+                >
+                  <option value="rent">Rent / dues</option>
+                  <option value="deposit">Security deposit</option>
+                </select>
                 <div className="flex items-center gap-2">
                   <NumberField
                     value={payAmount}

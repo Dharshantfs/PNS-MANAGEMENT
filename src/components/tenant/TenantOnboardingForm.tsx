@@ -24,10 +24,48 @@ import {
   FileCheck2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { findTenantByPhone, getFirstProperty, getTenant } from '../../services/firestoreService';
+import { todayIST } from '../../services/firestoreService';
 import { getSharingLabel } from '../../lib/roomLabels';
 import { compressImage } from '../../lib/imageCompress';
 import { sendPasswordSetupEmail } from '../../services/authService';
+
+// Vacant-room option for the public form (from GET /api/onboard/property/:id -
+// no resident names).
+interface PublicRoomOption {
+  id: string;
+  roomNumber: string;
+  floor: number;
+  sharingLabel: string;
+  pricePerBed: number;
+  vacant: number;
+}
+
+// The server's view of an invited tenant (POST /api/onboard/lookup) - no
+// full Aadhaar number, no dues - shaped as a Tenant for the form.
+const tenantFromInviteView = (v: any): Tenant =>
+  ({
+    id: v.id,
+    propertyId: v.propertyId,
+    name: v.name || '',
+    email: v.email || '',
+    phone: '',
+    photoUrl: '',
+    roomId: v.roomId || undefined,
+    roomNumber: v.roomNumber || undefined,
+    bedLabel: v.bedLabel || undefined,
+    floor: v.floor || 1,
+    monthlyRent: v.monthlyRent || 0,
+    securityDeposit: v.securityDeposit || 0,
+    depositPaid: false,
+    checkInDate: v.checkInDate || '',
+    rentStatus: 'due',
+    dueAmount: 0,
+    hometown: '',
+    kyc: { ...(v.kyc || {}), aadhaar: { ...(v.kyc?.aadhaar || {}), aadhaarNumber: '' } },
+  }) as Tenant;
+
+const readParams = () =>
+  typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
 
 interface TenantOnboardingFormProps {
   tenantId?: string;
@@ -40,7 +78,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
   onCompletedLogin,
   onBackToLogin,
 }) => {
-  const { tenants, submitKYC, settings, rooms, activePropertyId, activeProperty, switchProperty, authUser } = usePG();
+  const { tenants, submitKYC, settings, rooms, activePropertyId, activeProperty, authUser } = usePG();
 
   // Find targeted tenant if exists
   const [selectedTenantId, setSelectedTenantId] = useState<string>(tenantId || '');
@@ -52,36 +90,54 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
   // link's id or by phone lookup is kept here instead.
   const [fetchedTenant, setFetchedTenant] = useState<Tenant | null>(null);
 
-  // Invite link (?onboard=<tenantId>): load that tenant directly and use
-  // their own property, so the link works whichever property they belong to.
+  // Secret part of the invite link (?onboard=<id>&t=<token>). A visitor who
+  // self-registers gets one back from the server for their new record.
+  const [inviteToken, setInviteToken] = useState(() => readParams().get('t') || '');
+  const [linkError, setLinkError] = useState('');
+  const [phoneLast4, setPhoneLast4] = useState('');
+  const [publicProperty, setPublicProperty] = useState<{ id: string; name: string } | null>(null);
+  const [publicRooms, setPublicRooms] = useState<PublicRoomOption[]>([]);
+
+  // Invite link: the server checks the token and returns only what the form
+  // needs. Owner/staff opening the form for a tenant use their own data.
   useEffect(() => {
     if (!tenantId) return;
-    getTenant(tenantId)
-      .then((t) => {
-        if (!t) return;
-        setFetchedTenant(t);
-        if (t.propertyId) switchProperty(t.propertyId);
+    if (authUser && tenants.some((t) => t.id === tenantId)) return;
+    if (authUser && !inviteToken) return; // owner view - tenants are still loading
+    fetch('/api/onboard/lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenantId, token: inviteToken }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.success) {
+          setLinkError(data.error || 'This link is not valid any more - ask the PG office for a new one.');
+          return;
+        }
+        setFetchedTenant(tenantFromInviteView(data.tenant));
+        setPhoneLast4(data.tenant.phoneLast4 || '');
+        setPublicProperty(data.property);
       })
-      .catch((e) => console.warn('Invite link tenant lookup failed', e));
-  }, [tenantId]);
+      .catch(() => setLinkError('Could not open this link - check your internet connection and try again.'));
+  }, [tenantId, authUser, tenants.length]);
 
-  // This form is reachable via a public link before anyone is signed in, so
-  // there's no property scope from auth yet. Resolve one from a `?property=`
-  // link param, falling back to whichever property was created first (fine
-  // for an owner running a single property).
+  // Self-registration: the PG (from ?property=<id>, the signed-in owner's
+  // property, or the default PG) and its vacant rooms - from the server.
   useEffect(() => {
-    // An invite link resolves its property from the tenant itself (above).
-    if (activePropertyId || tenantId) return;
-    const params = new URLSearchParams(window.location.search);
-    const urlPropertyId = params.get('property');
-    if (urlPropertyId) {
-      switchProperty(urlPropertyId);
-    } else {
-      getFirstProperty().then((p) => {
-        if (p) switchProperty(p.id);
-      });
-    }
-  }, [activePropertyId, switchProperty]);
+    if (tenantId) return;
+    const pid = readParams().get('property') || activePropertyId || 'default';
+    fetch(`/api/onboard/property/${encodeURIComponent(pid)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.success) return;
+        setPublicProperty(data.property);
+        setPublicRooms(data.rooms || []);
+      })
+      .catch((e) => console.warn('PG details could not be loaded', e));
+  }, [tenantId, activePropertyId]);
+
+  const propertyName = publicProperty?.name || activeProperty?.name || settings.pgName;
 
   // Look in existing tenants list
   const existingTenant =
@@ -139,7 +195,8 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
       if (urlPhone) {
         setPhoneLookup(urlPhone);
         setMobileNumber(urlPhone);
-        const match = tenants.find((t) => t.phone.replace(/\D/g, '').includes(urlPhone.replace(/\D/g, '')));
+        const want = urlPhone.replace(/\D/g, '').slice(-10);
+        const match = tenants.find((t) => t.phone.replace(/\D/g, '').slice(-10) === want);
         if (match) {
           setSelectedTenantId(match.id);
         } else {
@@ -195,26 +252,18 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
     }
     setValidationError('');
 
-    // Check context tenants
-    const found = tenants.find((t) => t.phone.replace(/\D/g, '').includes(clean));
+    // Owner/staff filling the form: find the resident in their own list.
+    const found = authUser ? tenants.find((t) => t.phone.replace(/\D/g, '').slice(-10) === clean.slice(-10)) : undefined;
     if (found) {
       setSelectedTenantId(found.id);
       setIsSelfRegisterMode(false);
       return;
     }
 
-    // Check Firestore directly (tenant may belong to this property but not yet
-    // be loaded into local context, e.g. right after being invited)
-    const serverMatch = await findTenantByPhone(clean);
-    if (serverMatch) {
-      setFetchedTenant(serverMatch);
-      if (serverMatch.propertyId) switchProperty(serverMatch.propertyId);
-      setSelectedTenantId(serverMatch.id);
-      setIsSelfRegisterMode(false);
-      return;
-    }
-
-    // If not found, seamlessly enable self-registration
+    // Anyone else registers as a new resident. A number that is already
+    // registered is refused by the server - existing residents must use the
+    // private KYC link the PG office sent them (a phone number alone is not
+    // proof of identity).
     setMobileNumber(clean);
     setIsSelfRegisterMode(true);
   };
@@ -303,8 +352,14 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
 
     try {
       let targetId = existingTenant?.id;
-      let allocatedRoom = existingTenant ? rooms.find((r) => r.id === existingTenant.roomId) : undefined;
-      let allocatedBed = allocatedRoom?.beds.find((b) => b.id === existingTenant?.bedId);
+      let token = inviteToken;
+      let stay = {
+        roomId: existingTenant?.roomId,
+        roomNumber: existingTenant?.roomNumber,
+        bedLabel: existingTenant?.bedLabel,
+        floor: existingTenant?.floor || 1,
+        monthlyRent: existingTenant?.monthlyRent || 0,
+      };
 
       const postJson = async (url: string, body: any) => {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -318,41 +373,45 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
       // KYC always lands as 'pending' - even a fully self-reported submission
       // needs an owner glance before it's treated as verified.
       if (!targetId) {
-        // New resident: the server creates the tenant, allocates a bed and
-        // saves the KYC in one go (api/_lib/app.ts POST /api/onboard/submit).
-        // Done server-side because a signed-out visitor can't write a full
-        // tenant record, and so the photos below have a tenant to attach to.
+        // New resident: the server creates the record with the KYC (api/_lib/
+        // app.ts POST /api/onboard/submit). A signed-out visitor gets no bed
+        // yet - the PG office assigns one - and receives the new record's
+        // invite token for the photo upload and login below.
         const data = await postJson('/api/onboard/submit', {
           ...kycPayload,
-          propertyId: activePropertyId,
+          propertyId: publicProperty?.id || activePropertyId,
           roomId: preferredRoomId || undefined,
           permanentAddress: aadhaarAddress,
         });
         targetId = data.tenant.id as string;
+        token = data.inviteToken || '';
+        setInviteToken(token);
         // If the photo upload below fails, a retry must update this tenant,
         // not create a second one.
-        setFetchedTenant(data.tenant);
+        setFetchedTenant(tenantFromInviteView(data.tenant));
         setSelectedTenantId(data.tenant.id);
-        allocatedRoom = rooms.find((r) => r.id === data.tenant.roomId);
-        allocatedBed = allocatedRoom?.beds.find((b) => b.id === data.tenant.bedId);
+        stay = {
+          roomId: data.tenant.roomId || undefined,
+          roomNumber: data.tenant.roomNumber || undefined,
+          bedLabel: data.tenant.bedLabel || undefined,
+          floor: data.tenant.floor || 1,
+          monthlyRent: data.tenant.monthlyRent || 0,
+        };
       } else if (!authUser) {
-        // Invited tenant on their own phone, not signed in: firestore.rules
-        // won't let them update their tenant doc directly, so the server
-        // saves it (api/_lib/app.ts POST /api/onboard/kyc).
-        await postJson('/api/onboard/kyc', {
-          tenantId: targetId,
-          phone: phoneLookup || existingTenant?.phone,
-          kyc: kycPayload,
-        });
+        // Invited tenant on their own phone: the server checks the link's
+        // token and saves the KYC (POST /api/onboard/kyc).
+        await postJson('/api/onboard/kyc', { tenantId: targetId, token, kyc: kycPayload });
       } else {
-        submitKYC(targetId, kycPayload as any);
+        // Only the KYC fields - not the form's name/phone/room helpers.
+        const { tenantId: _id, name: _n, phone: _p, email: _e, roomId: _r, ...kycOnly } = kycPayload;
+        await submitKYC(targetId, kycOnly as any);
       }
 
       if (frontDoc || backDoc) {
         try {
           await postJson('/api/onboard/kyc-docs', {
             tenantId: targetId,
-            phone: existingTenant?.phone || targetPhone,
+            token,
             front: frontDoc || undefined,
             back: backDoc || undefined,
           });
@@ -367,7 +426,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
       try {
         const login = await postJson('/api/onboard/tenant-login', {
           tenantId: targetId,
-          phone: existingTenant?.phone || targetPhone,
+          token,
           email: email.trim(),
         });
         if (login.existing) {
@@ -382,22 +441,21 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
 
       setCreatedTenantData({
         id: targetId,
-        propertyId: activePropertyId || '',
+        propertyId: publicProperty?.id || activePropertyId || '',
         name: targetName,
         email,
         phone: targetPhone,
         photoUrl: '', // no photo yet - TenantAvatar shows initials
-        roomId: allocatedRoom?.id,
-        roomNumber: allocatedRoom?.roomNumber,
-        bedId: allocatedBed?.id,
-        bedLabel: allocatedBed?.bedLabel,
-        floor: allocatedRoom?.floor || 1,
-        monthlyRent: existingTenant?.monthlyRent || allocatedBed?.pricePerMonth || allocatedRoom?.pricePerBed || 0,
-        securityDeposit: existingTenant?.securityDeposit || allocatedRoom?.securityDeposit || 0,
+        roomId: stay.roomId,
+        roomNumber: stay.roomNumber,
+        bedLabel: stay.bedLabel,
+        floor: stay.floor,
+        monthlyRent: stay.monthlyRent,
+        securityDeposit: existingTenant?.securityDeposit || 0,
         depositPaid: existingTenant?.depositPaid || false,
-        checkInDate: existingTenant?.checkInDate || new Date().toISOString().split('T')[0],
+        checkInDate: existingTenant?.checkInDate || todayIST(),
         rentStatus: existingTenant?.rentStatus || 'due',
-        dueAmount: existingTenant?.dueAmount ?? (allocatedBed?.pricePerMonth || allocatedRoom?.pricePerBed || 0),
+        dueAmount: existingTenant?.dueAmount ?? 0,
         hometown: `${city}, ${stateName}`,
         kyc: { ...(existingTenant?.kyc as TenantKYC), ...(kycPayload as any), status: 'pending' },
       });
@@ -410,6 +468,38 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
       setIsSubmitting(false);
     }
   };
+
+  const maskedPhone = phoneLast4 ? `XXXXXX${phoneLast4}` : '';
+  const displayPhone = (mobileNumber || phoneLookup || existingTenant?.phone || '').replace(/\D/g, '').slice(-10) || maskedPhone;
+
+  // Invite link that the server refused (expired / old link without token).
+  if (tenantId && linkError && !existingTenant) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl border border-brand-100 shadow-xl w-full max-w-md p-8 text-slate-900 space-y-4 text-center">
+          <AlertCircle className="w-10 h-10 text-amber-600 mx-auto" />
+          <h1 className="text-lg font-bold">This KYC link can't be opened</h1>
+          <p className="text-xs text-slate-600">{linkError}</p>
+          <button
+            type="button"
+            onClick={onBackToLogin}
+            className="px-5 py-2.5 bg-brand-700 hover:bg-brand-800 text-white rounded-xl text-xs font-bold"
+          >
+            Back to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Invite link still loading.
+  if (tenantId && !existingTenant) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-brand-700 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   // Screen 0: Initial Mobile Number Verification & Lookup Screen
   if (!existingTenant && !isSelfRegisterMode) {
@@ -563,10 +653,14 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
               <div>
                 <p className="text-xs text-slate-500 font-medium">Hostel Accommodation Status:</p>
                 <h3 className="text-sm font-bold text-slate-900">
-                  {existingTenant?.roomNumber ? `Room ${existingTenant.roomNumber} (${existingTenant.bedLabel}) • Floor ${existingTenant.floor}` : 'Automated Room Allocation on Submit'}
+                  {existingTenant?.roomNumber
+                    ? `Room ${existingTenant.roomNumber} (${existingTenant.bedLabel}) • Floor ${existingTenant.floor}`
+                    : authUser
+                      ? 'Bed assigned from the Bed Matrix'
+                      : 'The PG office will assign your bed after you register'}
                 </h3>
                 <p className="text-xs text-brand-800 font-semibold">
-                  Phone: +91 {(mobileNumber || phoneLookup || existingTenant?.phone || '').replace(/\D/g, '')}
+                  Phone: +91 {displayPhone}
                 </p>
               </div>
             </div>
@@ -652,15 +746,21 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                       onChange={(e) => setPreferredRoomId(e.target.value)}
                       className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-brand-600 shadow-sm"
                     >
-                      <option value="">-- Auto Assign First Available Room --</option>
-                      {rooms.map((r) => {
-                        const vacantCount = r.beds.filter((b) => b.status === 'vacant').length;
-                        return (
-                          <option key={r.id} value={r.id}>
-                            Room {r.roomNumber} ({getSharingLabel(activeProperty, r.sharingId)} • Floor {r.floor}) - {vacantCount} Vacant - ₹{r.pricePerBed}/mo
-                          </option>
-                        );
-                      })}
+                      <option value="">{authUser ? '-- Auto-assign first vacant bed --' : '-- No preference --'}</option>
+                      {authUser && rooms.length > 0
+                        ? rooms.map((r) => {
+                            const vacantCount = r.beds.filter((b) => b.status === 'vacant').length;
+                            return (
+                              <option key={r.id} value={r.id}>
+                                Room {r.roomNumber} ({getSharingLabel(activeProperty, r.sharingId)} • Floor {r.floor}) - {vacantCount} Vacant - ₹{r.pricePerBed}/mo
+                              </option>
+                            );
+                          })
+                        : publicRooms.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              Room {r.roomNumber} ({r.sharingLabel || 'Room'} • Floor {r.floor}) - {r.vacant} Vacant - ₹{r.pricePerBed}/mo
+                            </option>
+                          ))}
                     </select>
                   </div>
                 </div>
@@ -1072,10 +1172,10 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                 KYC Registration Successful
               </span>
               <h2 className="text-2xl font-black text-slate-900">
-                Welcome to {activeProperty?.name || 'the PG'}, {activeTenantObj.name}!
+                Welcome to {propertyName || 'the PG'}, {activeTenantObj.name}!
               </h2>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Your Aadhaar card details ({aadhaarNum}), DOB ({dob}), emergency contact ({emergencyName} - {emergencyPhone}), and occupation records have been securely registered to your mobile number (+91 {activeTenantObj.phone.replace(/\D/g, '')}).
+                Your Aadhaar details (ending {aadhaarNum.replace(/\D/g, '').slice(-4)}), date of birth, emergency contact ({emergencyName}) and occupation have been submitted for the PG office to review.
               </p>
             </div>
 
@@ -1093,15 +1193,21 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
             <div className="bg-brand-50 border border-brand-200 rounded-2xl p-4 max-w-md mx-auto text-left space-y-2 text-xs">
               <div className="flex justify-between">
                 <span className="text-slate-600">Allocated Stay:</span>
-                <span className="font-bold text-slate-900">Room {activeTenantObj.roomNumber || 'Assigned'} ({activeTenantObj.bedLabel || 'Bed Assigned'}) • Floor {activeTenantObj.floor}</span>
+                <span className="font-bold text-slate-900">
+                  {activeTenantObj.roomNumber
+                    ? `Room ${activeTenantObj.roomNumber} (${activeTenantObj.bedLabel || 'Bed'}) • Floor ${activeTenantObj.floor}`
+                    : 'To be assigned by the PG office'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600">Registered Phone:</span>
-                <span className="font-mono font-bold text-brand-900">+91 {activeTenantObj.phone.replace(/\D/g, '')}</span>
+                <span className="font-mono font-bold text-brand-900">+91 {displayPhone}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600">Monthly Rent:</span>
-                <span className="font-bold text-emerald-700">₹{activeTenantObj.monthlyRent.toLocaleString('en-IN')}</span>
+                <span className="font-bold text-emerald-700">
+                  {activeTenantObj.monthlyRent > 0 ? `₹${activeTenantObj.monthlyRent.toLocaleString('en-IN')}` : 'Set by the PG office'}
+                </span>
               </div>
             </div>
 

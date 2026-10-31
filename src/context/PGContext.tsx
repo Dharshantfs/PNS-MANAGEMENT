@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { collection, deleteField, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, deleteField, doc, runTransaction, setDoc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
 import {
@@ -21,6 +21,7 @@ import {
   OwnerProfile,
   ActivityAction,
   ActivityLog,
+  ExitSettlement,
 } from '../types';
 import { DEFAULT_AGREEMENT_BODY } from '../lib/agreementFill';
 import {
@@ -36,24 +37,58 @@ import {
   createRoom,
   saveRoom,
   removeRoom,
-  createTenant,
   saveTenant,
   removeTenant,
   createPayment,
-  nextReceiptNumber,
-  createNotice,
+  receiptCounterRef,
+  formatReceiptNumber,
   removeNotice,
-  createTicket,
   saveTicket,
-  createCharge,
   subscribeActivityLogs,
+  subscribeForTenant,
+  subscribeTenantDoc,
+  subscribeRoomDoc,
   createActivityLog,
   getOwnerProfile,
+  getProperty,
   getPropertiesByIds,
   findTenantByPhone,
   normalizePhone,
+  newInviteToken,
   nowIso,
+  todayIST,
+  monthLabelIST,
 } from '../services/firestoreService';
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+// How a payment changes a tenant's balances. Rent/dues payments reduce
+// dueAmount, and anything paid beyond the due becomes advance credit
+// (used up by the next rent or charge) instead of silently disappearing.
+// A security-deposit payment is held as deposit; it only reduces dueAmount
+// by the part of the deposit that was billed into dues as a 'deposit' charge.
+function settlePayment(t: Tenant, amount: number, purpose: 'rent' | 'deposit', depositBilledFallback: number) {
+  const due = Number(t.dueAmount) || 0;
+  const updates: Record<string, unknown> = {};
+  let newDue: number;
+  if (purpose === 'deposit') {
+    const received = Number(t.depositReceived) || 0;
+    const billed = t.depositBilled ?? depositBilledFallback;
+    const towardsDue = Math.min(amount, Math.max(0, billed - received), due);
+    newDue = round2(due - towardsDue);
+    const newReceived = round2(received + amount);
+    const required = Number(t.securityDeposit) || 0;
+    updates.depositReceived = newReceived;
+    updates.depositPaid = required > 0 ? newReceived >= required : newReceived > 0;
+  } else {
+    const remaining = round2(due - amount);
+    newDue = Math.max(0, remaining);
+    if (remaining < 0) updates.advanceBalance = round2((Number(t.advanceBalance) || 0) - remaining);
+  }
+  updates.dueAmount = newDue;
+  updates.rentStatus = newDue <= 0 ? 'paid' : newDue < due ? 'partial' : t.rentStatus;
+  return { newDue, updates };
+}
 import { signOutCurrentUser } from '../services/authService';
 
 interface FloorSummary {
@@ -195,10 +230,20 @@ interface PGContextType {
     notes?: string;
   }) => void;
   updateRoom: (roomId: string, updates: Partial<Room>) => void;
-  deleteRoom: (roomId: string) => void;
-  assignBed: (roomId: string, bedId: string, tenantId: string) => boolean;
-  vacateBed: (roomId: string, bedId: string) => void;
-  transferBed: (tenantId: string, targetRoomId: string, targetBedId: string) => boolean;
+  // Rejects while anyone still lives in the room.
+  deleteRoom: (roomId: string) => Promise<void>;
+  // All bed moves run in one Firestore transaction against fresh data and
+  // reject (with a readable message) if the bed was taken meanwhile.
+  assignBed: (roomId: string, bedId: string, tenantId: string) => Promise<void>;
+  // Frees a bed. Never checks a resident out - that's completeExit.
+  vacateBed: (roomId: string, bedId: string) => Promise<void>;
+  transferBed: (tenantId: string, targetRoomId: string, targetBedId: string) => Promise<void>;
+  // Move-out: frees the bed, sets off the deposit against dues if asked,
+  // and stores the settlement - all at once.
+  completeExit: (
+    tenantId: string,
+    exit: { exitDate: string; settlement: ExitSettlement; depositOffset: number }
+  ) => Promise<void>;
 
   // Tenant & KYC actions
   addTenant: (tenantData: {
@@ -215,11 +260,12 @@ interface PGContextType {
   updateTenant: (tenantId: string, updates: Partial<Tenant>) => void;
   // Permanently deletes the tenant record (admin only, see ExitedTenants).
   deleteTenant: (tenantId: string) => Promise<void>;
-  submitKYC: (tenantId: string, kycData: Partial<TenantKYC>) => void;
+  submitKYC: (tenantId: string, kycData: Partial<TenantKYC>) => Promise<void>;
   approveKYC: (tenantId: string) => void;
   rejectKYC: (tenantId: string, reason: string) => void;
 
-  // Payments (async - receipt numbers are generated atomically server-side)
+  // Payments - the receipt number, payment and tenant balance are written in
+  // one transaction, so nothing is half-saved and nothing is counted twice.
   recordPayment: (paymentData: {
     tenantId: string;
     amount: number;
@@ -227,14 +273,17 @@ interface PGContextType {
     paymentMode: 'UPI' | 'Cash' | 'Bank Transfer' | 'Card';
     transactionId?: string;
     notes?: string;
+    purpose?: 'rent' | 'deposit';
   }) => Promise<PaymentRecord>;
+  // Tenant reports a UPI payment with its UTR - stays pending (no receipt)
+  // until owner/staff confirm it.
   payRentAsTenant: (
     tenantId: string,
     amount: number,
     mode: 'UPI' | 'Card' | 'Bank Transfer',
-    transactionId: string
+    utr: string
   ) => Promise<PaymentRecord>;
-  confirmPendingPayment: (paymentId: string) => void;
+  confirmPendingPayment: (paymentId: string) => Promise<void>;
 
   // Notices & Tickets
   addNotice: (notice: Omit<Notice, 'id' | 'date' | 'propertyId'>) => void;
@@ -285,6 +334,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
   const [charges, setCharges] = useState<DueCharge[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  // Tenant logins carry their tenant id as a custom claim.
+  const [tenantClaimId, setTenantClaimId] = useState('');
+  const [tenantRoommates, setTenantRoommates] = useState<Tenant[]>([]);
 
   // --- Firebase Auth session -------------------------------------------------
   useEffect(() => {
@@ -301,7 +353,8 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
           .catch(() => ({} as Record<string, unknown>));
         if (claims.role === 'tenant' || (user.phoneNumber && !user.email)) {
           // Their property is discovered once their tenant record loads (see
-          // tenant-lookup effect below).
+          // tenant effects below).
+          setTenantClaimId(typeof claims.tenantId === 'string' ? claims.tenantId : '');
           setRole('tenant');
           setAuthUser(user);
           setAuthLoading(false);
@@ -316,6 +369,8 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         setOwnerProfile(null);
         setProperties([]);
         setActivePropertyId(null);
+        setCurrentTenantIdState('');
+        setTenantClaimId('');
         setRole('owner');
         return;
       }
@@ -379,27 +434,93 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     };
   }, [authUser, role, ownerProfile]);
 
-  // --- Tenant: find their own tenant record + property by phone --------------
+  // --- Tenant: their own record ---------------------------------------------
+  // firestore.rules let a tenant read only their own tenant document, room,
+  // payments, tickets and charges, plus their property's notices - so the
+  // tenant portal subscribes to exactly those (by tenant id), never to the
+  // whole property.
   useEffect(() => {
-    if (!authUser || role !== 'tenant' || !authUser.phoneNumber) return;
-    // Tenants aren't scoped to a known property before login, so this looks
-    // across all tenant docs and filters client-side by phone match. Fine at
-    // the scale of a handful of PG properties; would move to a Cloud Function
-    // lookup if this ever needs to scale further.
+    if (!authUser || role !== 'tenant') return;
+    if (tenantClaimId) {
+      setCurrentTenantIdState(tenantClaimId);
+      return;
+    }
+    // Older phone-OTP tenant accounts: find their record by verified phone.
+    if (!authUser.phoneNumber) return;
     let cancelled = false;
-    findTenantByPhone(authUser.phoneNumber).then((match) => {
-      if (cancelled || !match) return;
-      setCurrentTenantIdState(match.id);
-      setActivePropertyId(match.propertyId);
-    });
+    findTenantByPhone(authUser.phoneNumber)
+      .then((match) => {
+        if (!cancelled && match) setCurrentTenantIdState(match.id);
+      })
+      .catch((e) => console.warn('Tenant lookup failed', e));
     return () => {
       cancelled = true;
     };
-  }, [authUser, role]);
+  }, [authUser, role, tenantClaimId]);
 
-  // --- Property-scoped live data ----------------------------------------------
   useEffect(() => {
-    if (!activePropertyId) {
+    if (!authUser || role !== 'tenant' || !currentTenantId) return;
+    const unsubs = [
+      subscribeTenantDoc(currentTenantId, (t) => {
+        setTenants(t ? [t] : []);
+        if (t?.propertyId) setActivePropertyId(t.propertyId);
+      }),
+      subscribeForTenant<PaymentRecord>('payments', currentTenantId, setPayments),
+      subscribeForTenant<MaintenanceTicket>('tickets', currentTenantId, setTickets),
+      subscribeForTenant<DueCharge>('charges', currentTenantId, setCharges),
+    ];
+    return () => unsubs.forEach((u) => u());
+  }, [authUser, role, currentTenantId]);
+
+  const tenantRoomId = role === 'tenant' ? tenants.find((t) => t.id === currentTenantId)?.roomId : undefined;
+
+  // The tenant's property (name, UPI id) and its notices.
+  useEffect(() => {
+    if (!authUser || role !== 'tenant' || !activePropertyId) return;
+    let cancelled = false;
+    getProperty(activePropertyId)
+      .then((p) => {
+        if (!cancelled && p) setProperties([p]);
+      })
+      .catch((e) => console.warn('Property load failed', e));
+    const unsub = subscribeNotices(activePropertyId, setNotices);
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [authUser, role, activePropertyId]);
+
+  // The tenant's own room, and their roommates (from the server, which
+  // returns only the fields the Roommates screen shows).
+  useEffect(() => {
+    if (!authUser || role !== 'tenant') return;
+    if (!tenantRoomId) {
+      setRooms([]);
+      setTenantRoommates([]);
+      return;
+    }
+    const unsub = subscribeRoomDoc(tenantRoomId, (r) => setRooms(r ? [r] : []));
+    let cancelled = false;
+    authUser
+      .getIdToken()
+      .then((token) => fetch('/api/tenant/roommates', { headers: { Authorization: `Bearer ${token}` } }))
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data?.success) setTenantRoommates(data.roommates as Tenant[]);
+      })
+      .catch((e) => console.warn('Roommates load failed', e));
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [authUser, role, tenantRoomId]);
+
+  // --- Owner/staff: property-scoped live data ------------------------------
+  useEffect(() => {
+    if (authUser && role === 'tenant') return; // handled by the tenant effects above
+    if (!activePropertyId || !authUser) {
+      // Signed out (login screen, public onboarding): nothing is read from
+      // Firestore - the onboarding page talks to the server instead.
       setRooms([]);
       setTenants([]);
       setPayments([]);
@@ -409,21 +530,6 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       setActivityLogs([]);
       return;
     }
-    // Signed-out visitor (public onboarding / invite link): firestore.rules
-    // only let them read rooms and notices, so subscribing to the rest just
-    // fails with permission-denied in the console.
-    if (!authUser) {
-      setTenants([]);
-      setPayments([]);
-      setTickets([]);
-      setCharges([]);
-      setActivityLogs([]);
-      const publicUnsubs = [
-        subscribeRooms(activePropertyId, setRooms),
-        subscribeNotices(activePropertyId, setNotices),
-      ];
-      return () => publicUnsubs.forEach((u) => u());
-    }
     const unsubs = [
       subscribeRooms(activePropertyId, setRooms),
       subscribeTenants(activePropertyId, setTenants),
@@ -431,9 +537,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       subscribeNotices(activePropertyId, setNotices),
       subscribeTickets(activePropertyId, setTickets),
       subscribeCharges(activePropertyId, setCharges),
-      // Owner/staff only per firestore.rules - a signed-in tenant's read is
-      // simply denied, so don't bother subscribing for role !== 'owner'.
-      ...(role === 'owner' ? [subscribeActivityLogs(activePropertyId, setActivityLogs)] : []),
+      subscribeActivityLogs(activePropertyId, setActivityLogs),
     ];
     return () => unsubs.forEach((u) => u());
   }, [activePropertyId, role, authUser]);
@@ -647,25 +751,52 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const category = (activeProperty.duesCategories || []).find((c) => c.id === categoryId);
     if (!tenant || !category) throw new Error('Tenant or dues category not found');
 
-    const charge: Omit<DueCharge, 'id'> = {
-      propertyId: activePropertyId,
-      tenantId,
-      tenantName: tenant.name,
-      categoryId,
-      categoryName: category.name,
-      categoryType: category.categoryType,
-      amount,
-      date: nowIso().split('T')[0],
-      addedBy: 'owner',
-      // Firestore rejects a literal `undefined` field value.
-      ...(notes ? { notes } : {}),
-    };
-    await createCharge(charge);
-    await saveTenant(tenantId, {
-      dueAmount: tenant.dueAmount + amount,
-      rentStatus: 'due',
+    const value = round2(Number(amount));
+    if (!(value > 0)) throw new Error('Enter an amount greater than zero.');
+    const isDeposit = category.categoryType === 'deposit';
+    const depositBilledFallback = charges
+      .filter((c) => c.tenantId === tenantId && c.categoryType === 'deposit')
+      .reduce((s, c) => s + c.amount, 0);
+
+    const chargeRef = doc(collection(db, 'charges'));
+    const tenantRef = doc(db, 'tenants', tenantId);
+    let fromAdvance = 0;
+    // Read-modify-write of the tenant's balance inside a transaction, so two
+    // people adding charges / recording payments at once can't overwrite
+    // each other's change.
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(tenantRef);
+      if (!snap.exists()) throw new Error('Tenant not found.');
+      const t = { id: snap.id, ...snap.data() } as Tenant;
+      const advance = Number(t.advanceBalance) || 0;
+      // Advance credit pays rent/fees first - never a security deposit.
+      fromAdvance = isDeposit ? 0 : Math.min(advance, value);
+      const newDue = round2((Number(t.dueAmount) || 0) + value - fromAdvance);
+      const charge: Omit<DueCharge, 'id'> = {
+        propertyId: activePropertyId,
+        tenantId,
+        tenantName: t.name,
+        categoryId,
+        categoryName: category.name,
+        categoryType: category.categoryType,
+        amount: value,
+        date: todayIST(),
+        addedBy: 'owner',
+        // Firestore rejects a literal `undefined` field value.
+        ...(notes || fromAdvance > 0
+          ? { notes: [notes, fromAdvance > 0 ? `₹${fromAdvance} adjusted from advance` : ''].filter(Boolean).join(' - ') }
+          : {}),
+      };
+      tx.set(chargeRef, charge);
+      tx.update(tenantRef, {
+        dueAmount: newDue,
+        rentStatus: newDue > 0 ? 'due' : 'paid',
+        ...(fromAdvance > 0 ? { advanceBalance: round2(advance - fromAdvance) } : {}),
+        ...(isDeposit ? { depositBilled: round2((t.depositBilled ?? depositBilledFallback) + value) } : {}),
+        updatedAt: nowIso(),
+      });
     });
-    logActivity('charge.add', `Added ₹${amount.toLocaleString('en-IN')} ${category.name} charge to ${tenant.name}`);
+    logActivity('charge.add', `Added ₹${value.toLocaleString('en-IN')} ${category.name} charge to ${tenant.name}`);
   };
 
   // --- Rental agreement templates ----------------------------------------------
@@ -789,107 +920,191 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       .catch((e) => console.warn('updateRoom failed', e));
   };
 
-  const deleteRoom = (roomId: string) => {
+  const deleteRoom = async (roomId: string): Promise<void> => {
     const room = rooms.find((r) => r.id === roomId);
-    // Firestore's updateDoc() rejects a literal `undefined` field value -
-    // deleteField() is the correct way to clear a field via a partial update.
-    tenants
-      .filter((t) => t.roomId === roomId)
-      .forEach((t) =>
-        saveTenant(t.id, {
+    if (!room) return;
+    const occupied = room.beds.some((b) => b.status === 'occupied');
+    const residents = tenants.filter((t) => t.roomId === roomId && !t.checkOutDate);
+    if (occupied || residents.length > 0) {
+      throw new Error(`Room ${room.roomNumber} still has residents. Transfer or check them out first.`);
+    }
+    await removeRoom(roomId);
+    logActivity('room.delete', `Deleted room ${room.roomNumber}`);
+  };
+
+  // Bed without any tenant fields. Rebuilt rather than set to `undefined`:
+  // these live inside the `beds` array, where deleteField() doesn't apply.
+  const freeBed = (b: Bed): Bed => {
+    const { tenantId: _t, tenantName: _n, tenantPhone: _p, ...rest } = b;
+    return { ...rest, status: 'vacant', lastUpdated: nowIso() };
+  };
+
+  // Assigns (or, for someone who already has a bed, transfers) a tenant to a
+  // bed. Everything is read fresh inside one transaction, so a stale screen
+  // can't double-book a bed or leave the old bed marked occupied.
+  // Billing: a first assignment (rent not set yet) or a re-admission bills
+  // the first month; a transfer between beds never changes the balance.
+  const assignBed = async (roomId: string, bedId: string, tenantId: string): Promise<void> => {
+    const tenantRef = doc(db, 'tenants', tenantId);
+    const targetRoomRef = doc(db, 'rooms', roomId);
+    const today = todayIST();
+    let summary = '';
+
+    await runTransaction(db, async (tx) => {
+      const tSnap = await tx.get(tenantRef);
+      const rSnap = await tx.get(targetRoomRef);
+      if (!tSnap.exists() || !rSnap.exists()) throw new Error('Tenant or room not found.');
+      const t = { id: tSnap.id, ...tSnap.data() } as Tenant;
+      const room = { id: rSnap.id, ...rSnap.data() } as Room;
+      const bed = room.beds.find((b) => b.id === bedId);
+      if (!bed) throw new Error('Bed not found.');
+      if (bed.status !== 'vacant') throw new Error(`${bed.bedLabel} in Room ${room.roomNumber} is no longer vacant.`);
+
+      const oldRoomId = t.roomId && t.bedId ? t.roomId : undefined;
+      const oldRoomSnap = oldRoomId && oldRoomId !== roomId ? await tx.get(doc(db, 'rooms', oldRoomId)) : null;
+
+      // Target room: take the new bed (and free the old one if it's the same room).
+      let targetBeds = room.beds.map((b) =>
+        b.id === bedId
+          ? { ...b, status: 'occupied' as const, tenantId: t.id, tenantName: t.name, lastUpdated: nowIso() }
+          : b
+      );
+      const isTheirs = (b: Bed) => b.id === t.bedId && (!b.tenantId || b.tenantId === t.id);
+      if (oldRoomId === roomId) targetBeds = targetBeds.map((b) => (isTheirs(b) && b.id !== bedId ? freeBed(b) : b));
+      tx.update(targetRoomRef, { beds: targetBeds });
+      if (oldRoomSnap?.exists()) {
+        const oldBeds = ((oldRoomSnap.data().beds || []) as Bed[]).map((b) => (isTheirs(b) ? freeBed(b) : b));
+        tx.update(oldRoomSnap.ref, { beds: oldBeds });
+      }
+
+      const rent = bed.pricePerMonth || room.pricePerBed || 0;
+      const isTransfer = !!oldRoomId;
+      const billFirstMonth = !isTransfer && rent > 0 && (!(Number(t.monthlyRent) > 0) || !!t.checkOutDate);
+      const due = Number(t.dueAmount) || 0;
+      const advance = Number(t.advanceBalance) || 0;
+      const fromAdvance = billFirstMonth ? Math.min(advance, rent) : 0;
+      const newDue = billFirstMonth ? round2(due + rent - fromAdvance) : due;
+
+      tx.update(tenantRef, {
+        roomId: room.id,
+        roomNumber: room.roomNumber,
+        bedId: bed.id,
+        bedLabel: bed.bedLabel,
+        floor: room.floor,
+        monthlyRent: rent || t.monthlyRent || 0,
+        securityDeposit: Number(t.securityDeposit) > 0 ? t.securityDeposit : room.securityDeposit || 0,
+        dueAmount: newDue,
+        rentStatus: newDue > 0 ? (billFirstMonth ? 'due' : t.rentStatus === 'paid' ? 'due' : t.rentStatus) : 'paid',
+        ...(billFirstMonth ? { lastRentPeriod: today.slice(0, 7) } : {}),
+        ...(fromAdvance > 0 ? { advanceBalance: round2(advance - fromAdvance) } : {}),
+        // Re-admitting someone who had moved out brings them back to Tenants.
+        ...(t.checkOutDate ? { checkOutDate: deleteField(), exitSettlement: deleteField(), checkInDate: today } : {}),
+        ...(t.preferredRoomId ? { preferredRoomId: deleteField() } : {}),
+        updatedAt: nowIso(),
+      });
+      if (billFirstMonth) {
+        tx.set(doc(collection(db, 'charges')), {
+          ...firstMonthCharge(t.id, t.name, rent),
+          propertyId: room.propertyId,
+          ...(fromAdvance > 0 ? { notes: `₹${fromAdvance} adjusted from advance` } : {}),
+        });
+      }
+      summary = isTransfer
+        ? `Moved ${t.name} from Room ${t.roomNumber} to Room ${room.roomNumber} (${bed.bedLabel})`
+        : `Assigned ${t.name} to Room ${room.roomNumber} (${bed.bedLabel})`;
+    });
+    logActivity('bed.assign', summary);
+  };
+
+  const vacateBed = async (roomId: string, bedId: string): Promise<void> => {
+    const roomRef = doc(db, 'rooms', roomId);
+    let label = '';
+    await runTransaction(db, async (tx) => {
+      const rSnap = await tx.get(roomRef);
+      if (!rSnap.exists()) throw new Error('Room not found.');
+      const room = { id: rSnap.id, ...rSnap.data() } as Room;
+      const bed = room.beds.find((b) => b.id === bedId);
+      if (!bed) throw new Error('Bed not found.');
+      const tSnap = bed.tenantId ? await tx.get(doc(db, 'tenants', bed.tenantId)) : null;
+      tx.update(roomRef, { beds: room.beds.map((b) => (b.id === bedId ? freeBed(b) : b)) });
+      // Only unlink the tenant if this really is their bed. Moving out (exit
+      // date, settlement) is completeExit's job, not this.
+      if (tSnap?.exists() && tSnap.data().bedId === bedId) {
+        tx.update(tSnap.ref, {
           roomId: deleteField(),
           roomNumber: deleteField(),
           bedId: deleteField(),
           bedLabel: deleteField(),
-        } as unknown as Partial<Tenant>).catch((e) => console.warn('deleteRoom(tenant) failed', e))
-      );
-    removeRoom(roomId)
-      .then(() => logActivity('room.delete', `Deleted room ${room?.roomNumber || roomId}`))
-      .catch((e) => console.warn('deleteRoom failed', e));
-  };
-
-  const assignBed = (roomId: string, bedId: string, tenantId: string): boolean => {
-    const tenant = tenants.find((t) => t.id === tenantId);
-    const room = rooms.find((r) => r.id === roomId);
-    const bed = room?.beds.find((b) => b.id === bedId);
-    if (!tenant || !room || !bed) return false;
-
-    if (tenant.roomId && tenant.bedId) {
-      vacateBed(tenant.roomId, tenant.bedId);
-    }
-
-    const updatedBeds = room.beds.map((b) =>
-      b.id === bedId
-        ? {
-            ...b,
-            status: 'occupied' as const,
-            tenantId: tenant.id,
-            tenantName: tenant.name,
-            tenantPhone: tenant.phone,
-            lastUpdated: nowIso(),
-          }
-        : b
-    );
-    saveRoom(roomId, { beds: updatedBeds }).catch((e) => console.warn('assignBed(room) failed', e));
-
-    saveTenant(tenantId, {
-      roomId: room.id,
-      roomNumber: room.roomNumber,
-      bedId: bed.id,
-      bedLabel: bed.bedLabel,
-      floor: room.floor,
-      monthlyRent: bed.pricePerMonth || room.pricePerBed,
-      securityDeposit: room.securityDeposit,
-      dueAmount: tenant.dueAmount > 0 ? tenant.dueAmount : bed.pricePerMonth || room.pricePerBed,
-      rentStatus: tenant.rentStatus === 'paid' ? 'paid' : 'due',
-      // Re-admitting someone who had moved out brings them back to Tenants.
-      ...(tenant.checkOutDate ? { checkOutDate: deleteField(), exitSettlement: deleteField() } : {}),
-    } as unknown as Partial<Tenant>)
-      .then(() => logActivity('bed.assign', `Assigned ${tenant.name} to Room ${room.roomNumber} (${bed.bedLabel})`))
-      .catch((e) => console.warn('assignBed(tenant) failed', e));
-
-    return true;
-  };
-
-  const vacateBed = (roomId: string, bedId: string) => {
-    const room = rooms.find((r) => r.id === roomId);
-    const bed = room?.beds.find((b) => b.id === bedId);
-    if (!room || !bed) return;
-    const tenantId = bed.tenantId;
-
-    // Rebuilding the bed without the tenant fields entirely (rather than
-    // setting them to `undefined`) - these live inside the `beds` array
-    // being overwritten wholesale, where Firestore's deleteField() sentinel
-    // doesn't apply (that only works on a direct top-level update field).
-    const updatedBeds = room.beds.map((b): typeof b => {
-      if (b.id !== bedId) return b;
-      const { tenantId: _t, tenantName: _n, tenantPhone: _p, ...rest } = b;
-      return { ...rest, status: 'vacant', lastUpdated: nowIso() };
+          updatedAt: nowIso(),
+        });
+      }
+      label = `${bed.bedLabel} in Room ${room.roomNumber}`;
     });
-    saveRoom(roomId, { beds: updatedBeds }).catch((e) => console.warn('vacateBed(room) failed', e));
+    logActivity('bed.vacate', `Vacated ${label}`);
+  };
 
-    if (tenantId) {
-      const tenantName = bed.tenantName || 'tenant';
-      saveTenant(tenantId, {
+  const transferBed = (tenantId: string, targetRoomId: string, targetBedId: string): Promise<void> =>
+    assignBed(targetRoomId, targetBedId, tenantId);
+
+  const completeExit = async (
+    tenantId: string,
+    exit: { exitDate: string; settlement: ExitSettlement; depositOffset: number }
+  ): Promise<void> => {
+    const tenantRef = doc(db, 'tenants', tenantId);
+    let name = '';
+    await runTransaction(db, async (tx) => {
+      const tSnap = await tx.get(tenantRef);
+      if (!tSnap.exists()) throw new Error('Tenant not found.');
+      const t = { id: tSnap.id, ...tSnap.data() } as Tenant;
+      if (t.checkOutDate) throw new Error(`${t.name} has already moved out.`);
+      const roomSnap = t.roomId ? await tx.get(doc(db, 'rooms', t.roomId)) : null;
+      if (roomSnap?.exists()) {
+        const beds = ((roomSnap.data().beds || []) as Bed[]).map((b) =>
+          b.id === t.bedId && (!b.tenantId || b.tenantId === t.id) ? freeBed(b) : b
+        );
+        tx.update(roomSnap.ref, { beds });
+      }
+      const due = Number(t.dueAmount) || 0;
+      const offset = Math.min(Math.max(0, exit.depositOffset), due);
+      const newDue = round2(due - offset);
+      tx.update(tenantRef, {
         roomId: deleteField(),
         roomNumber: deleteField(),
         bedId: deleteField(),
         bedLabel: deleteField(),
-        checkOutDate: nowIso().split('T')[0],
-      } as unknown as Partial<Tenant>)
-        .then(() => logActivity('bed.vacate', `Vacated ${bed.bedLabel} in Room ${room.roomNumber} (${tenantName} checked out)`))
-        .catch((e) => console.warn('vacateBed(tenant) failed', e));
-    }
-  };
-
-  const transferBed = (tenantId: string, targetRoomId: string, targetBedId: string): boolean => {
-    const tenant = tenants.find((t) => t.id === tenantId);
-    if (!tenant) return false;
-    if (tenant.roomId && tenant.bedId) vacateBed(tenant.roomId, tenant.bedId);
-    return assignBed(targetRoomId, targetBedId, tenantId);
+        checkOutDate: exit.exitDate,
+        exitSettlement: exit.settlement,
+        dueAmount: newDue,
+        rentStatus: newDue > 0 ? t.rentStatus : 'paid',
+        // The deposit is settled (refunded / adjusted) at exit.
+        depositReceived: 0,
+        depositBilled: 0,
+        depositPaid: false,
+        updatedAt: nowIso(),
+      });
+      name = t.name;
+    });
+    logActivity(
+      'tenant.exit',
+      `Checked out ${name} (deposit ₹${exit.settlement.depositHeld.toLocaleString('en-IN')}, refund ₹${exit.settlement.refundAmount.toLocaleString('en-IN')})`
+    );
   };
 
   // --- Tenants & KYC ------------------------------------------------------------
+
+  // The first month's rent is recorded as a charge, so a tenant's statement
+  // (charges minus payments) always adds up to their dues.
+  const firstMonthCharge = (tenantId: string, tenantName: string, amount: number): Omit<DueCharge, 'id'> => ({
+    propertyId: activePropertyId || '',
+    tenantId,
+    tenantName,
+    categoryId: 'auto-rent',
+    categoryName: `Rent - ${monthLabelIST()} (first month)`,
+    categoryType: 'rent',
+    amount,
+    date: todayIST(),
+    addedBy: 'system',
+  });
 
   const addTenant = (tenantData: {
     name: string;
@@ -912,43 +1127,61 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const floor = targetRoom ? targetRoom.floor : 1;
 
     const ref = doc(collection(db, 'tenants'));
+    const checkInDate = tenantData.checkInDate || todayIST();
     const newTenant: Tenant = {
       id: ref.id,
       propertyId: activePropertyId,
       name: tenantData.name,
-      email: tenantData.email || `${tenantData.name.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
+      // No made-up address - empty until the tenant gives their real email.
+      email: (tenantData.email || '').trim().toLowerCase(),
       phone: normalizePhone(tenantData.phone),
       photoUrl: '', // no photo yet - TenantAvatar shows initials
-      // Firestore rejects a literal `undefined` field value - only include
-      // room/bed fields when a room was actually assigned (an unassigned
-      // walk-in registration is a normal, common case, not an edge case).
-      ...(targetRoom ? { roomId: targetRoom.id, roomNumber: targetRoom.roomNumber } : {}),
-      ...(targetBed ? { bedId: targetBed.id, bedLabel: targetBed.bedLabel } : {}),
       floor,
       monthlyRent: rent,
       securityDeposit: deposit,
       depositPaid: false,
-      checkInDate: tenantData.checkInDate || nowIso().split('T')[0],
-      rentStatus: 'due',
-      dueAmount: rent,
+      depositReceived: 0,
+      checkInDate,
+      rentStatus: rent > 0 ? 'due' : 'paid',
+      dueAmount: rent, // first month
+      ...(rent > 0 ? { lastRentPeriod: todayIST().slice(0, 7) } : {}),
       hometown: tenantData.hometown || '',
       kyc: emptyKYC(),
+      inviteToken: newInviteToken(),
       createdAt: nowIso(),
       updatedAt: nowIso(),
     };
 
-    setDoc(ref, newTenant)
-      .then(() => logActivity('tenant.add', `Added tenant ${tenantData.name}`))
-      .catch((e) => console.warn('addTenant failed', e));
-
-    if (targetRoom && targetBed) {
-      const updatedBeds = targetRoom.beds.map((b) =>
-        b.id === targetBed.id
-          ? { ...b, status: 'occupied' as const, tenantId: ref.id, tenantName: tenantData.name, tenantPhone: tenantData.phone, lastUpdated: nowIso() }
-          : b
-      );
-      saveRoom(targetRoom.id, { beds: updatedBeds }).catch((e) => console.warn('addTenant(room) failed', e));
-    }
+    // The tenant and their bed are written together, and only if the bed is
+    // still vacant - otherwise the tenant is saved without a bed.
+    runTransaction(db, async (tx) => {
+      const roomSnap = targetRoom && targetBed ? await tx.get(doc(db, 'rooms', targetRoom.id)) : null;
+      const freshBeds = roomSnap?.exists() ? ((roomSnap.data().beds || []) as Bed[]) : [];
+      const freshBed = freshBeds.find((b) => b.id === targetBed?.id);
+      if (roomSnap && targetRoom && freshBed && freshBed.status === 'vacant') {
+        tx.update(roomSnap.ref, {
+          beds: freshBeds.map((b) =>
+            b.id === freshBed.id
+              ? { ...b, status: 'occupied' as const, tenantId: ref.id, tenantName: tenantData.name, lastUpdated: nowIso() }
+              : b
+          ),
+        });
+        tx.set(ref, { ...newTenant, roomId: targetRoom.id, roomNumber: targetRoom.roomNumber, bedId: freshBed.id, bedLabel: freshBed.bedLabel });
+        if (rent > 0) tx.set(doc(collection(db, 'charges')), firstMonthCharge(ref.id, tenantData.name, rent));
+        return true;
+      }
+      tx.set(ref, newTenant);
+      if (rent > 0) tx.set(doc(collection(db, 'charges')), firstMonthCharge(ref.id, tenantData.name, rent));
+      return !targetBed;
+    })
+      .then((gotBed) => {
+        logActivity('tenant.add', `Added tenant ${tenantData.name}`);
+        if (!gotBed) window.alert(`${tenantData.name} was added, but the chosen bed was just taken - assign a bed from the Bed Matrix.`);
+      })
+      .catch((e) => {
+        console.warn('addTenant failed', e);
+        window.alert(`Could not add ${tenantData.name}: ${e?.message || 'please try again.'}`);
+      });
 
     return ref.id;
   };
@@ -978,23 +1211,29 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     logActivity('tenant.delete', `Permanently deleted tenant ${tenant.name}`);
   };
 
-  const submitKYC = (tenantId: string, kycData: Partial<TenantKYC>) => {
+  const submitKYC = async (tenantId: string, kycData: Partial<TenantKYC>): Promise<void> => {
     const tenant = tenants.find((t) => t.id === tenantId);
-    if (!tenant) return;
+    if (!tenant) throw new Error('Tenant not found.');
+    const aadhaarNumber = String(kycData.aadhaar?.aadhaarNumber ?? tenant.kyc?.aadhaar?.aadhaarNumber ?? '').replace(/\D/g, '');
     const updatedKYC: TenantKYC = {
       ...tenant.kyc,
       ...kycData,
+      // Always lands as pending for owner review (firestore.rules also
+      // refuse anything else from a tenant).
       status: 'pending',
-      submittedAt: nowIso().split('T')[0],
+      verifiedByOwner: false,
+      submittedAt: todayIST(),
       aadhaar: {
         ...tenant.kyc.aadhaar,
         ...(kycData.aadhaar || {}),
+        aadhaarNumber,
+        aadhaarLast4: aadhaarNumber.slice(-4),
         verificationMethod: 'manual',
       },
     };
-    saveTenant(tenantId, { kyc: updatedKYC })
-      .then(() => logActivity('kyc.submit', `Submitted KYC for ${tenant.name}`))
-      .catch((e) => console.warn('submitKYC failed', e));
+    // Firestore rejects `undefined` anywhere in the data - drop such fields.
+    await saveTenant(tenantId, { kyc: JSON.parse(JSON.stringify(updatedKYC)) });
+    logActivity('kyc.submit', `Submitted KYC for ${tenant.name}`);
   };
 
   const approveKYC = (tenantId: string) => {
@@ -1005,9 +1244,11 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         ...tenant.kyc,
         status: 'verified',
         verifiedByOwner: true,
-        aadhaar: { ...tenant.kyc.aadhaar, verifiedAt: nowIso().split('T')[0] },
+        aadhaar: { ...tenant.kyc.aadhaar, verifiedAt: todayIST() },
       },
-    })
+      // Verified - the KYC invite link has no further use.
+      inviteToken: deleteField(),
+    } as unknown as Partial<Tenant>)
       .then(() => logActivity('kyc.approve', `Approved KYC for ${tenant.name}`))
       .catch((e) => console.warn('approveKYC failed', e));
   };
@@ -1032,6 +1273,15 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   // firestoreService.nextReceiptNumber) so two concurrent payments can never
   // collide, unlike the old client-side `payments.length + 1` numbering.
 
+  // Deposit billed as charges during the current stay (for records from
+  // before depositBilled was tracked).
+  const depositChargesFor = (tenantId: string) => {
+    const since = tenants.find((t) => t.id === tenantId)?.checkInDate || '';
+    return charges
+      .filter((c) => c.tenantId === tenantId && c.categoryType === 'deposit' && (c.date || '') >= since)
+      .reduce((s, c) => s + c.amount, 0);
+  };
+
   const recordPayment = async (paymentData: {
     tenantId: string;
     amount: number;
@@ -1039,68 +1289,76 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     paymentMode: 'UPI' | 'Cash' | 'Bank Transfer' | 'Card';
     transactionId?: string;
     notes?: string;
+    purpose?: 'rent' | 'deposit';
   }): Promise<PaymentRecord> => {
     if (!activePropertyId) throw new Error('No active property selected');
-    const tenant = tenants.find((t) => t.id === paymentData.tenantId);
-    const receiptNumber = await nextReceiptNumber(activePropertyId);
-    const today = nowIso().split('T')[0];
+    const propertyId = activePropertyId;
+    const amount = round2(Number(paymentData.amount));
+    if (!(amount > 0)) throw new Error('Enter an amount greater than zero.');
+    const purpose = paymentData.purpose || 'rent';
+    const today = todayIST();
+    const paymentRef = doc(collection(db, 'payments'));
+    const tenantRef = doc(db, 'tenants', paymentData.tenantId);
+    const counterRef = receiptCounterRef(propertyId);
+    const depositBilledFallback = depositChargesFor(paymentData.tenantId);
 
-    const newPayment: Omit<PaymentRecord, 'id'> = {
-      propertyId: activePropertyId,
-      tenantId: paymentData.tenantId,
-      tenantName: tenant?.name || 'Tenant',
-      roomNumber: tenant?.roomNumber || 'N/A',
-      bedLabel: tenant?.bedLabel || 'N/A',
-      floor: tenant?.floor || 1,
-      month: paymentData.month,
-      amount: paymentData.amount,
-      dueAmount: 0,
-      status: 'paid',
-      paymentMode: paymentData.paymentMode,
-      // Recorded by hand today - no Cashfree keys configured yet. See
-      // PaymentVerificationSource in types.ts for the future gateway path.
-      verificationSource: 'manual',
-      transactionId: paymentData.transactionId || `TXN-${Date.now().toString().slice(-6)}`,
-      paymentDate: today,
-      receiptNumber,
-      notes: paymentData.notes,
-    };
-
-    const id = await createPayment(newPayment);
-
-    if (tenant) {
-      const newDue = Math.max(0, tenant.dueAmount - paymentData.amount);
-      await saveTenant(paymentData.tenantId, {
+    // Receipt number, payment and tenant balance in one transaction.
+    const newPayment = await runTransaction(db, async (tx) => {
+      const tSnap = await tx.get(tenantRef);
+      const cSnap = await tx.get(counterRef);
+      if (!tSnap.exists()) throw new Error('Tenant not found.');
+      const t = { id: tSnap.id, ...tSnap.data() } as Tenant;
+      const seq = (cSnap.exists() ? Number(cSnap.data().value) || 0 : 0) + 1;
+      const { newDue, updates } = settlePayment(t, amount, purpose, depositBilledFallback);
+      const record: Omit<PaymentRecord, 'id'> = {
+        propertyId,
+        tenantId: t.id,
+        tenantName: t.name || 'Tenant',
+        roomNumber: t.roomNumber || 'N/A',
+        bedLabel: t.bedLabel || 'N/A',
+        floor: t.floor || 1,
+        month: paymentData.month,
+        amount,
         dueAmount: newDue,
-        rentStatus: newDue === 0 ? 'paid' : 'partial',
-        lastPaymentDate: today,
-      });
-    }
+        status: 'paid',
+        purpose,
+        paymentMode: paymentData.paymentMode,
+        // Recorded by hand - no payment gateway configured yet.
+        verificationSource: 'manual',
+        transactionId: paymentData.transactionId || `TXN-${Date.now().toString().slice(-6)}`,
+        paymentDate: today,
+        receiptNumber: formatReceiptNumber(seq),
+        ...(paymentData.notes ? { notes: paymentData.notes } : {}),
+      };
+      tx.set(counterRef, { value: seq }, { merge: true });
+      tx.set(paymentRef, record);
+      tx.update(tenantRef, { ...updates, lastPaymentDate: today, updatedAt: nowIso() });
+      return record;
+    });
 
     logActivity(
       'payment.record',
-      `Recorded ₹${paymentData.amount.toLocaleString('en-IN')} ${paymentData.paymentMode} payment for ${newPayment.tenantName} (${paymentData.month})`
+      `Recorded ₹${amount.toLocaleString('en-IN')} ${paymentData.paymentMode} ${purpose === 'deposit' ? 'deposit' : 'payment'} for ${newPayment.tenantName} (${paymentData.month})`
     );
-    return { id, ...newPayment };
+    return { id: paymentRef.id, ...newPayment };
   };
 
-  // A tenant paying via the displayed UPI QR/deep-link happens outside the
-  // app (in GPay/PhonePe/etc.), so this only *reports* the payment - it does
-  // NOT touch the tenant's due amount. It stays 'pending' until the owner
-  // reconciles it against their bank/UPI statement (see confirmPendingPayment)
-  // and reflects the current no-payment-gateway-keys-yet reality (see
-  // PaymentVerificationSource in types.ts).
+  // A tenant paying via the displayed UPI QR / deep-link happens outside the
+  // app, so this only *reports* the payment with its UTR. It does NOT touch
+  // the tenant's balance and gets no receipt number until owner/staff
+  // confirm it against their bank/UPI statement (confirmPendingPayment).
   const payRentAsTenant = async (
     tenantId: string,
     amount: number,
     mode: 'UPI' | 'Card' | 'Bank Transfer',
-    transactionId: string
+    utr: string
   ): Promise<PaymentRecord> => {
     if (!activePropertyId) throw new Error('No active property selected');
+    const reference = utr.trim();
+    if (!/^[A-Za-z0-9]{6,30}$/.test(reference)) throw new Error('Enter the UTR / reference number from your UPI app.');
+    const value = round2(Number(amount));
+    if (!(value > 0)) throw new Error('Nothing to pay right now.');
     const tenant = tenants.find((t) => t.id === tenantId);
-    const currentMonth = new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' }).format(new Date());
-    const receiptNumber = await nextReceiptNumber(activePropertyId);
-    const today = nowIso().split('T')[0];
 
     const newPayment: Omit<PaymentRecord, 'id'> = {
       propertyId: activePropertyId,
@@ -1109,39 +1367,55 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       roomNumber: tenant?.roomNumber || 'N/A',
       bedLabel: tenant?.bedLabel || 'N/A',
       floor: tenant?.floor || 1,
-      month: currentMonth,
-      amount,
+      month: monthLabelIST(),
+      amount: value,
       dueAmount: tenant?.dueAmount || 0,
       status: 'pending',
+      purpose: 'rent',
       paymentMode: mode,
       verificationSource: 'manual',
-      transactionId,
-      paymentDate: today,
-      receiptNumber,
-      notes: 'Reported paid by tenant - awaiting owner reconciliation',
+      transactionId: reference,
+      paymentDate: todayIST(),
+      receiptNumber: '',
+      notes: 'Reported paid by tenant - awaiting owner confirmation',
     };
 
     const id = await createPayment(newPayment);
     return { id, ...newPayment };
   };
 
-  // Owner confirms a tenant-reported payment actually cleared: only now does
-  // it count against the tenant's due amount.
-  const confirmPendingPayment = (paymentId: string) => {
+  // Owner/staff confirm a tenant-reported payment actually arrived: only now
+  // does it reduce the balance and get a receipt number. Runs as one
+  // transaction that first checks the payment is still pending, so two
+  // people confirming at once can't count it twice.
+  const confirmPendingPayment = async (paymentId: string): Promise<void> => {
     const payment = payments.find((p) => p.id === paymentId);
-    if (!payment || payment.status !== 'pending') return;
-    const tenant = tenants.find((t) => t.id === payment.tenantId);
-    if (tenant) {
-      const newDue = Math.max(0, tenant.dueAmount - payment.amount);
-      saveTenant(tenant.id, {
-        dueAmount: newDue,
-        rentStatus: newDue === 0 ? 'paid' : 'partial',
-        lastPaymentDate: payment.paymentDate,
-      }).catch((e) => console.warn('confirmPendingPayment(tenant) failed', e));
-    }
-    updateDoc(doc(db, 'payments', paymentId), { status: 'paid', dueAmount: 0 }).then(() =>
-      logActivity('payment.confirm', `Confirmed ₹${payment.amount.toLocaleString('en-IN')} payment for ${payment.tenantName}`)
-    );
+    if (!payment) throw new Error('Payment not found.');
+    const paymentRef = doc(db, 'payments', paymentId);
+    const tenantRef = doc(db, 'tenants', payment.tenantId);
+    const counterRef = receiptCounterRef(payment.propertyId);
+    const depositBilledFallback = depositChargesFor(payment.tenantId);
+
+    await runTransaction(db, async (tx) => {
+      const pSnap = await tx.get(paymentRef);
+      const tSnap = await tx.get(tenantRef);
+      const cSnap = await tx.get(counterRef);
+      if (!pSnap.exists() || pSnap.data().status !== 'pending') throw new Error('This payment was already confirmed.');
+      const p = pSnap.data() as PaymentRecord;
+      // Always our own receipt number - never one supplied with the claim.
+      const seq = (cSnap.exists() ? Number(cSnap.data().value) || 0 : 0) + 1;
+      const receiptNumber = formatReceiptNumber(seq);
+      let newDue = 0;
+      if (tSnap.exists()) {
+        const t = { id: tSnap.id, ...tSnap.data() } as Tenant;
+        const settled = settlePayment(t, Number(p.amount) || 0, 'rent', depositBilledFallback);
+        newDue = settled.newDue;
+        tx.update(tenantRef, { ...settled.updates, lastPaymentDate: p.paymentDate, updatedAt: nowIso() });
+      }
+      tx.set(counterRef, { value: seq }, { merge: true });
+      tx.update(paymentRef, { status: 'paid', dueAmount: newDue, receiptNumber, confirmedAt: nowIso() });
+    });
+    logActivity('payment.confirm', `Confirmed ₹${payment.amount.toLocaleString('en-IN')} payment for ${payment.tenantName}`);
   };
 
   // --- Notices & tickets -----------------------------------------------------
@@ -1149,7 +1423,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const addNotice = (notice: Omit<Notice, 'id' | 'date' | 'propertyId'>) => {
     if (!activePropertyId) return;
     const ref = doc(collection(db, 'notices'));
-    const newNotice: Notice = { id: ref.id, propertyId: activePropertyId, ...notice, date: nowIso().split('T')[0] };
+    const newNotice: Notice = { id: ref.id, propertyId: activePropertyId, ...notice, date: todayIST() };
     setDoc(ref, newNotice)
       .then(() => logActivity('notice.add', `Posted notice "${notice.title}"`))
       .catch((e) => console.warn('addNotice failed', e));
@@ -1170,7 +1444,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       propertyId: activePropertyId,
       ...ticket,
       status: 'Open',
-      createdAt: nowIso().split('T')[0],
+      createdAt: todayIST(),
     };
     setDoc(ref, newTicket)
       .then(() => logActivity('ticket.raise', `Raised ${ticket.category} ticket for ${ticket.tenantName}`))
@@ -1179,10 +1453,11 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const updateTicketStatus = (id: string, status: MaintenanceTicket['status'], adminNote?: string) => {
     const ticket = tickets.find((t) => t.id === id);
+    // Firestore rejects `undefined` values - only send fields that have one.
     saveTicket(id, {
       status,
-      adminNote: adminNote !== undefined ? adminNote : ticket?.adminNote,
-      resolvedAt: status === 'Resolved' ? nowIso().split('T')[0] : ticket?.resolvedAt,
+      ...(adminNote !== undefined ? { adminNote } : {}),
+      ...(status === 'Resolved' ? { resolvedAt: todayIST() } : {}),
     })
       .then(() => logActivity('ticket.update', `Updated ${ticket?.tenantName || 'a'} ticket to "${status}"`))
       .catch((e) => console.warn('updateTicketStatus failed', e));
@@ -1191,9 +1466,12 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   // --- Helpers -----------------------------------------------------------------
 
   const getRoommates = (tenantId: string): Tenant[] => {
+    // A tenant can't read other tenants' records - their roommates come
+    // from the server (see the tenant effects above).
+    if (role === 'tenant') return tenantRoommates;
     const targetTenant = tenants.find((t) => t.id === tenantId);
     if (!targetTenant || !targetTenant.roomId) return [];
-    return tenants.filter((t) => t.roomId === targetTenant.roomId && t.id !== tenantId);
+    return tenants.filter((t) => t.roomId === targetTenant.roomId && t.id !== tenantId && !t.checkOutDate);
   };
 
   const getStats = useCallback(() => {
@@ -1204,17 +1482,22 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     rooms.forEach((r) => {
       totalBeds += r.beds.length;
       r.beds.forEach((b) => {
-        if (b.status === 'occupied') {
-          occupiedBeds++;
-          totalExpectedRevenue += b.pricePerMonth || r.pricePerBed;
-        }
+        if (b.status === 'occupied') occupiedBeds++;
       });
     });
 
+    // Expected = the rent each staying resident actually agreed to (not the
+    // bed's list price). Received = confirmed rent/dues payments this month
+    // (India time) - not all-time, and never deposits or pending claims.
+    const staying = tenants.filter((t) => !t.checkOutDate && t.bedId);
+    totalExpectedRevenue = staying.reduce((sum, t) => sum + (Number(t.monthlyRent) || 0), 0);
+    const thisMonth = todayIST().slice(0, 7);
     const vacantBeds = totalBeds - occupiedBeds;
     const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
-    const totalReceivedRevenue = payments.filter((p) => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
-    const totalDueRevenue = tenants.reduce((sum, t) => sum + (t.dueAmount || 0), 0);
+    const totalReceivedRevenue = payments
+      .filter((p) => p.status === 'paid' && p.purpose !== 'deposit' && (p.paymentDate || '').slice(0, 7) === thisMonth)
+      .reduce((sum, p) => sum + p.amount, 0);
+    const totalDueRevenue = tenants.filter((t) => !t.checkOutDate).reduce((sum, t) => sum + (t.dueAmount || 0), 0);
     const verifiedKYCCount = tenants.filter((t) => t.kyc?.status === 'verified').length;
     const pendingKYCCount = tenants.filter((t) => t.kyc?.status === 'pending').length;
     const unsubmittedKYCCount = tenants.filter((t) => !t.kyc || t.kyc?.status === 'unsubmitted' || t.kyc?.status === 'rejected').length;
@@ -1228,11 +1511,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       floorRooms.forEach((r) => {
         fTotalBeds += r.beds.length;
         r.beds.forEach((b) => {
-          if (b.status === 'occupied') {
-            fOccupiedBeds++;
-            fTotalRent += b.pricePerMonth || r.pricePerBed;
-          }
+          if (b.status === 'occupied') fOccupiedBeds++;
         });
+        fTotalRent += staying.filter((t) => t.roomId === r.id).reduce((s, t) => s + (Number(t.monthlyRent) || 0), 0);
       });
       return {
         floor: floorNum,
@@ -1315,6 +1596,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         assignBed,
         vacateBed,
         transferBed,
+        completeExit,
         addTenant,
         updateTenant,
         deleteTenant,

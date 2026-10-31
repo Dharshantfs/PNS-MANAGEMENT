@@ -41,6 +41,17 @@ import {
   initAuth,
 } from '../../services/googleAuthService';
 import { getSharingLabel } from '../../lib/roomLabels';
+import { auth } from '../../lib/firebase';
+
+// Owner/staff calls to the server carry the signed-in user's ID token.
+const authedJson = async (url: string, body: unknown) => {
+  const token = await auth.currentUser?.getIdToken();
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(body),
+  });
+};
 import {
   listGoogleForms,
   getGoogleForm,
@@ -106,7 +117,19 @@ export const GoogleFormsIntegration: React.FC = () => {
   const [simResult, setSimResult] = useState<{ success: boolean; message: string; tenant?: any } | null>(null);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const webhookEndpoint = `${origin}/api/webhook/google-form`;
+  // The webhook URL carries this PG's secret key - only requests with it are
+  // accepted (api/_lib/app.ts POST /api/webhook/google-form).
+  const [webhookKey, setWebhookKey] = useState('');
+  useEffect(() => {
+    if (!activePropertyId) return;
+    authedJson('/api/property/webhook-key', { propertyId: activePropertyId })
+      .then((res) => res.json())
+      .then((data) => setWebhookKey(data.success ? data.key : ''))
+      .catch(() => setWebhookKey(''));
+  }, [activePropertyId]);
+  const webhookEndpoint = webhookKey
+    ? `${origin}/api/webhook/google-form?property=${activePropertyId}&key=${webhookKey}`
+    : 'Loading your private webhook URL...';
 
   // Initialize Auth state listener
   useEffect(() => {
@@ -241,10 +264,7 @@ export const GoogleFormsIntegration: React.FC = () => {
     }
 
     try {
-      const res = await fetch('/api/onboard/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const res = await authedJson('/api/onboard/submit', {
           propertyId: activePropertyId,
           name: ext.fullName,
           phone: ext.phone,
@@ -265,7 +285,6 @@ export const GoogleFormsIntegration: React.FC = () => {
           foodPref: ext.foodPreference,
           permanentAddress: ext.permanentAddress,
           city: ext.city,
-        }),
       });
 
       const data = await res.json();
@@ -275,7 +294,7 @@ export const GoogleFormsIntegration: React.FC = () => {
         setSelectedBedId('');
         await refreshStateFromServer();
       } else {
-        alert(data.message || 'Failed to admit tenant.');
+        alert(data.error || data.message || 'Failed to admit tenant.');
       }
     } catch (err: any) {
       alert(`Error admitting tenant: ${err.message}`);
@@ -308,11 +327,7 @@ export const GoogleFormsIntegration: React.FC = () => {
         city: r.extracted.city,
       }));
 
-      const res = await fetch('/api/import/google-forms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows, propertyId: activePropertyId }),
-      });
+      const res = await authedJson('/api/import/google-forms', { rows, propertyId: activePropertyId });
 
       const data = await res.json();
       if (data.success) {
@@ -412,11 +427,7 @@ function onFormSubmit(e) {
     };
 
     try {
-      const res = await fetch('/api/webhook/google-form', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const res = await authedJson('/api/webhook/google-form', payload);
       const data = await res.json();
       if (data.success) {
         setSimResult({

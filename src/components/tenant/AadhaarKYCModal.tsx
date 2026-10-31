@@ -39,19 +39,16 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Aadhaar Details State
-  const [aadhaarNum, setAadhaarNum] = useState(
-    tenant.kyc?.aadhaar?.aadhaarNumber || '5412 8903 2198'
-  );
+  // Never pre-filled with sample data - the tenant types their own details.
+  const [aadhaarNum, setAadhaarNum] = useState(tenant.kyc?.aadhaar?.aadhaarNumber || '');
   const [nameOnAadhaar, setNameOnAadhaar] = useState(
     tenant.kyc?.aadhaar?.nameOnAadhaar || tenant.name.toUpperCase()
   );
-  const [dob, setDob] = useState(tenant.kyc?.aadhaar?.dob || '2000-01-01');
+  const [dob, setDob] = useState(tenant.kyc?.aadhaar?.dob || '');
   const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>(
     tenant.kyc?.aadhaar?.gender || 'Male'
   );
-  const [aadhaarAddress, setAadhaarAddress] = useState(
-    tenant.kyc?.aadhaar?.address || 'Flat 402, Green Enclave, Outer Ring Road, Bengaluru - 560103'
-  );
+  const [aadhaarAddress, setAadhaarAddress] = useState(tenant.kyc?.aadhaar?.address || '');
 
   // Scanned Card Upload Simulation
   const [frontUploaded, setFrontUploaded] = useState(true);
@@ -105,35 +102,29 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
       return;
     }
 
-    setIsVerifyingAPI(true);
-    setErrorMessage('');
-
-    try {
-      const response = await fetch('/api/kyc/verify-aadhaar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ aadhaarNumber: rawNumber }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setStep(2);
-      } else {
-        setErrorMessage(data.message || 'Aadhaar verification failed.');
-      }
-    } catch {
-      setStep(2);
-    } finally {
-      setIsVerifyingAPI(false);
+    if (!dob) {
+      setErrorMessage('Please enter your date of birth.');
+      return;
     }
+    if (!aadhaarAddress.trim()) {
+      setErrorMessage('Please enter your address as printed on your Aadhaar card.');
+      return;
+    }
+    // There is no automatic Aadhaar check yet - the PG office reviews the
+    // details by hand (KYC stays "Under Review" until they approve it).
+    setErrorMessage('');
+    setStep(2);
   };
 
-  const handleSubmitAllKYC = () => {
+  const handleSubmitAllKYC = async () => {
     if (!emergencyName.trim() || !emergencyPhone.trim()) {
       setErrorMessage('Emergency contact name and phone number are required.');
       return;
     }
 
-    submitKYC(tenant.id, {
+    setErrorMessage('');
+    try {
+      await submitKYC(tenant.id, {
       fatherName,
       emergencyContactName: emergencyName,
       emergencyContactPhone: emergencyPhone,
@@ -150,7 +141,11 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
         gender,
         address: aadhaarAddress,
       },
-    });
+      });
+    } catch (e: any) {
+      setErrorMessage(e?.message || 'Could not submit your KYC - please try again.');
+      return;
+    }
 
     setStep(3);
     confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });

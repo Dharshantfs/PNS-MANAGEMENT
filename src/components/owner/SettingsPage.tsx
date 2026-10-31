@@ -3,6 +3,7 @@ import { usePG } from '../../context/PGContext';
 import { createTeamMember, TeamInviteResult } from '../../services/authService';
 import { DuesCategoryConfig } from '../../types';
 import { AGREEMENT_FIELD_GROUPS, DEFAULT_AGREEMENT_BODY, fillSampleTemplate } from '../../lib/agreementFill';
+import { todayIST } from '../../services/firestoreService';
 import { NumberField } from '../common/NumberField';
 import { Building2, Plus, Trash2, Save, Home, Users2, IndianRupee, MapPin, UserPlus, Copy, Check, Receipt, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -358,6 +359,7 @@ const PropertyBasicsCard: React.FC = () => {
     totalFloors: activeProperty?.totalFloors || 4,
     gateClosingTime: activeProperty?.gateClosingTime || '10:30 PM',
     rentDueDay: activeProperty?.rentDueDay || 5,
+    autoMonthlyRent: !!activeProperty?.autoMonthlyRent,
   });
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -368,7 +370,12 @@ const PropertyBasicsCard: React.FC = () => {
     e.preventDefault();
     setError('');
     try {
-      await updatePropertySettings(form);
+      // Switching automatic rent on starts it from next month, so this
+      // month (already billed by hand) is never billed twice.
+      const turningOn = form.autoMonthlyRent && !activeProperty.autoMonthlyRent;
+      const [y, m] = todayIST().split('-').map(Number);
+      const nextPeriod = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+      await updatePropertySettings({ ...form, ...(turningOn ? { autoRentFrom: nextPeriod } : {}) });
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
     } catch (err: any) {
@@ -413,6 +420,19 @@ const PropertyBasicsCard: React.FC = () => {
           <NumberField min={1} max={28} value={form.rentDueDay} onChange={(n) => setForm({ ...form, rentDueDay: n })}
             className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-brand-600" />
         </div>
+        <label className="sm:col-span-2 flex items-start space-x-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.autoMonthlyRent}
+            onChange={(e) => setForm({ ...form, autoMonthlyRent: e.target.checked })}
+            className="mt-0.5 w-4 h-4 accent-brand-700"
+          />
+          <span className="text-xs text-slate-700">
+            <span className="font-bold text-slate-900 block">Add monthly rent automatically</span>
+            On the rent due day, each staying resident's monthly rent is added to their dues (once a month, using any
+            advance they have first). Current residents start from next month, so nothing is billed twice.
+          </span>
+        </label>
       </div>
       {error && <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">{error}</div>}
       <button type="submit" className="px-5 py-2.5 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5">

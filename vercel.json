@@ -1,6 +1,9 @@
 {
   "buildCommand": "npm run deploy-rules && vite build",
   "outputDirectory": "dist",
+  "crons": [
+    { "path": "/api/cron/monthly-rent", "schedule": "30 0 * * *" }
+  ],
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/index" }
   ]

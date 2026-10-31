@@ -7,7 +7,8 @@ interface PaymentModalProps {
   tenantName: string;
   pgName: string;
   ownerUpiId: string;
-  onSuccess: () => void;
+  // Receives the UTR the tenant typed; rejects with a message to show.
+  onSuccess: (utr: string) => Promise<void>;
   onClose: () => void;
 }
 
@@ -15,16 +16,26 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ amount, tenantName, 
   const [showUtrInput, setShowUtrInput] = useState(false);
   const [utrNumber, setUtrNumber] = useState('');
   const [reporting, setReporting] = useState(false);
+  const [reportError, setReportError] = useState('');
 
   // Dynamic UPI URL for Indian UPI Apps (GPay, PhonePe, Paytm)
   const upiString = `upi://pay?pa=${ownerUpiId}&pn=${encodeURIComponent(pgName)}&am=${amount}&cu=INR&tn=Rent_from_${encodeURIComponent(tenantName)}`;
 
-  const handleReportPayment = () => {
+  const handleReportPayment = async () => {
+    // No payment gateway yet, so this is a self-report the owner reconciles
+    // by hand against their bank/UPI statement - the UTR is what they match.
+    if (!/^[A-Za-z0-9]{6,30}$/.test(utrNumber.trim())) {
+      setReportError('Enter the UTR / reference number shown in your UPI app after paying.');
+      return;
+    }
     setReporting(true);
-    // No payment gateway keys configured yet, so this is a self-report that
-    // the owner reconciles by hand against their bank/UPI statement - see
-    // PGContext.payRentAsTenant / confirmPendingPayment.
-    onSuccess();
+    setReportError('');
+    try {
+      await onSuccess(utrNumber.trim());
+    } catch (e: any) {
+      setReportError(e?.message || 'Could not report the payment - please try again.');
+      setReporting(false);
+    }
   };
 
   return (
@@ -98,10 +109,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ amount, tenantName, 
                     type="text"
                     placeholder="e.g. 423987110943"
                     value={utrNumber}
-                    onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                    onChange={(e) => setUtrNumber(e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 30))}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-brand-600"
                   />
                 </div>
+
+                {reportError && <p className="text-[11px] text-rose-700 font-semibold">{reportError}</p>}
 
                 <button
                   type="button"

@@ -48,6 +48,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
   const [isKYCModalOpen, setIsKYCModalOpen] = useState(false);
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<PaymentRecord | null>(null);
+  const [reportedNote, setReportedNote] = useState('');
 
   if (!activeTenant) {
     return (
@@ -60,14 +61,19 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
 
   const currentRoom = rooms.find((r) => r.id === activeTenant.roomId);
   const roommates = getRoommates(activeTenant.id);
-  const tenantPayments = payments.filter((p) => p.tenantId === activeTenant.id);
+  const tenantPayments = payments
+    .filter((p) => p.tenantId === activeTenant.id)
+    .sort((a, b) => (b.paymentDate || '').localeCompare(a.paymentDate || ''));
 
-  const handlePaymentSuccess = async () => {
-    const txnId = `UPI-${Date.now().toString().slice(-8)}`;
-    const newRec = await payRentAsTenant(activeTenant.id, activeTenant.dueAmount || activeTenant.monthlyRent, 'UPI', txnId);
+  // The payment is only reported here - it stays pending (no receipt) until
+  // the PG office confirms it reached their account.
+  const handlePaymentSuccess = async (utr: string) => {
+    const amount = activeTenant.dueAmount > 0 ? activeTenant.dueAmount : activeTenant.monthlyRent;
+    await payRentAsTenant(activeTenant.id, amount, 'UPI', utr);
     setIsPayModalOpen(false);
-    confetti({ particleCount: 50, spread: 80, origin: { y: 0.6 } });
-    if (newRec) setSelectedReceipt(newRec);
+    setReportedNote(
+      `Payment of ₹${amount.toLocaleString('en-IN')} reported (UTR ${utr}). Your receipt will appear here once the PG office confirms it.`
+    );
   };
 
   return (
@@ -172,7 +178,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
               <div className="text-right">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Monthly Rent</span>
                 <p className="text-2xl font-black text-brand-700">₹{activeTenant.monthlyRent.toLocaleString('en-IN')}</p>
-                <p className="text-[10px] text-slate-500 font-medium">Due on 5th of each month</p>
+                <p className="text-[10px] text-slate-500 font-medium">Due on day {settings.rentDueDay || 5} of each month</p>
               </div>
             </div>
 
@@ -279,7 +285,10 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
 
           {/* Payment History & Invoices */}
           <div className="space-y-2 pt-1">
-            <span className="text-xs font-bold text-slate-700 block">Recent Payment Receipts:</span>
+ <span className="text-xs font-bold text-slate-700 block">Recent Payment Receipts:</span>
+            {reportedNote && (
+              <p className="text-xs text-emerald-800 bg-emerald-50 p-3 rounded-xl border border-emerald-200">{reportedNote}</p>
+            )}
             
             {tenantPayments.length === 0 ? (
               <p className="text-xs text-slate-500 italic bg-slate-50 p-3 rounded-xl border border-slate-200">
@@ -293,19 +302,21 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
                     className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs text-slate-900"
                   >
                     <div>
-                      <p className="font-bold">{p.month} Rent</p>
-                      <p className="text-[10px] text-slate-500 font-mono">{p.receiptNumber} • {p.paymentDate}</p>
+                      <p className="font-bold">{p.month} {p.purpose === 'deposit' ? 'Deposit' : 'Rent'}</p>
+                      <p className="text-[10px] text-slate-500 font-mono">
+                        {p.status === 'pending' ? `UTR ${p.transactionId} • awaiting confirmation` : `${p.receiptNumber} • ${p.paymentDate}`}
+                      </p>
                     </div>
                     <div className="flex items-center space-x-3">
-                      <span className="font-bold text-emerald-600">₹{p.amount.toLocaleString('en-IN')}</span>
-                      <button
+                      <span className={`font-bold ${p.status === 'pending' ? 'text-amber-600' : 'text-emerald-600'}`}>₹{p.amount.toLocaleString('en-IN')}</span>
+                      {p.status !== 'pending' && <button
                         type="button"
                         onClick={() => setSelectedReceipt(p)}
                         className="px-2.5 py-1 bg-white hover:bg-brand-50 text-brand-700 border border-brand-200 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-sm"
                       >
                         <Printer className="w-3.5 h-3.5" />
                         <span>Receipt</span>
-                      </button>
+                      </button>}
                     </div>
                   </div>
                 ))}
@@ -329,7 +340,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
           amount={activeTenant.dueAmount || activeTenant.monthlyRent}
           tenantName={activeTenant.name}
           pgName={settings.pgName}
-          ownerUpiId={settings.ownerUpiId}
+          ownerUpiId={settings.upiId}
           onSuccess={handlePaymentSuccess}
           onClose={() => setIsPayModalOpen(false)}
         />
