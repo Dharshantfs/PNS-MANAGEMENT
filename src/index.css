@@ -1,21 +1,21 @@
 @import "tailwindcss";
 
-/* Brand palette sampled directly from the PNS Hospitalities logo
-   (assets/logo.png) - red #C00019 is the dominant accent color, black
-   #000000 the wordmark/neutral. This replaces the old default blue-700
-   theme everywhere in the app ("brand-*" classes stand in for the old
-   "blue-*" ones, e.g. bg-brand-700 instead of bg-blue-700). */
+/* Brand palette: deep navy - calm and business-like, and clearly different
+   from the rose used for dues/errors, so warnings stand out. The PNS logo
+   keeps its own red. Every "brand-*" class in the app uses this scale, so
+   changing these values re-colours the whole UI. */
 @theme {
-  --color-brand-50: #fdf2f2;
-  --color-brand-100: #fadcdf;
-  --color-brand-200: #f4b7bc;
-  --color-brand-300: #ea8890;
-  --color-brand-400: #dc525f;
-  --color-brand-600: #d21a2c;
-  --color-brand-700: #c00019;
-  --color-brand-800: #970014;
-  --color-brand-900: #74000f;
-  --color-brand-950: #450009;
+  --color-brand-50: #eff4fb;
+  --color-brand-100: #dbe5f5;
+  --color-brand-200: #bccee9;
+  --color-brand-300: #8fadd9;
+  --color-brand-400: #5b84c3;
+  --color-brand-500: #3b67ad;
+  --color-brand-600: #2a5196;
+  --color-brand-700: #1f3f7a;
+  --color-brand-800: #1a3463;
+  --color-brand-900: #162a4f;
+  --color-brand-950: #0e1a33;
 }
 
 /* Print isolation for every window.print() screen in the app (receipts,
@@ -73,9 +73,9 @@ html.dark {
   --color-slate-800: #dde4ee;
   --color-slate-900: #f1f5f9;
 
-  --color-brand-50: #2b1013;
-  --color-brand-100: #3a1418;
-  --color-brand-200: #5c1e26;
+  --color-brand-50: #121f38;
+  --color-brand-100: #182a4a;
+  --color-brand-200: #24406d;
 
   --color-emerald-50: #0c2a22;
   --color-emerald-100: #11382d;
@@ -97,10 +97,10 @@ html.dark .bg-white { background-color: var(--dk-card); }
 html.dark .border-white { border-color: var(--dk-card); }
 
 /* Coloured text: the light-mode shades are too dark on a dark card. */
-html.dark .text-brand-700 { color: #f0707c; }
+html.dark .text-brand-700 { color: #8fb3ea; }
 html.dark .text-brand-800,
 html.dark .text-brand-900,
-html.dark .text-brand-950 { color: #f4b7bc; }
+html.dark .text-brand-950 { color: #c7d8f2; }
 html.dark .text-emerald-600 { color: #34d399; }
 html.dark .text-emerald-700 { color: #4ade9f; }
 html.dark .text-emerald-800 { color: #a7f3d0; }
@@ -118,7 +118,7 @@ html.dark .text-indigo-700 { color: #a5b4fc; }
 html.dark .text-indigo-800,
 html.dark .text-indigo-900 { color: #c7d2fe; }
 /* Light-tinted backgrounds with a slash opacity (e.g. bg-brand-50/60). */
-html.dark [class*="bg-brand-50/"] { background-color: rgb(43 16 19 / 0.7); }
+html.dark [class*="bg-brand-50/"] { background-color: rgb(18 31 56 / 0.7); }
 html.dark [class*="bg-rose-50/"] { background-color: rgb(45 17 23 / 0.7); }
 html.dark [class*="bg-emerald-50/"] { background-color: rgb(12 42 34 / 0.7); }
 html.dark [class*="bg-slate-50/"] { background-color: rgb(15 23 41 / 0.7); }
