@@ -43,12 +43,12 @@ const NAV_ITEMS: Array<{ tab: OwnerTab; label: string; icon: React.ElementType; 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onChange, vacantBeds, pendingKYCCount, onLogout, isOwnerRole }) => {
   const visibleItems = NAV_ITEMS.filter((item) => !item.ownerOnly || isOwnerRole);
   return (
-    <aside id="app-sidebar" className="hidden sm:flex flex-col items-center w-20 shrink-0 bg-brand-700 min-h-screen py-4 space-y-1">
+    <aside id="app-sidebar" className="hidden sm:flex flex-col items-center w-20 shrink-0 bg-brand-700 sticky top-0 h-screen self-start py-4 space-y-1">
       <div className="w-10 h-10 rounded-2xl bg-white text-brand-700 flex items-center justify-center shadow-md mb-3 shrink-0">
         <Building2 className="w-5 h-5" />
       </div>
 
-      <nav className="flex-1 w-full flex flex-col items-center space-y-1 px-2">
+      <nav className="flex-1 min-h-0 overflow-y-auto scrollbar-none w-full flex flex-col items-center space-y-1 px-2">
         {visibleItems.map(({ tab, label, icon: Icon }) => {
           const isActive = activeTab === tab;
           const badge =

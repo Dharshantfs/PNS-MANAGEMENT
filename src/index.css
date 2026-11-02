@@ -18,6 +18,14 @@
   --color-brand-950: #0e1a33;
 }
 
+/* Hide the scrollbar but keep scrolling (sidebar menu, tab strips). */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Print isolation for every window.print() screen in the app (receipts,
    tenant statements, rental agreements, Reports). Without this, printing
    captured the whole page - sidebar, navbar, footer, and the dark modal
