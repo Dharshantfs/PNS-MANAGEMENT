@@ -36,7 +36,10 @@ const NAV_ITEMS: Array<{ tab: OwnerTab; label: string; icon: React.ElementType; 
   { tab: 'reports', label: 'Reports', icon: FileBarChart, ownerOnly: true },
   { tab: 'activity', label: 'Activity', icon: History, ownerOnly: true },
   { tab: 'notices', label: 'Notices', icon: Bell },
-  { tab: 'googleforms', label: 'Forms', icon: FileText, ownerOnly: true },
+  // Forms (Google Forms admission) is hidden: the built-in joining form
+  // (invite link / ?register=true) covers it and also takes Aadhaar photos.
+  // Put this line back to show it again.
+  // { tab: 'googleforms', label: 'Forms', icon: FileText, ownerOnly: true },
   { tab: 'settings', label: 'Settings', icon: SettingsIcon, ownerOnly: true },
 ];
 
