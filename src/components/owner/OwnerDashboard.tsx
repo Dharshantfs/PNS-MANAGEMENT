@@ -37,7 +37,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
   const { getStats, tenants, rooms, payments, approveKYC } = usePG();
   const stats = getStats();
 
-  const pendingKYCTenants = tenants.filter((t) => t.kyc?.status === 'pending');
+  const pendingKYCTenants = tenants.filter((t) => t.kyc?.status === 'pending' && !t.checkOutDate);
   const duePaymentTenants = tenants.filter((t) => t.dueAmount > 0);
 
   const [sendingWa, setSendingWa] = useState<string | null>(null);
@@ -302,7 +302,14 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
                       ₹{t.dueAmount.toLocaleString('en-IN')} Due
                     </p>
                     <p className="text-[10px] text-slate-500">
-                      Room {t.roomNumber} ({t.bedLabel}) • +91 {t.phone.replace(/\D/g, '')}
+                      {t.checkOutDate ? (
+                        <span className="font-bold text-amber-700">Exited {t.checkOutDate}</span>
+                      ) : t.roomNumber ? (
+                        <>Room {t.roomNumber} ({t.bedLabel})</>
+                      ) : (
+                        'No room yet'
+                      )}{' '}
+                      • +91 {t.phone.replace(/\D/g, '')}
                     </p>
                   </div>
 

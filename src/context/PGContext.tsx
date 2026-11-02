@@ -1498,9 +1498,12 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       .filter((p) => p.status === 'paid' && p.purpose !== 'deposit' && (p.paymentDate || '').slice(0, 7) === thisMonth)
       .reduce((sum, p) => sum + p.amount, 0);
     const totalDueRevenue = tenants.filter((t) => !t.checkOutDate).reduce((sum, t) => sum + (t.dueAmount || 0), 0);
-    const verifiedKYCCount = tenants.filter((t) => t.kyc?.status === 'verified').length;
-    const pendingKYCCount = tenants.filter((t) => t.kyc?.status === 'pending').length;
-    const unsubmittedKYCCount = tenants.filter((t) => !t.kyc || t.kyc?.status === 'unsubmitted' || t.kyc?.status === 'rejected').length;
+    // KYC counts are for current residents only - people who have moved out
+    // (on the Exited page) no longer need verifying.
+    const current = tenants.filter((t) => !t.checkOutDate);
+    const verifiedKYCCount = current.filter((t) => t.kyc?.status === 'verified').length;
+    const pendingKYCCount = current.filter((t) => t.kyc?.status === 'pending').length;
+    const unsubmittedKYCCount = current.filter((t) => !t.kyc || t.kyc?.status === 'unsubmitted' || t.kyc?.status === 'rejected').length;
 
     const floorCount = activeProperty?.totalFloors || 4;
     const floorSummaries: FloorSummary[] = Array.from({ length: floorCount }, (_, i) => i + 1).map((floorNum) => {
