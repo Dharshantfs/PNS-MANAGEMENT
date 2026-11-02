@@ -55,48 +55,69 @@
    Night view. Everything in the app is styled with hard-coded slate / brand /
    emerald / rose / amber utility classes, so instead of touching every file we
    re-map those palettes while <html class="dark"> is set (see lib/theme.ts).
-   Solid buttons (bg-brand-700, bg-emerald-600 ...) keep their colours - only
-   the light tints, borders and text shades change.
+
+   Layers, darkest to lightest:
+     page   #0b1120  (slate-50)      chrome #0d1526 (header + sidebar)
+     card   #111a2c  (bg-white)      fill   #172133 (slate-100, hovers)
+     border #212c42  (slate-200)     input  #2c3952 (slate-300)
+   Text: #eef2f7 main, #94a3b8 secondary - never pure white, never grey-on-grey.
+   Accent: soft periwinkle #8fb3ea for links/figures; solid buttons a calmer
+   mid blue so white text keeps ~7:1 contrast.
+   The light shades (brand-100/200, emerald-200 ...) are used as TEXT on the
+   blue header/hero/modal bands, so those text colours stay light here - they
+   used to turn dark and vanish.
    --------------------------------------------------------------------------- */
 html.dark {
   color-scheme: dark;
-  --dk-card: #131c2e;
+  --dk-card: #111a2c;
+  --dk-chrome: #0d1526;
 
-  --color-slate-50: #0a101c;
-  --color-slate-100: #1a2438;
-  --color-slate-200: #243049;
-  --color-slate-300: #34425a;
+  --color-slate-50: #0b1120;
+  --color-slate-100: #172133;
+  --color-slate-200: #212c42;
+  --color-slate-300: #2c3952;
   --color-slate-400: #64748b;
   --color-slate-500: #94a3b8;
-  --color-slate-600: #a9b6c9;
-  --color-slate-700: #c5d0df;
-  --color-slate-800: #dde4ee;
-  --color-slate-900: #f1f5f9;
+  --color-slate-600: #a9b5c7;
+  --color-slate-700: #c4cdda;
+  --color-slate-800: #dce2eb;
+  --color-slate-900: #eef2f7;
 
-  --color-brand-50: #121f38;
-  --color-brand-100: #182a4a;
-  --color-brand-200: #24406d;
+  --color-brand-50: #13203a;
+  --color-brand-100: #1a2944;
+  --color-brand-200: #26395c;
+  --color-brand-300: #3d5583;
+  --color-brand-500: #4a76bd;
+  --color-brand-600: #3a66ad;
+  --color-brand-700: #2f5aa0;
+  --color-brand-800: #284d8a;
+  --color-brand-900: #1e3a69;
+  --color-brand-950: #070c18;
 
-  --color-emerald-50: #0c2a22;
-  --color-emerald-100: #11382d;
-  --color-emerald-200: #1a5042;
-  --color-rose-50: #2d1117;
-  --color-rose-100: #411820;
-  --color-rose-200: #6b2631;
-  --color-rose-300: #9f3a4a;
-  --color-amber-50: #2b2008;
-  --color-amber-100: #3d2c0a;
-  --color-amber-200: #5c4310;
-  --color-indigo-50: #1b1d3d;
-  --color-indigo-100: #25285a;
-  --color-indigo-200: #3a3f86;
+  --color-emerald-50: #0c2620;
+  --color-emerald-100: #10342a;
+  --color-emerald-200: #18493c;
+  --color-rose-50: #2a1118;
+  --color-rose-100: #3b1620;
+  --color-rose-200: #5c2330;
+  --color-rose-300: #8a3445;
+  --color-amber-50: #271d0a;
+  --color-amber-100: #36290c;
+  --color-amber-200: #523d12;
+  --color-indigo-50: #191b3a;
+  --color-indigo-100: #222553;
+  --color-indigo-200: #34397a;
 }
 
 html.dark body { background-color: var(--color-slate-50); color: var(--color-slate-900); }
 html.dark .bg-white { background-color: var(--dk-card); }
 html.dark .border-white { border-color: var(--dk-card); }
+html.dark .via-white { --tw-gradient-via: var(--dk-card); }
+html.dark .shadow-sm,
+html.dark .shadow-md { --tw-shadow-color: rgb(0 0 0 / 0.35); }
 
 /* Coloured text: the light-mode shades are too dark on a dark card. */
+html.dark .text-brand-600,
 html.dark .text-brand-700 { color: #8fb3ea; }
 html.dark .text-brand-800,
 html.dark .text-brand-900,
@@ -117,11 +138,65 @@ html.dark .text-amber-900 { color: #fef3c7; }
 html.dark .text-indigo-700 { color: #a5b4fc; }
 html.dark .text-indigo-800,
 html.dark .text-indigo-900 { color: #c7d2fe; }
+
+/* Light text that sits on blue bands (header, hero, modal title bars). */
+html.dark .text-brand-100 { color: #dbe6f8; }
+html.dark .text-brand-200 { color: #b4c6e6; }
+html.dark .text-brand-300 { color: #9db8e6; }
+html.dark .text-emerald-200 { color: #a7f3d0; }
+html.dark .text-amber-200 { color: #fde68a; }
+html.dark .text-rose-300 { color: #fda4af; }
+
+/* Hero banners (dashboard, forms, tenant portal): deep and quiet instead of
+   a bright blue slab. */
+html.dark .from-brand-700 { --tw-gradient-from: #1a2f57; }
+html.dark .via-brand-800 { --tw-gradient-via: #15264a; }
+html.dark .to-indigo-900 { --tw-gradient-to: #211e4c; }
+/* White buttons on a banner become the solid primary button. */
+html.dark [class*="from-brand-700"] .bg-white { background-color: #2f5aa0; color: #fff; }
+html.dark [class*="from-brand-700"] .bg-white .text-brand-700,
+html.dark [class*="from-brand-700"] .bg-white.text-brand-700 { color: #fff; }
+html.dark [class*="from-brand-700"] .bg-white:hover { background-color: #3a66ad; }
+
+/* Header and sidebar blend into the page instead of a bright blue frame. */
+html.dark #app-header {
+  background-color: rgb(13 21 38 / 0.92);
+  backdrop-filter: blur(10px);
+  border-color: var(--color-slate-200);
+  box-shadow: none;
+}
+html.dark #app-header [class*="bg-brand-800"] {
+  background-color: var(--color-slate-100);
+  border-color: var(--color-slate-300);
+}
+html.dark #app-sidebar {
+  background-color: var(--dk-chrome);
+  border-right: 1px solid var(--color-slate-200);
+}
+html.dark #app-header .bg-white,
+html.dark #app-sidebar > .bg-white {
+  background-color: rgb(74 118 189 / 0.18);
+  color: #a9c4ef;
+  box-shadow: inset 0 0 0 1px rgb(91 132 195 / 0.35);
+}
+html.dark #app-header .bg-white .text-brand-700 { color: #a9c4ef; }
+html.dark #app-sidebar nav button,
+html.dark #app-sidebar .text-brand-100 { color: #9aa8c0; }
+html.dark #app-sidebar button:not(.bg-white):hover { background-color: var(--color-slate-100); color: var(--color-slate-900); }
+html.dark #app-sidebar nav button.bg-white {
+  background-color: rgb(74 118 189 / 0.2);
+  color: #dbe6f8;
+  box-shadow: inset 0 0 0 1px rgb(91 132 195 / 0.4);
+}
+
 /* Light-tinted backgrounds with a slash opacity (e.g. bg-brand-50/60). */
-html.dark [class*="bg-brand-50/"] { background-color: rgb(18 31 56 / 0.7); }
-html.dark [class*="bg-rose-50/"] { background-color: rgb(45 17 23 / 0.7); }
-html.dark [class*="bg-emerald-50/"] { background-color: rgb(12 42 34 / 0.7); }
-html.dark [class*="bg-slate-50/"] { background-color: rgb(15 23 41 / 0.7); }
+html.dark [class*="bg-brand-50/"] { background-color: rgb(19 32 58 / 0.6); }
+html.dark [class*="bg-rose-50/"] { background-color: rgb(42 17 24 / 0.6); }
+html.dark [class*="bg-emerald-50/"] { background-color: rgb(12 38 32 / 0.6); }
+html.dark [class*="bg-amber-50/"] { background-color: rgb(39 29 10 / 0.6); }
+html.dark [class*="bg-indigo-50/"] { background-color: rgb(25 27 58 / 0.6); }
+html.dark [class*="bg-slate-50/"] { background-color: rgb(11 17 32 / 0.6); }
 html.dark input::placeholder,
 html.dark textarea::placeholder { color: var(--color-slate-400); }
 html.dark input[type="date"] { color-scheme: dark; }
+html.dark ::selection { background-color: #2f5aa0; color: #fff; }
