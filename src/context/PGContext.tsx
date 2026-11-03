@@ -24,6 +24,7 @@ import {
   ExitSettlement,
 } from '../types';
 import { DEFAULT_AGREEMENT_BODY } from '../lib/agreementFill';
+import { floorLabel } from '../lib/floors';
 import {
   subscribeOwnerProperties,
   subscribeRooms,
@@ -904,7 +905,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     };
 
     setDoc(ref, newRoom)
-      .then(() => logActivity('room.add', `Added room ${roomData.roomNumber} (Floor ${roomData.floor})`))
+      .then(() => logActivity('room.add', `Added room ${roomData.roomNumber} (${floorLabel(roomData.floor)})`))
       .catch((e) => console.warn('addRoom failed', e));
   };
 

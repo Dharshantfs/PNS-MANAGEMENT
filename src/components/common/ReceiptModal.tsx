@@ -1,4 +1,5 @@
 import React from 'react';
+import { floorLabel } from '../../lib/floors';
 import { PaymentRecord, PGSettings } from '../../types';
 import {
   Building2,
@@ -96,7 +97,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <span className="text-slate-500 text-[10px] uppercase font-bold">Received From</span>
               <p className="font-bold text-slate-900 text-sm mt-0.5">{payment.tenantName}</p>
               <p className="text-slate-700">Room {payment.roomNumber} ({payment.bedLabel})</p>
-              <p className="text-slate-700">Floor {payment.floor}</p>
+              <p className="text-slate-700">{floorLabel(payment.floor)}</p>
             </div>
 
             <div className="text-right">

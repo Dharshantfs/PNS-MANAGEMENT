@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { floorLabel } from '../../lib/floors';
 import { usePG } from '../../context/PGContext';
 import { Tenant } from '../../types';
 import { downloadCsv } from '../../lib/exportCsv';
@@ -64,7 +65,7 @@ export const ReportsPage: React.FC = () => {
       ['Room No', 'Floor', 'Room Type', 'Sharing', 'Total Beds', 'Occupied Beds', 'Vacant Beds', 'Price/Bed (₹)'],
       rooms.map((r) => {
         const occupied = r.beds.filter((b) => b.status === 'occupied').length;
-        return [r.roomNumber, r.floor, roomTypeName(r.roomTypeId), sharingLabel(r.sharingId), r.beds.length, occupied, r.beds.length - occupied, r.pricePerBed];
+        return [r.roomNumber, floorLabel(r.floor), roomTypeName(r.roomTypeId), sharingLabel(r.sharingId), r.beds.length, occupied, r.beds.length - occupied, r.pricePerBed];
       })
     );
   };
@@ -77,7 +78,7 @@ export const ReportsPage: React.FC = () => {
         t.name,
         t.phone,
         t.roomNumber || 'Unassigned',
-        t.floor,
+        floorLabel(t.floor),
         t.checkInDate,
         t.monthlyRent,
         t.depositPaid ? 'Yes' : 'No',
@@ -286,7 +287,7 @@ export const ReportsPage: React.FC = () => {
                 <tbody className="divide-y divide-slate-100 font-medium">
                   {stats.floorSummaries.map((f) => (
                     <tr key={f.floor}>
-                      <td className="py-2.5 px-3 font-bold text-slate-900">Floor {f.floor}</td>
+                      <td className="py-2.5 px-3 font-bold text-slate-900">{floorLabel(f.floor)}</td>
                       <td className="py-2.5 px-3 text-right">{f.totalRooms}</td>
                       <td className="py-2.5 px-3 text-right">{f.totalBeds}</td>
                       <td className="py-2.5 px-3 text-right text-emerald-600 font-bold">{f.occupiedBeds}</td>
@@ -322,7 +323,7 @@ export const ReportsPage: React.FC = () => {
                     return (
                       <tr key={r.id}>
                         <td className="py-2.5 px-3 font-bold text-slate-900">{r.roomNumber}</td>
-                        <td className="py-2.5 px-3">{r.floor}</td>
+                        <td className="py-2.5 px-3">{floorLabel(r.floor)}</td>
                         <td className="py-2.5 px-3">{roomTypeName(r.roomTypeId)}</td>
                         <td className="py-2.5 px-3">{sharingLabel(r.sharingId)}</td>
                         <td className="py-2.5 px-3 text-right">{r.beds.length}</td>

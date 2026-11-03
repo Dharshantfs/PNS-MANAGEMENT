@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { floorLabel, floorNumbers } from '../../lib/floors';
 import { usePG } from '../../context/PGContext';
 import { Tenant } from '../../types';
 import { TenantInviteModal } from './TenantInviteModal';
@@ -289,10 +290,9 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
               className="bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-600"
             >
               <option value="all">All Floors</option>
-              <option value={1}>Floor 1</option>
-              <option value={2}>Floor 2</option>
-              <option value={3}>Floor 3</option>
-              <option value={4}>Floor 4</option>
+              {floorNumbers(activeProperty?.totalFloors).map((f) => (
+                <option key={f} value={f}>{floorLabel(f)}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -323,7 +323,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                         <span>+91 {t.phone.replace(/\D/g, '')}</span>
                       </p>
                       <p className="text-[11px] text-slate-500">
-                        {t.roomNumber ? `Room ${t.roomNumber} (${t.bedLabel}) • Floor ${t.floor}` : 'Bed Unassigned'}
+                        {t.roomNumber ? `Room ${t.roomNumber} (${t.bedLabel}) • ${floorLabel(t.floor)}` : 'Bed Unassigned'}
                       </p>
                     </div>
                   </div>
@@ -495,7 +495,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                       const vacantCount = r.beds.filter((b) => b.status === 'vacant').length;
                       return (
                         <option key={r.id} value={r.id}>
-                          Room {r.roomNumber} ({getSharingLabel(activeProperty, r.sharingId)} • Flr {r.floor}) - {vacantCount} Vacant
+                          Room {r.roomNumber} ({getSharingLabel(activeProperty, r.sharingId)} • {floorLabel(r.floor)}) - {vacantCount} Vacant
                         </option>
                       );
                     })}
@@ -647,7 +647,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                       <span>+91 {selectedTenantDossier.phone.replace(/\D/g, '')}</span>
                     </p>
                     <p className="text-xs text-slate-600">
-                      Stay: Room {selectedTenantDossier.roomNumber || 'Assigned'} ({selectedTenantDossier.bedLabel}) • Floor {selectedTenantDossier.floor}
+                      Stay: Room {selectedTenantDossier.roomNumber || 'Assigned'} ({selectedTenantDossier.bedLabel}) • {floorLabel(selectedTenantDossier.floor)}
                     </p>
                   </div>
                 </div>

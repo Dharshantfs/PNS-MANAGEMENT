@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { floorLabel } from '../../lib/floors';
 import { usePG } from '../../context/PGContext';
 import { Tenant } from '../../types';
 import { getSharingLabel } from '../../lib/roomLabels';
@@ -376,7 +377,7 @@ export const TenantProfilePanel: React.FC<TenantProfilePanelProps> = ({ tenant, 
               </button>
             </div>
             {room && (
-              <p className="text-[11px] text-slate-500">{getSharingLabel(activeProperty, room.sharingId)} • Floor {room.floor}</p>
+              <p className="text-[11px] text-slate-500">{getSharingLabel(activeProperty, room.sharingId)} • {floorLabel(room.floor)}</p>
             )}
             {changingRoom && (
               <select

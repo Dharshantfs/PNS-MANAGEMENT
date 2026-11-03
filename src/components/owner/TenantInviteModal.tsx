@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { floorLabel } from '../../lib/floors';
 import { Tenant } from '../../types';
 import { usePG } from '../../context/PGContext';
 import {
@@ -162,7 +163,7 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
                   <span>+91 {cleanPhone}</span>
                 </p>
                 <p className="text-[11px] text-slate-600">
-                  {tenant.roomNumber ? `Room ${tenant.roomNumber} (${tenant.bedLabel}) • Floor ${tenant.floor}` : 'Bed Unassigned'}
+                  {tenant.roomNumber ? `Room ${tenant.roomNumber} (${tenant.bedLabel}) • ${floorLabel(tenant.floor)}` : 'Bed Unassigned'}
                 </p>
               </div>
             </div>

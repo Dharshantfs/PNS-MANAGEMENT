@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { floorLabel } from '../../lib/floors';
 import { usePG } from '../../context/PGContext';
 import { Tenant, TenantKYC } from '../../types';
 import {
@@ -689,7 +690,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                 <p className="text-xs text-slate-500 font-medium">Hostel Accommodation Status:</p>
                 <h3 className="text-sm font-bold text-slate-900">
                   {existingTenant?.roomNumber
-                    ? `Room ${existingTenant.roomNumber} (${existingTenant.bedLabel}) • Floor ${existingTenant.floor}`
+                    ? `Room ${existingTenant.roomNumber} (${existingTenant.bedLabel}) • ${floorLabel(existingTenant.floor)}`
                     : authUser
                       ? 'Bed assigned from the Bed Matrix'
                       : 'The PG office will assign your bed after you register'}
@@ -787,13 +788,13 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                             const vacantCount = r.beds.filter((b) => b.status === 'vacant').length;
                             return (
                               <option key={r.id} value={r.id}>
-                                Room {r.roomNumber} ({getSharingLabel(activeProperty, r.sharingId)} • Floor {r.floor}) - {vacantCount} Vacant - ₹{r.pricePerBed}/mo
+                                Room {r.roomNumber} ({getSharingLabel(activeProperty, r.sharingId)} • {floorLabel(r.floor)}) - {vacantCount} Vacant - ₹{r.pricePerBed}/mo
                               </option>
                             );
                           })
                         : publicRooms.map((r) => (
                             <option key={r.id} value={r.id}>
-                              Room {r.roomNumber} ({r.sharingLabel || 'Room'} • Floor {r.floor}) - {r.vacant} Vacant - ₹{r.pricePerBed}/mo
+                              Room {r.roomNumber} ({r.sharingLabel || 'Room'} • {floorLabel(r.floor)}) - {r.vacant} Vacant - ₹{r.pricePerBed}/mo
                             </option>
                           ))}
                     </select>
@@ -1230,7 +1231,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                 <span className="text-slate-600">Allocated Stay:</span>
                 <span className="font-bold text-slate-900">
                   {activeTenantObj.roomNumber
-                    ? `Room ${activeTenantObj.roomNumber} (${activeTenantObj.bedLabel || 'Bed'}) • Floor ${activeTenantObj.floor}`
+                    ? `Room ${activeTenantObj.roomNumber} (${activeTenantObj.bedLabel || 'Bed'}) • ${floorLabel(activeTenantObj.floor)}`
                     : 'To be assigned by the PG office'}
                 </span>
               </div>

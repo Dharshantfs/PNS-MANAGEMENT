@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { floorLabel } from '../../lib/floors';
 import { usePG } from '../../context/PGContext';
 import {
   Building2,
@@ -82,13 +83,13 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
             <span className="px-3 py-1 rounded-full bg-white/15 border border-white/25 text-brand-100 text-xs font-bold">
               Owner Management Portal
             </span>
-            <span className="text-xs text-brand-200">4-Floor Luxury Property Overview</span>
+            <span className="text-xs text-brand-200">{stats.floorSummaries.length}-Floor Property Overview</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white mt-2 tracking-tight">
             PNS Luxury PG Dashboard
           </h1>
           <p className="text-xs sm:text-sm text-brand-100 mt-1 max-w-xl leading-relaxed">
-            Real-time occupancy status, 4-floor bed matrix, Aadhaar KYC compliance records, and instant WhatsApp invitations.
+            Real-time occupancy status, floor-wise bed matrix, Aadhaar KYC compliance records, and instant WhatsApp invitations.
           </p>
         </div>
 
@@ -100,7 +101,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
             className="px-4 py-2.5 bg-white text-brand-700 hover:bg-brand-50 font-bold rounded-xl text-xs flex items-center space-x-2 shadow-md transition"
           >
             <Layers className="w-4 h-4 text-brand-700" />
-            <span>Manage 4 Floors ({stats.vacantBeds} Vacant)</span>
+            <span>Manage {stats.floorSummaries.length} Floors ({stats.vacantBeds} Vacant)</span>
           </button>
           
           <button
@@ -133,7 +134,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              <span className="text-emerald-600 font-bold">{stats.vacantBeds} Vacant Beds</span> across 4 floors
+              <span className="text-emerald-600 font-bold">{stats.vacantBeds} Vacant Beds</span> across {stats.floorSummaries.length} floors
             </p>
           </div>
         </div>
@@ -340,7 +341,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
 
       </div>
 
-      {/* 4 Floors Summary Strip */}
+      {/* Floors Summary Strip */}
       <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
@@ -348,7 +349,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
               <Layers className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-slate-900">4-Floor Capacity & Occupancy Matrix</h3>
+              <h3 className="font-bold text-sm text-slate-900">Floor-wise Capacity & Occupancy</h3>
               <p className="text-xs text-slate-500">Floor-by-floor breakdown of rooms and beds</p>
             </div>
           </div>
@@ -369,7 +370,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
               className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-slate-900 hover:border-brand-300 transition"
             >
               <div className="flex justify-between items-center">
-                <span className="text-xs font-extrabold text-brand-900">Floor {f.floor}</span>
+                <span className="text-xs font-extrabold text-brand-900">{floorLabel(f.floor)}</span>
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-800">
                   {f.occupancyRate}% Occupied
                 </span>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { floorLabel } from '../lib/floors';
 import { usePG } from '../context/PGContext';
 import {
   Building2,
@@ -54,7 +55,7 @@ export const Navbar: React.FC<NavbarProps> = () => {
                 <div className="hidden md:block">
                   <p className="font-bold text-white leading-none">{activeTenant?.name || 'Tenant Profile'}</p>
                   <p className="text-[10px] text-brand-200 leading-tight mt-0.5 font-medium">
-                    Room {activeTenant?.roomNumber || 'Unassigned'} ({activeTenant?.bedLabel || 'Bed'}) • Flr {activeTenant?.floor || 1}
+                    Room {activeTenant?.roomNumber || 'Unassigned'} ({activeTenant?.bedLabel || 'Bed'}) • {floorLabel(activeTenant?.floor)}
                   </p>
                 </div>
               </div>

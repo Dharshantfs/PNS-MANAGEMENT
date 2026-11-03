@@ -1,4 +1,5 @@
 import React from 'react';
+import { floorLabel } from '../../lib/floors';
 import { usePG } from '../../context/PGContext';
 import { getSharingLabel, getSharingOccupancy } from '../../lib/roomLabels';
 import {
@@ -46,7 +47,7 @@ export const RoommatesView: React.FC = () => {
           <div>
             <div className="flex items-center space-x-2">
               <span className="px-3 py-1 rounded-full bg-brand-50 text-brand-800 border border-brand-200 text-xs font-bold">
-                Room {activeTenant.roomNumber || 'N/A'} • Floor {activeTenant.floor}
+                Room {activeTenant.roomNumber || 'N/A'} • {floorLabel(activeTenant.floor)}
               </span>
               <span className="text-xs text-slate-500 font-semibold">
                 {getSharingLabel(activeProperty, currentRoom?.sharingId)}

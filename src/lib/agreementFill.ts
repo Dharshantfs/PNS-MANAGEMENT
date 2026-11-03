@@ -1,18 +1,20 @@
 import { Tenant, Property, PGSettings, Room } from '../types';
 import { maskAadhaar } from './aadhaar';
+import { floorLabel } from './floors';
 
 // Substitutes {{token}} placeholders in a template body with real values from
 // a tenant + property + (backward-compatible) settings object. Unknown
 // tokens are left as-is rather than silently dropped, so a typo in a
 // template is visible instead of producing blank gaps in a signed document.
 export function fillAgreementTemplate(
-  body: string,
+  rawBody: string,
   tenant: Tenant,
   property: Property | undefined,
   settings: PGSettings,
   room: Room | undefined
 ): string {
   const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+  const body = collapseFloorWord(rawBody);
 
   const tokens: Record<string, string> = {
     currentDate: today,
@@ -33,7 +35,7 @@ export function fillAgreementTemplate(
     fatherName: tenant.kyc?.fatherName || '',
     roomNumber: tenant.roomNumber || '',
     bedLabel: tenant.bedLabel || '',
-    floor: String(tenant.floor ?? ''),
+    floor: tenant.floor ? floorLabel(tenant.floor) : '',
     sharingType: room ? String(room.totalBeds) + '-sharing' : '',
     monthlyRent: tenant.monthlyRent?.toLocaleString('en-IN') || '0',
     securityDeposit: tenant.securityDeposit?.toLocaleString('en-IN') || '0',
@@ -110,7 +112,7 @@ export const SAMPLE_AGREEMENT_TOKENS: Record<string, string> = {
   fatherName: "Tenant's Father Name",
   roomNumber: '101',
   bedLabel: 'Bed A',
-  floor: '1',
+  floor: 'Ground Floor',
   sharingType: '2-sharing',
   monthlyRent: '8,500',
   securityDeposit: '15,000',
@@ -118,8 +120,13 @@ export const SAMPLE_AGREEMENT_TOKENS: Record<string, string> = {
   rentDueDay: '5',
 };
 
+// {{floor}} now reads "Ground Floor" / "1st Floor", so the word "Floor" in
+// front of it in templates already saved (e.g. "Floor {{floor}}") is dropped
+// when filling - the saved template itself is not changed.
+const collapseFloorWord = (body: string) => body.replace(/\bFloor\s+(\{\{\s*floor\s*\}\})/gi, '$1');
+
 export function fillSampleTemplate(body: string): string {
-  return body.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key) =>
+  return collapseFloorWord(body).replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key) =>
     Object.prototype.hasOwnProperty.call(SAMPLE_AGREEMENT_TOKENS, key) ? SAMPLE_AGREEMENT_TOKENS[key] : match
   );
 }
@@ -146,7 +153,7 @@ Aadhaar No.: {{aadhaarNumber}}.
 
 1. ACCOMMODATION
 The Licensor agrees to permit the Licensee to use Bed "{{bedLabel}}" in Room
-{{roomNumber}} ({{sharingType}}), Floor {{floor}}, at the above property, on a
+{{roomNumber}} ({{sharingType}}), {{floor}}, at the above property, on a
 leave-and-license basis, strictly for residential purposes.
 
 2. TERM

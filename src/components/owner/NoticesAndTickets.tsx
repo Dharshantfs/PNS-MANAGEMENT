@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { floorLabel, floorNumbers } from '../../lib/floors';
 import { usePG } from '../../context/PGContext';
 import { Notice, MaintenanceTicket } from '../../types';
 import {
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export const NoticesAndTickets: React.FC = () => {
-  const { notices, tickets, addNotice, deleteNotice, updateTicketStatus } = usePG();
+  const { notices, tickets, addNotice, deleteNotice, updateTicketStatus, activeProperty } = usePG();
   const [isAddNoticeOpen, setIsAddNoticeOpen] = useState(false);
 
   // New notice form state
@@ -102,7 +103,7 @@ export const NoticesAndTickets: React.FC = () => {
                 </div>
                 <div className="pt-2 border-t border-slate-200/60 flex justify-between items-center text-[10px] text-slate-400">
                   <span>{n.date}</span>
-                  <span className="font-semibold">{n.floorTarget === 'all' ? 'All Floors' : `Floor ${n.floorTarget}`}</span>
+                  <span className="font-semibold">{n.floorTarget === 'all' ? 'All Floors' : floorLabel(n.floorTarget)}</span>
                 </div>
               </div>
             ))
@@ -118,7 +119,7 @@ export const NoticesAndTickets: React.FC = () => {
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-900">Tenant Maintenance Requests</h2>
-            <p className="text-xs text-slate-500">Live ticket queue raised by residents across 4 floors</p>
+            <p className="text-xs text-slate-500">Live ticket queue raised by residents across all floors</p>
           </div>
         </div>
 
@@ -222,11 +223,10 @@ export const NoticesAndTickets: React.FC = () => {
                     onChange={(e) => setNoticeFloor(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
                   >
-                    <option value="all">All 4 Floors</option>
-                    <option value="1">Floor 1</option>
-                    <option value="2">Floor 2</option>
-                    <option value="3">Floor 3</option>
-                    <option value="4">Floor 4</option>
+                    <option value="all">All Floors</option>
+                    {floorNumbers(activeProperty?.totalFloors).map((f) => (
+                      <option key={f} value={String(f)}>{floorLabel(f)}</option>
+                    ))}
                   </select>
                 </div>
               </div>

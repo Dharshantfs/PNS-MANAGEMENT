@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { floorLabel } from '../../lib/floors';
 import { usePG } from '../../context/PGContext';
 import { PaymentModal } from './PaymentModal';
 import { getSharingLabel } from '../../lib/roomLabels';
@@ -89,7 +90,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
                 Resident Portal
               </span>
               <span className="text-xs text-brand-200">
-                Floor {activeTenant.floor} • Room {activeTenant.roomNumber || 'Unassigned'} ({activeTenant.bedLabel || 'Bed'})
+                {floorLabel(activeTenant.floor)} • Room {activeTenant.roomNumber || 'Unassigned'} ({activeTenant.bedLabel || 'Bed'})
               </span>
             </div>
             <h1 className="text-2xl font-black text-white mt-1">
@@ -161,7 +162,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
               <span>My Room & Bed Details</span>
             </h2>
             <span className="text-xs px-3 py-1 rounded-full bg-brand-50 text-brand-800 font-bold border border-brand-200">
-              Floor {activeTenant.floor}
+              {floorLabel(activeTenant.floor)}
             </span>
           </div>
 
