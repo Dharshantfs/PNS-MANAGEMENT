@@ -6,7 +6,6 @@ import {
   UserMinus,
   IndianRupee,
   Bell,
-  FileText,
   FileBarChart,
   History,
   Settings as SettingsIcon,
@@ -14,7 +13,7 @@ import {
   Building2,
 } from 'lucide-react';
 
-export type OwnerTab = 'dashboard' | 'matrix' | 'tenants' | 'exited' | 'finance' | 'reports' | 'activity' | 'notices' | 'googleforms' | 'settings';
+export type OwnerTab = 'dashboard' | 'matrix' | 'tenants' | 'exited' | 'finance' | 'reports' | 'activity' | 'notices' | 'settings';
 
 interface SidebarProps {
   activeTab: OwnerTab;
@@ -22,8 +21,8 @@ interface SidebarProps {
   vacantBeds: number;
   pendingKYCCount: number;
   onLogout: () => void;
-  // Staff accounts get day-to-day operational tabs only - Money, Google
-  // Forms config, and Settings (property config + Team Access) are owner-only.
+  // Staff accounts get day-to-day operational tabs only - Money, Reports,
+  // Activity and Settings (property config + Team Access) are owner-only.
   isOwnerRole: boolean;
 }
 
@@ -36,10 +35,9 @@ const NAV_ITEMS: Array<{ tab: OwnerTab; label: string; icon: React.ElementType; 
   { tab: 'reports', label: 'Reports', icon: FileBarChart, ownerOnly: true },
   { tab: 'activity', label: 'Activity', icon: History, ownerOnly: true },
   { tab: 'notices', label: 'Notices', icon: Bell },
-  // Forms (Google Forms admission) is hidden: the built-in joining form
-  // (invite link / ?register=true) covers it and also takes Aadhaar photos.
-  // Put this line back to show it again.
-  // { tab: 'googleforms', label: 'Forms', icon: FileText, ownerOnly: true },
+  // The Google Forms admission screen was removed (it asked for full Google
+  // Drive access). The built-in joining form (invite link / ?register=true)
+  // covers it; an existing Form's Apps Script webhook keeps working.
   { tab: 'settings', label: 'Settings', icon: SettingsIcon, ownerOnly: true },
 ];
 

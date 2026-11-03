@@ -19,7 +19,8 @@ rules_version = '2';
 //   token and returns only non-sensitive fields.
 //
 // Collections with no rule at all are server-only (Admin SDK bypasses
-// rules): kycDocuments (Aadhaar photos), propertySecrets (webhook keys).
+// rules): kycDocuments (Aadhaar photos and full Aadhaar numbers),
+// propertySecrets (webhook keys).
 service cloud.firestore {
 match /databases/{database}/documents {
 
@@ -70,6 +71,18 @@ match /databases/{database}/documents {
     return isStaff() && callerProfile().role == 'owner';
   }
 
+  // Full Aadhaar numbers are kept only in the server-only kycDocuments
+  // collection. A tenant record may hold an empty number, or keep the one
+  // it already had (older records, until the daily housekeeping moves it) -
+  // never a new full number.
+  function aadhaarIn(data) {
+    return data.get('kyc', {}).get('aadhaar', {}).get('aadhaarNumber', '');
+  }
+  function noNewAadhaarNumber() {
+    return aadhaarIn(request.resource.data) == '' ||
+      (resource != null && aadhaarIn(request.resource.data) == aadhaarIn(resource.data));
+  }
+
   // The signed-in tenant's own tenant document.
   function myTenant() {
     return get(/databases/$(database)/documents/tenants/$(tokenTenantId())).data;
@@ -101,11 +114,11 @@ match /databases/{database}/documents {
       request.resource.data.propertyIds == resource.data.propertyIds;
   }
 
-  // Properties: a single property can be read by id (the tenant portal and
-  // invite pages show its name / UPI id), but the collection can't be
-  // listed except for your own properties.
+  // Properties: readable only by the property's owner/staff and by its own
+  // tenants (the tenant portal shows its name / UPI id). Signed-out pages
+  // (invite links, self-registration) get the name from the server instead.
   match /properties/{propertyId} {
-    allow get: if true;
+    allow get: if isOwnerOfProperty(propertyId) || isTenantOfProperty(propertyId);
     allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     allow create: if isStaff() && request.resource.data.ownerId == request.auth.uid;
     allow update, delete: if isOwnerOfProperty(propertyId) && isOwnerRole();
@@ -137,17 +150,13 @@ match /databases/{database}/documents {
     // account may look up its own record by its verified phone number.
     allow list: if isOwnerOfProperty(resource.data.propertyId) ||
       (isSignedIn() && tokenPhone() != '' && resource.data.phone == tokenPhone());
-    allow create: if isOwnerOfProperty(request.resource.data.propertyId);
-    // A tenant may only (re)submit their own KYC for review - never touch
-    // dues, rent, deposit, status or anything else, and never mark
-    // themselves verified.
-    allow update: if (isOwnerOfProperty(resource.data.propertyId) &&
-        request.resource.data.propertyId == resource.data.propertyId) ||
-      (isTenantSelf(tenantId) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kyc', 'updatedAt']) &&
-        resource.data.kyc.get('status', 'unsubmitted') != 'verified' &&
-        request.resource.data.kyc.status == 'pending' &&
-        request.resource.data.kyc.get('verifiedByOwner', false) == false);
+    allow create: if isOwnerOfProperty(request.resource.data.propertyId) && noNewAadhaarNumber();
+    // Only owner/staff write tenant records directly. A tenant (re)submits
+    // their KYC through the server (POST /api/onboard/kyc), which always
+    // sets it to 'pending' and keeps the Aadhaar number server-side.
+    allow update: if isOwnerOfProperty(resource.data.propertyId) &&
+      request.resource.data.propertyId == resource.data.propertyId &&
+      noNewAadhaarNumber();
     allow delete: if isOwnerOfProperty(resource.data.propertyId);
   }
 

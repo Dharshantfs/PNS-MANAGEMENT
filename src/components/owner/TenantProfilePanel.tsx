@@ -35,7 +35,15 @@ const AadhaarCopies: React.FC<{ tenant: Tenant }> = ({ tenant }) => {
     }
   };
 
-  if (!hasUploads) return <p className="text-[11px] text-slate-500">No Aadhaar photos uploaded yet.</p>;
+  if (!hasUploads) {
+    return (
+      <p className="text-[11px] text-slate-500">
+        {tenant.kyc?.purgedAt
+          ? `Aadhaar photos and number deleted on ${tenant.kyc.purgedAt} (90 days after checkout).`
+          : 'No Aadhaar photos uploaded yet.'}
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-2">

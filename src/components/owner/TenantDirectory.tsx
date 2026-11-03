@@ -34,6 +34,8 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { TenantAvatar } from '../common/TenantAvatar';
+import { AadhaarReveal } from '../common/AadhaarReveal';
+import { aadhaarLast4, maskAadhaar } from '../../lib/aadhaar';
 
 interface TenantDirectoryProps {
   onOpenKYCOnboarding?: (tenantId: string) => void;
@@ -76,7 +78,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
       !t.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
       !t.phone.includes(searchTerm) &&
       !(t.roomNumber && t.roomNumber.includes(searchTerm)) &&
-      !(t.kyc?.aadhaar?.aadhaarNumber && t.kyc.aadhaar.aadhaarNumber.includes(searchTerm))
+      !(searchTerm.replace(/\D/g, '').length >= 4 && aadhaarLast4(t.kyc?.aadhaar) !== '' && searchTerm.replace(/\D/g, '').endsWith(aadhaarLast4(t.kyc?.aadhaar)))
     ) {
       return false;
     }
@@ -354,7 +356,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Aadhaar Card:</span>
                     <span className="font-mono font-bold text-slate-900">
-                      {t.kyc?.aadhaar?.aadhaarNumber || 'Not submitted yet'}
+                      {maskAadhaar(t.kyc?.aadhaar) || 'Not submitted yet'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -726,9 +728,7 @@ export const TenantDirectory: React.FC<TenantDirectoryProps> = ({ onOpenKYCOnboa
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
                   <div>
                     <span className="text-slate-500">Aadhaar Card No.</span>
-                    <p className="font-mono font-bold text-brand-950 text-sm">
-                      {selectedTenantDossier.kyc?.aadhaar?.aadhaarNumber || 'Not submitted'}
-                    </p>
+                    <AadhaarReveal key={selectedTenantDossier.id} tenant={selectedTenantDossier} className="font-mono font-bold text-brand-950 text-sm" />
                   </div>
 
                   <div>

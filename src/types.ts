@@ -12,7 +12,10 @@ export type PaymentStatus = 'paid' | 'due' | 'partial' | 'overdue';
 export type KYCVerificationMethod = 'manual' | 'ekyc';
 
 export interface AadhaarDetails {
-  aadhaarNumber: string; // 12 digits - full number, only ever shown to the owner, never exported/logged
+  // Always '' on tenant records now: the full number is kept server-side only
+  // (kycDocuments) and an owner reveals it via POST /api/kyc/reveal-aadhaar.
+  // Forms still use this field to SEND a newly entered number to the server.
+  aadhaarNumber: string;
   aadhaarLast4?: string; // safe to display in lists/exports
   nameOnAadhaar: string;
   dob: string;
@@ -45,6 +48,8 @@ export interface TenantKYC {
   bloodGroup?: string;
   submittedAt?: string;
   verifiedByOwner?: boolean;
+  // Day the Aadhaar photos and number were deleted (90 days after checkout).
+  purgedAt?: string;
 }
 
 export interface ExitSettlement {
@@ -95,6 +100,8 @@ export interface Tenant {
   authUid?: string; // Tenant Portal login (Firebase Auth uid), created at KYC submit
   // Secret part of the KYC invite link (?onboard=<id>&t=<token>).
   inviteToken?: string;
+  // When inviteToken was issued - invite links stop working after 7 days.
+  inviteTokenIssuedAt?: string;
   // Room a self-registered applicant asked for (no bed until the owner assigns one).
   preferredRoomId?: string;
   kyc: TenantKYC;
@@ -323,6 +330,7 @@ export type ActivityAction =
   | 'bed.assign' | 'bed.vacate'
   | 'tenant.add' | 'tenant.update' | 'tenant.delete' | 'tenant.exit'
   | 'kyc.submit' | 'kyc.approve' | 'kyc.reject'
+  | 'kyc.reveal' | 'kyc.view-photos' | 'kyc.purge' // written by the server (api/_lib/app.ts)
   | 'charge.add'
   | 'payment.record' | 'payment.confirm'
   | 'notice.add' | 'notice.delete'

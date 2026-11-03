@@ -60,6 +60,24 @@ const monthLabelIST = () =>
 
 const newToken = () => crypto.randomBytes(24).toString("base64url");
 
+// KYC invite links stop working 7 days after their token was issued. Tokens
+// issued before inviteTokenIssuedAt existed stay valid until LEGACY_INVITE_CUTOFF
+// so links already sent on WhatsApp keep working for a week after this change.
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const LEGACY_INVITE_CUTOFF = Date.parse("2026-11-10T00:00:00+05:30");
+export function inviteTokenExpired(t: { inviteTokenIssuedAt?: string } | undefined): boolean {
+  const issued = Date.parse(String(t?.inviteTokenIssuedAt || ""));
+  if (Number.isNaN(issued)) return Date.now() > LEGACY_INVITE_CUTOFF;
+  return Date.now() - issued > INVITE_TTL_MS;
+}
+const freshInvite = () => ({ inviteToken: newToken(), inviteTokenIssuedAt: nowIso() });
+
+// Full Aadhaar numbers live only in the server-only kycDocuments/{tenantId}
+// collection (no Firestore rule = no browser access). Tenant records keep
+// just the last 4 digits; the owner can reveal the full number through
+// POST /api/kyc/reveal-aadhaar, which is written to the activity log.
+const aadhaarDigits = (v: unknown) => String(v ?? "").replace(/\D/g, "");
+
 function safeEqual(a: unknown, b: unknown): boolean {
   const A = Buffer.from(String(a ?? ""));
   const B = Buffer.from(String(b ?? ""));
@@ -100,13 +118,13 @@ function rateLimited(req: express.Request, key: string, max: number, windowMs: n
 }
 
 function emptyKyc(overrides: Record<string, any>) {
-  const aadhaarNumber = String(overrides.aadhaarNumber || "").replace(/\D/g, "");
+  const aadhaarNumber = aadhaarDigits(overrides.aadhaarNumber);
   return {
     status: "pending", // Always owner-reviewed - see types.ts KYCVerificationMethod
     submittedAt: todayIST(),
     verifiedByOwner: false,
     aadhaar: {
-      aadhaarNumber,
+      aadhaarNumber: "", // full number is kept in kycDocuments only
       aadhaarLast4: aadhaarNumber.slice(-4),
       nameOnAadhaar: String(overrides.nameOnAadhaar || overrides.name || "").toUpperCase(),
       dob: overrides.dob || "",
@@ -198,7 +216,7 @@ async function admitTenant(
       ...(rent > 0 ? { lastRentPeriod: today.slice(0, 7) } : {}),
       hometown: fields.hometown || fields.city || "",
       kyc: emptyKyc(fields),
-      inviteToken: newToken(),
+      ...freshInvite(),
       createdAt: nowIso(),
       updatedAt: nowIso(),
     };
@@ -208,6 +226,15 @@ async function admitTenant(
       tenant.preferredRoomId = String(fields.preferredRoomId);
     }
     tx.set(tenantRef, tenant);
+    const fullAadhaar = aadhaarDigits(fields.aadhaarNumber);
+    if (fullAadhaar) {
+      tx.set(db.collection("kycDocuments").doc(tenantRef.id), {
+        tenantId: tenantRef.id,
+        propertyId,
+        aadhaarNumber: fullAadhaar,
+        updatedAt: nowIso(),
+      });
+    }
     if (rent > 0) {
       // The first month's rent is a charge like any other, so the tenant's
       // statement (charges - payments) adds up to their dues.
@@ -225,6 +252,84 @@ async function admitTenant(
     }
     return tenant;
   });
+}
+
+// Daily KYC housekeeping (run by the /api/cron/monthly-rent cron, or by hand
+// with `npm run kyc-housekeeping`):
+// 1. Moves any full Aadhaar number still on a tenant record (saved before
+//    numbers were kept server-side) into kycDocuments, leaving the last 4.
+// 2. 90 days after a resident's checkout, deletes their Aadhaar photos and
+//    full number. Name, stay, dues and payment history are kept.
+export const KYC_RETENTION_DAYS = 90;
+export async function kycHousekeeping(db: Db) {
+  const result = { moved: 0, purged: 0, failed: 0 };
+
+  const withNumber = await db.collection("tenants").where("kyc.aadhaar.aadhaarNumber", "!=", "").get();
+  for (const t of withNumber.docs) {
+    try {
+      const data = t.data();
+      const full = aadhaarDigits(data.kyc?.aadhaar?.aadhaarNumber);
+      const batch = db.batch();
+      // Only a valid 12-digit number is kept; anything else was never a
+      // real number and is simply cleared from the tenant record.
+      if (full.length === 12) {
+        batch.set(
+          db.collection("kycDocuments").doc(t.id),
+          { tenantId: t.id, propertyId: data.propertyId, aadhaarNumber: full, updatedAt: nowIso() },
+          { merge: true }
+        );
+      }
+      batch.update(t.ref, {
+        "kyc.aadhaar.aadhaarNumber": "",
+        "kyc.aadhaar.aadhaarLast4": full.length === 12 ? full.slice(-4) : data.kyc?.aadhaar?.aadhaarLast4 || "",
+      });
+      await batch.commit();
+      result.moved++;
+    } catch (err) {
+      console.error(`kyc housekeeping: could not move the number for tenant ${t.id}:`, err);
+      result.failed++;
+    }
+  }
+
+  const cutoff = new Date(Date.now() - KYC_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  const cutoffDay = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(cutoff);
+  const exited = await db.collection("tenants").where("checkOutDate", "<=", cutoffDay).get();
+  for (const t of exited.docs) {
+    const data = t.data();
+    // Already cleaned after this checkout (a re-admitted resident who left
+    // again is cleaned again).
+    if (!data.checkOutDate || (data.kyc?.purgedAt && data.kyc.purgedAt >= data.checkOutDate)) continue;
+    try {
+      const batch = db.batch();
+      batch.delete(db.collection("kycDocuments").doc(t.id));
+      batch.update(t.ref, {
+        "kyc.aadhaar.aadhaarNumber": "",
+        "kyc.aadhaar.frontImageUrl": admin.firestore.FieldValue.delete(),
+        "kyc.aadhaar.backImageUrl": admin.firestore.FieldValue.delete(),
+        "kyc.purgedAt": todayIST(),
+      });
+      batch.set(db.collection("activityLogs").doc(), {
+        propertyId: data.propertyId,
+        actorUid: "",
+        actorName: "System",
+        actorRole: "owner",
+        action: "kyc.purge",
+        summary: `Deleted ${data.name || "an exited resident"}'s Aadhaar photos and number (${KYC_RETENTION_DAYS} days after checkout)`,
+        createdAt: nowIso(),
+      });
+      await batch.commit();
+      result.purged++;
+    } catch (err) {
+      console.error(`kyc housekeeping: could not clean tenant ${t.id}:`, err);
+      result.failed++;
+    }
+  }
+  return result;
 }
 
 // What a signed-out visitor holding a valid invite link may see about the
@@ -281,6 +386,26 @@ export function createApiApp() {
   // Two compressed Aadhaar photos (~450 KB of base64 each) is the largest body.
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ extended: true, limit: "2mb" }));
+  app.disable("x-powered-by");
+
+  // Firebase App Check on the signed-out endpoints: proves the request comes
+  // from this app in a real browser, not a script. Off until APP_CHECK_ENFORCE=1
+  // is set in the server env (set it only after VITE_RECAPTCHA_SITE_KEY is
+  // live in the frontend, or every public form stops working).
+  app.use("/api/onboard", async (req, res, next) => {
+    if (process.env.APP_CHECK_ENFORCE !== "1" || !adminApp) return next();
+    // Signed-in owners/staff/tenants are already proven by their ID token, so
+    // a blocked reCAPTCHA (ad-blocker, network) never stops their KYC saves.
+    if (await verifyBearer(req)) return next();
+    const token = String(req.headers["x-firebase-appcheck"] || "");
+    try {
+      if (!token) throw new Error("missing");
+      await admin.appCheck().verifyToken(token);
+      next();
+    } catch {
+      res.status(401).json({ success: false, error: "Please reload the page and try again." });
+    }
+  });
 
   const requireAdminDb = (res: express.Response) => {
     const db = getDb();
@@ -329,6 +454,25 @@ export function createApiApp() {
     return (await canAccessProperty(db, staff.uid, staff.profile, propertyId)) ? staff : null;
   };
 
+  // Audit entry for every look at Aadhaar data. If it can't be written, the
+  // data is not handed out.
+  const logKycAccess = (
+    db: Db,
+    staff: { uid: string; profile: Record<string, any> },
+    propertyId: string,
+    action: string,
+    summary: string
+  ) =>
+    db.collection("activityLogs").add({
+      propertyId,
+      actorUid: staff.uid,
+      actorName: staff.profile.name || staff.profile.email || "Unknown",
+      actorRole: staff.profile.role,
+      action,
+      summary,
+      createdAt: nowIso(),
+    });
+
   // Loads a tenant for an onboarding call: allowed with the tenant's invite
   // token, or for owner/staff of the tenant's property.
   const tenantForInvite = async (db: Db, req: express.Request, tenantId: unknown, token: unknown) => {
@@ -344,14 +488,23 @@ export function createApiApp() {
     if (!snap.exists || !tenant) {
       return { status: 404, error: "This KYC link is no longer valid - ask the PG office for a new link." } as const;
     }
-    if (token && tenant.inviteToken && safeEqual(token, tenant.inviteToken)) {
-      return { ref, snap, tenant, staff: null } as const;
+    const tokenMatches = !!token && !!tenant.inviteToken && safeEqual(token, tenant.inviteToken);
+    if (tokenMatches && !inviteTokenExpired(tenant)) {
+      return { ref, snap, tenant, staff: null, self: false } as const;
     }
+    // A signed-in caller doesn't need the link, even if an old one is in the URL.
     const staff = await staffForProperty(db, req, tenant.propertyId);
-    if (staff) return { ref, snap, tenant, staff } as const;
+    if (staff) return { ref, snap, tenant, staff, self: false } as const;
+    // The signed-in tenant themself (Tenant Portal > KYC).
+    const decoded = await verifyBearer(req);
+    if (decoded?.role === "tenant" && decoded.tenantId === snap.id) {
+      return { ref, snap, tenant, staff: null, self: true } as const;
+    }
     return {
       status: 403,
-      error: "This KYC link is not valid any more. Please ask the PG office to send you a new link.",
+      error: tokenMatches
+        ? "This KYC link has expired (links work for 7 days). Please ask the PG office to send you a new link."
+        : "This KYC link is not valid any more. Please ask the PG office to send you a new link.",
     } as const;
   };
 
@@ -656,7 +809,7 @@ export function createApiApp() {
       if (!kyc) return res.status(400).json({ success: false, error: "kyc is required." });
       const found = await tenantForInvite(db, req, tenantId, token);
       if ("error" in found) return res.status(found.status).json({ success: false, error: found.error });
-      const { ref, snap, tenant, staff } = found;
+      const { ref, snap, tenant, staff, self } = found;
       if (!staff && tenant.kyc?.status === "verified") {
         return res.status(409).json({
           success: false,
@@ -665,14 +818,22 @@ export function createApiApp() {
       }
 
       const str = (v: any) => (v == null ? "" : String(v));
-      const aadhaarNumber = str(kyc.aadhaar?.aadhaarNumber).replace(/\D/g, "");
+      let aadhaarNumber = aadhaarDigits(kyc.aadhaar?.aadhaarNumber);
+      // Left blank = keep the number already on file (the full number is
+      // never sent to the browser, so an edit can't pre-fill it).
+      if (!aadhaarNumber) {
+        const onFile = (await db.collection("kycDocuments").doc(snap.id).get()).data()?.aadhaarNumber;
+        aadhaarNumber = aadhaarDigits(onFile) || aadhaarDigits(tenant.kyc?.aadhaar?.aadhaarNumber);
+      }
       if (aadhaarNumber.length !== 12) {
         return res.status(400).json({ success: false, error: "Please enter your full 12-digit Aadhaar number." });
       }
-      // A resubmission clears the previous rejection reason.
+      // A resubmission clears the previous rejection reason, and a new KYC
+      // after a post-checkout clean-up starts the retention clock again.
       const { rejectionReason: _oldReason, ...previousAadhaar } = tenant.kyc?.aadhaar || {};
+      const { purgedAt: _purged, ...previousKyc } = tenant.kyc || {};
       const updatedKyc = {
-        ...(tenant.kyc || {}),
+        ...previousKyc,
         fatherName: str(kyc.fatherName),
         emergencyContactName: str(kyc.emergencyContactName),
         emergencyContactPhone: str(kyc.emergencyContactPhone),
@@ -691,7 +852,7 @@ export function createApiApp() {
         submittedAt: todayIST(),
         aadhaar: {
           ...previousAadhaar,
-          aadhaarNumber,
+          aadhaarNumber: "", // full number is kept in kycDocuments only
           aadhaarLast4: aadhaarNumber.slice(-4),
           nameOnAadhaar: str(kyc.aadhaar?.nameOnAadhaar),
           dob: str(kyc.aadhaar?.dob),
@@ -701,8 +862,17 @@ export function createApiApp() {
         },
       };
       const updates: Record<string, any> = { kyc: updatedKyc, updatedAt: nowIso() };
-      if (kyc.email) updates.email = str(kyc.email).trim().toLowerCase();
-      await ref.update(updates);
+      // A signed-in tenant can't change their contact email here (their
+      // login email is managed separately); invite-link and staff can.
+      if (kyc.email && !self) updates.email = str(kyc.email).trim().toLowerCase();
+      const batch = db.batch();
+      batch.update(ref, updates);
+      batch.set(
+        db.collection("kycDocuments").doc(snap.id),
+        { tenantId: snap.id, propertyId: tenant.propertyId, aadhaarNumber, updatedAt: nowIso() },
+        { merge: true }
+      );
+      await batch.commit();
 
       await db
         .collection("activityLogs")
@@ -865,15 +1035,41 @@ export function createApiApp() {
     try {
       const tenantSnap = await db.collection("tenants").doc(req.params.tenantId).get();
       const tenant = tenantSnap.data();
-      if (!tenant || !(await staffForProperty(db, req, tenant.propertyId))) {
+      const staff = tenant ? await staffForProperty(db, req, tenant.propertyId) : null;
+      if (!tenant || !staff) {
         return res.status(403).json({ success: false, error: "Not allowed." });
       }
       const docSnap = await db.collection("kycDocuments").doc(tenantSnap.id).get();
       const d = docSnap.data() || {};
+      // Who looked at whose Aadhaar copies is part of the audit trail.
+      await logKycAccess(db, staff, tenant.propertyId, "kyc.view-photos", `Viewed ${tenant.name || "a tenant"}'s Aadhaar photos`);
       res.json({ success: true, front: d.front || null, back: d.back || null, uploadedAt: d.uploadedAt || null });
     } catch (err: any) {
       console.error("KYC documents read error:", err);
       res.status(500).json({ success: false, error: "Could not load the documents." });
+    }
+  });
+
+  // Owner-role only: the full Aadhaar number, logged in the activity log.
+  app.post("/api/kyc/reveal-aadhaar", async (req, res) => {
+    const db = requireAdminDb(res);
+    if (!db) return;
+    try {
+      const tenantSnap = await db.collection("tenants").doc(String(req.body?.tenantId || "x")).get();
+      const tenant = tenantSnap.data();
+      const staff = tenant ? await staffForProperty(db, req, tenant.propertyId) : null;
+      if (!tenant || !staff || staff.profile.role !== "owner") {
+        return res.status(403).json({ success: false, error: "Only an owner can see the full Aadhaar number." });
+      }
+      const d = (await db.collection("kycDocuments").doc(tenantSnap.id).get()).data() || {};
+      // Records not yet moved by the daily housekeeping still hold it on the tenant.
+      const aadhaarNumber = aadhaarDigits(d.aadhaarNumber) || aadhaarDigits(tenant.kyc?.aadhaar?.aadhaarNumber);
+      if (!aadhaarNumber) return res.json({ success: true, aadhaarNumber: "" });
+      await logKycAccess(db, staff, tenant.propertyId, "kyc.reveal", `Viewed ${tenant.name || "a tenant"}'s full Aadhaar number`);
+      res.json({ success: true, aadhaarNumber });
+    } catch (err: any) {
+      console.error("Aadhaar reveal error:", err);
+      res.status(500).json({ success: false, error: "Could not load the Aadhaar number." });
     }
   });
 
@@ -971,6 +1167,16 @@ export function createApiApp() {
       if (last10(phone).length !== 10) {
         return res.status(400).json({ success: false, error: "A 10-digit mobile number is required." });
       }
+      // A resent or double-submitted form response must not create a second
+      // resident (and take a second bed).
+      const existing = await db
+        .collection("tenants")
+        .where("propertyId", "==", propertyId)
+        .where("phone", "==", normalizePhone(phone))
+        .get();
+      if (existing.docs.some((d) => !d.data().checkOutDate)) {
+        return res.json({ success: true, duplicate: true, message: "This mobile number is already staying here - nothing added." });
+      }
       const tenant = await admitTenant(
         db,
         propertyId,
@@ -997,64 +1203,6 @@ export function createApiApp() {
     } catch (err: any) {
       console.error("Google Form Webhook error:", err);
       res.status(500).json({ success: false, error: "Could not process the form response." });
-    }
-  });
-
-  app.post("/api/import/google-forms", async (req, res) => {
-    const db = requireAdminDb(res);
-    if (!db) return;
-    try {
-      const { rows, propertyId } = req.body || {};
-      if (!propertyId) return res.status(400).json({ success: false, message: "propertyId is required." });
-      if (!(await staffForProperty(db, req, String(propertyId)))) {
-        return res.status(403).json({ success: false, message: "Not allowed." });
-      }
-      if (!Array.isArray(rows) || rows.length === 0) {
-        return res.status(400).json({ success: false, message: "No data rows provided." });
-      }
-      if (rows.length > 200) {
-        return res.status(400).json({ success: false, message: "Import at most 200 rows at a time." });
-      }
-
-      let importedCount = 0;
-      let skipped = 0;
-      for (const row of rows) {
-        const phone = row.phone || row.Phone || row["Mobile Number"] || "";
-        if (last10(phone).length !== 10) {
-          skipped++;
-          continue;
-        }
-        await admitTenant(
-          db,
-          String(propertyId),
-          {
-            name: row.name || row.Name || row["Full Name"] || `Applicant ${importedCount + 1}`,
-            phone,
-            email: row.email || row.Email,
-            aadhaarNumber: row.aadhaar || row.Aadhaar,
-            dob: row.dob,
-            gender: row.gender,
-            address: row.address,
-            city: row.city || row.City,
-            companyOrCollege: row.companyOrCollege,
-            occupation: row.occupation,
-            foodPreference: row.food,
-            emergencyContactName: row.emergencyContactName,
-            emergencyContactPhone: row.emergencyContactPhone,
-          },
-          { allocateBed: true }
-        );
-        importedCount++;
-      }
-
-      res.json({
-        success: true,
-        count: importedCount,
-        message: `Imported ${importedCount} tenants - all pending owner KYC review.${skipped ? ` Skipped ${skipped} without a valid mobile number.` : ""}`,
-      });
-    } catch (err: any) {
-      console.error("Google Forms import error:", err);
-      res.status(500).json({ success: false, message: "Import failed." });
     }
   });
 
@@ -1132,9 +1280,10 @@ export function createApiApp() {
       if (!found) return;
       const { ref, id, tenant } = found;
       let token = tenant.inviteToken as string | undefined;
-      if (!token) {
-        token = newToken();
-        await ref.update({ inviteToken: token, updatedAt: nowIso() });
+      if (!token || inviteTokenExpired(tenant)) {
+        const fresh = freshInvite();
+        token = fresh.inviteToken;
+        await ref.update({ ...fresh, updatedAt: nowIso() });
       }
       const origin = /^https?:\/\/[^/\s]+$/.test(String(req.headers.origin || ""))
         ? String(req.headers.origin)
@@ -1227,7 +1376,13 @@ export function createApiApp() {
           if (billed) summary.billed++;
         }
       }
-      res.json({ success: true, period, ...summary });
+      // Separate from billing: a KYC housekeeping failure must not hide the
+      // rent result, and vice versa.
+      const kyc = await kycHousekeeping(db).catch((err) => {
+        console.error("kyc housekeeping error:", err);
+        return { error: "KYC housekeeping failed." };
+      });
+      res.json({ success: true, period, ...summary, kyc });
     } catch (err: any) {
       console.error("monthly-rent cron error:", err);
       res.status(500).json({ success: false, error: "Monthly rent run failed." });

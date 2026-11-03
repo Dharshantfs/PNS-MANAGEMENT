@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, deleteField, doc, runTransaction, setDoc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { db, auth } from '../lib/firebase';
+import { db, auth, appCheckHeaders } from '../lib/firebase';
 import {
   UserRole,
   Room,
@@ -999,6 +999,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         ...(fromAdvance > 0 ? { advanceBalance: round2(advance - fromAdvance) } : {}),
         // Re-admitting someone who had moved out brings them back to Tenants.
         ...(t.checkOutDate ? { checkOutDate: deleteField(), exitSettlement: deleteField(), checkInDate: today } : {}),
+        // Their Aadhaar copies and number were deleted after the last checkout,
+        // so the KYC has to be done again.
+        ...(t.checkOutDate && t.kyc?.purgedAt ? { 'kyc.status': 'unsubmitted', 'kyc.verifiedByOwner': false } : {}),
         ...(t.preferredRoomId ? { preferredRoomId: deleteField() } : {}),
         updatedAt: nowIso(),
       });
@@ -1148,6 +1151,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       hometown: tenantData.hometown || '',
       kyc: emptyKYC(),
       inviteToken: newInviteToken(),
+      inviteTokenIssuedAt: nowIso(),
       createdAt: nowIso(),
       updatedAt: nowIso(),
     };
@@ -1214,26 +1218,27 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const submitKYC = async (tenantId: string, kycData: Partial<TenantKYC>): Promise<void> => {
     const tenant = tenants.find((t) => t.id === tenantId);
     if (!tenant) throw new Error('Tenant not found.');
-    const aadhaarNumber = String(kycData.aadhaar?.aadhaarNumber ?? tenant.kyc?.aadhaar?.aadhaarNumber ?? '').replace(/\D/g, '');
-    const updatedKYC: TenantKYC = {
+    // Saved by the server (api/_lib/app.ts POST /api/onboard/kyc), which keeps
+    // the full Aadhaar number server-side, always sets the KYC to 'pending'
+    // for owner review and writes the activity log. Fields the form didn't
+    // send keep their current values.
+    const kyc = {
       ...tenant.kyc,
       ...kycData,
-      // Always lands as pending for owner review (firestore.rules also
-      // refuse anything else from a tenant).
-      status: 'pending',
-      verifiedByOwner: false,
-      submittedAt: todayIST(),
-      aadhaar: {
-        ...tenant.kyc.aadhaar,
-        ...(kycData.aadhaar || {}),
-        aadhaarNumber,
-        aadhaarLast4: aadhaarNumber.slice(-4),
-        verificationMethod: 'manual',
-      },
+      aadhaar: { ...tenant.kyc.aadhaar, ...(kycData.aadhaar || {}) },
     };
-    // Firestore rejects `undefined` anywhere in the data - drop such fields.
-    await saveTenant(tenantId, { kyc: JSON.parse(JSON.stringify(updatedKYC)) });
-    logActivity('kyc.submit', `Submitted KYC for ${tenant.name}`);
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${await auth.currentUser?.getIdToken()}`,
+      ...(await appCheckHeaders()),
+    };
+    const res = await fetch('/api/onboard/kyc', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ tenantId, kyc }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.error || 'Could not save the KYC - please try again.');
   };
 
   const approveKYC = (tenantId: string) => {

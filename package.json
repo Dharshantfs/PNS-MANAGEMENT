@@ -11,7 +11,8 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "bootstrap-owner": "tsx scripts/bootstrapFirstOwner.ts",
-    "deploy-rules": "tsx scripts/deployFirestoreRules.ts"
+    "deploy-rules": "tsx scripts/deployFirestoreRules.ts",
+    "kyc-housekeeping": "tsx scripts/kycHousekeeping.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
@@ -39,5 +40,9 @@
     "typescript": "~5.8.2",
     "vite": "^6.2.3",
     "@types/express": "^4.17.21"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.7",
+    "qs": "^6.17.1"
   }
 }

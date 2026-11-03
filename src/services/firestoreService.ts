@@ -53,6 +53,16 @@ export const newInviteToken = (): string => {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
 
+// Same rule as the server (api/_lib/app.ts inviteTokenExpired): links work
+// for 7 days; tokens from before inviteTokenIssuedAt existed until 10 Nov 2026.
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const LEGACY_INVITE_CUTOFF = Date.parse('2026-11-10T00:00:00+05:30');
+export const inviteTokenExpired = (t: { inviteTokenIssuedAt?: string } | undefined): boolean => {
+  const issued = Date.parse(String(t?.inviteTokenIssuedAt || ''));
+  if (Number.isNaN(issued)) return Date.now() > LEGACY_INVITE_CUTOFF;
+  return Date.now() - issued > INVITE_TTL_MS;
+};
+
 // Canonical phone format used everywhere a tenant's number is stored
 // (+91XXXXXXXXXX, no spaces) so exact-match Firestore queries on `phone`
 // work reliably instead of needing a full-collection client-side scan.

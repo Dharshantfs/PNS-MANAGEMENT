@@ -40,7 +40,9 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
 
   // Aadhaar Details State
   // Never pre-filled with sample data - the tenant types their own details.
-  const [aadhaarNum, setAadhaarNum] = useState(tenant.kyc?.aadhaar?.aadhaarNumber || '');
+  // The full Aadhaar number is never sent back to the browser, so it is typed again.
+  const [aadhaarNum, setAadhaarNum] = useState('');
+  const onFileLast4 = tenant.kyc?.aadhaar?.aadhaarLast4 || '';
   const [nameOnAadhaar, setNameOnAadhaar] = useState(
     tenant.kyc?.aadhaar?.nameOnAadhaar || tenant.name.toUpperCase()
   );
@@ -93,7 +95,8 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
 
   const handleVerifyAadhaar = async () => {
     const rawNumber = aadhaarNum.replace(/\D/g, '');
-    if (rawNumber.length !== 12) {
+    // Blank = keep the number already on file (it is never sent back to the browser).
+    if (!(rawNumber.length === 0 && onFileLast4) && rawNumber.length !== 12) {
       setErrorMessage('Please enter a valid 12-digit Aadhaar Card number.');
       return;
     }
@@ -209,7 +212,7 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
                       maxLength={14}
                       value={aadhaarNum}
                       onChange={handleAadhaarNumberChange}
-                      placeholder="XXXX XXXX XXXX"
+                      placeholder={onFileLast4 ? `Leave blank to keep XXXX XXXX ${onFileLast4}` : 'XXXX XXXX XXXX'}
                       className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono font-bold text-brand-900 focus:outline-none focus:border-brand-600 shadow-sm"
                     />
                   </div>
@@ -478,7 +481,7 @@ export const AadhaarKYCModal: React.FC<AadhaarKYCModalProps> = ({
               <div className="space-y-1">
                 <h3 className="text-xl font-black text-slate-900">KYC Submitted Successfully!</h3>
                 <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-                  Your Aadhaar card details ({aadhaarNum}), DOB ({dob}), and emergency contact information have been updated. The PG owner has been notified.
+                  Your Aadhaar card details (ending {aadhaarNum.replace(/\D/g, '').slice(-4) || onFileLast4}), DOB ({dob}), and emergency contact information have been updated. The PG owner has been notified.
                 </p>
               </div>
 

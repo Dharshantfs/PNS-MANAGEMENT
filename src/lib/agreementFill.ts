@@ -1,4 +1,5 @@
 import { Tenant, Property, PGSettings, Room } from '../types';
+import { maskAadhaar } from './aadhaar';
 
 // Substitutes {{token}} placeholders in a template body with real values from
 // a tenant + property + (backward-compatible) settings object. Unknown
@@ -27,7 +28,8 @@ export function fillAgreementTemplate(
     tenantPhone: tenant.phone || '',
     tenantEmail: tenant.email || '',
     tenantAddress: tenant.kyc?.permanentAddress || tenant.hometown || '',
-    aadhaarNumber: tenant.kyc?.aadhaar?.aadhaarNumber || '',
+    // Masked (XXXX XXXX 1234) - the full number never leaves the server.
+    aadhaarNumber: maskAadhaar(tenant.kyc?.aadhaar),
     fatherName: tenant.kyc?.fatherName || '',
     roomNumber: tenant.roomNumber || '',
     bedLabel: tenant.bedLabel || '',

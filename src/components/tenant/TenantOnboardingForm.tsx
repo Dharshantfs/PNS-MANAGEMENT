@@ -28,6 +28,7 @@ import { todayIST } from '../../services/firestoreService';
 import { getSharingLabel } from '../../lib/roomLabels';
 import { compressImage } from '../../lib/imageCompress';
 import { sendPasswordSetupEmail } from '../../services/authService';
+import { appCheckHeaders } from '../../lib/firebase';
 
 // Vacant-room option for the public form (from GET /api/onboard/property/:id -
 // no resident names).
@@ -67,6 +68,32 @@ const tenantFromInviteView = (v: any): Tenant =>
 const readParams = () =>
   typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
 
+// The invite token is taken out of the address bar as soon as the page
+// opens, so it doesn't stay in the browser history or get shared with a
+// screenshot. It is kept for this tab only (a refresh still works).
+const takeInviteToken = (tenantId?: string): string => {
+  if (typeof window === 'undefined') return '';
+  const key = `pg-invite:${tenantId || ''}`;
+  const params = new URLSearchParams(window.location.search);
+  const fromUrl = params.get('t') || '';
+  try {
+    if (fromUrl) sessionStorage.setItem(key, fromUrl);
+  } catch {
+    /* storage blocked - the token still works for this page view */
+  }
+  if (fromUrl && window.history.replaceState) {
+    params.delete('t');
+    const qs = params.toString();
+    window.history.replaceState({}, document.title, `${window.location.pathname}${qs ? `?${qs}` : ''}`);
+  }
+  if (fromUrl) return fromUrl;
+  try {
+    return sessionStorage.getItem(key) || '';
+  } catch {
+    return '';
+  }
+};
+
 interface TenantOnboardingFormProps {
   tenantId?: string;
   onCompletedLogin: (tenant: Tenant) => void;
@@ -92,7 +119,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
 
   // Secret part of the invite link (?onboard=<id>&t=<token>). A visitor who
   // self-registers gets one back from the server for their new record.
-  const [inviteToken, setInviteToken] = useState(() => readParams().get('t') || '');
+  const [inviteToken, setInviteToken] = useState(() => takeInviteToken(tenantId));
   const [linkError, setLinkError] = useState('');
   const [phoneLast4, setPhoneLast4] = useState('');
   const [publicProperty, setPublicProperty] = useState<{ id: string; name: string } | null>(null);
@@ -104,11 +131,14 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
     if (!tenantId) return;
     if (authUser && tenants.some((t) => t.id === tenantId)) return;
     if (authUser && !inviteToken) return; // owner view - tenants are still loading
-    fetch('/api/onboard/lookup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tenantId, token: inviteToken }),
-    })
+    appCheckHeaders()
+      .then((check) =>
+        fetch('/api/onboard/lookup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...check },
+          body: JSON.stringify({ tenantId, token: inviteToken }),
+        })
+      )
       .then((res) => res.json())
       .then((data) => {
         if (!data.success) {
@@ -127,7 +157,8 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
   useEffect(() => {
     if (tenantId) return;
     const pid = readParams().get('property') || activePropertyId || 'default';
-    fetch(`/api/onboard/property/${encodeURIComponent(pid)}`)
+    appCheckHeaders()
+      .then((check) => fetch(`/api/onboard/property/${encodeURIComponent(pid)}`, { headers: check }))
       .then((res) => res.json())
       .then((data) => {
         if (!data.success) return;
@@ -143,6 +174,8 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
   const existingTenant =
     tenants.find((t) => t.id === selectedTenantId) ||
     (fetchedTenant && fetchedTenant.id === selectedTenantId ? fetchedTenant : undefined);
+  // Last 4 digits of the Aadhaar number already on file (blank field = keep it).
+  const onFileLast4 = existingTenant?.kyc?.aadhaar?.aadhaarLast4 || '';
 
   // Step 1: Basic & Aadhaar Identity, Step 2: Emergency & Occupation, Step 3: Success Confirmation
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -214,7 +247,8 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
       const generated = `${existingTenant.name.toLowerCase().replace(/\s+/g, '')}@gmail.com`;
       setEmail(existingTenant.email && existingTenant.email !== generated ? existingTenant.email : '');
       setNameOnAadhaar(existingTenant.kyc?.aadhaar?.nameOnAadhaar || '');
-      setAadhaarNum(existingTenant.kyc?.aadhaar?.aadhaarNumber || '');
+      // The full number is never sent back to the browser - it is typed again.
+      setAadhaarNum('');
       setDob(existingTenant.kyc?.aadhaar?.dob || '');
       setGender(existingTenant.kyc?.aadhaar?.gender || '');
       setAadhaarAddress(existingTenant.kyc?.aadhaar?.address || existingTenant.kyc?.permanentAddress || '');
@@ -271,7 +305,8 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
   const handleProceedToStep2 = (e: React.FormEvent) => {
     e.preventDefault();
     const rawAadhaar = aadhaarNum.replace(/\D/g, '');
-    if (rawAadhaar.length !== 12) {
+    // Blank = keep the number already on file (it is never sent back to the browser).
+    if (!(rawAadhaar.length === 0 && onFileLast4) && rawAadhaar.length !== 12) {
       setValidationError('Please enter a valid 12-digit Aadhaar Card number.');
       return;
     }
@@ -362,7 +397,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
       };
 
       const postJson = async (url: string, body: any) => {
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(await appCheckHeaders()) };
         if (authUser) headers.Authorization = `Bearer ${await authUser.getIdToken()}`;
         const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
         const data = await res.json().catch(() => ({}));
@@ -797,7 +832,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                     type="text"
                     required
                     maxLength={14}
-                    placeholder="XXXX XXXX XXXX"
+                    placeholder={onFileLast4 ? `Leave blank to keep XXXX XXXX ${onFileLast4}` : 'XXXX XXXX XXXX'}
                     value={aadhaarNum}
                     onChange={(e) => handleAadhaarChange(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono font-bold text-brand-900 tracking-wider focus:outline-none focus:border-brand-600 shadow-sm"
@@ -1175,7 +1210,7 @@ export const TenantOnboardingForm: React.FC<TenantOnboardingFormProps> = ({
                 Welcome to {propertyName || 'the PG'}, {activeTenantObj.name}!
               </h2>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Your Aadhaar details (ending {aadhaarNum.replace(/\D/g, '').slice(-4)}), date of birth, emergency contact ({emergencyName}) and occupation have been submitted for the PG office to review.
+                Your Aadhaar details (ending {aadhaarNum.replace(/\D/g, '').slice(-4) || onFileLast4}), date of birth, emergency contact ({emergencyName}) and occupation have been submitted for the PG office to review.
               </p>
             </div>
 

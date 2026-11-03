@@ -12,7 +12,6 @@ import { FinancialReports } from './components/owner/FinancialReports';
 import { ReportsPage } from './components/owner/ReportsPage';
 import { ActivityLogPage } from './components/owner/ActivityLogPage';
 import { NoticesAndTickets } from './components/owner/NoticesAndTickets';
-import { GoogleFormsIntegration } from './components/owner/GoogleFormsIntegration';
 import { TenantPortal } from './components/tenant/TenantPortal';
 import { RoommatesView } from './components/tenant/RoommatesView';
 import { TenantKYC } from './components/tenant/TenantKYC';
@@ -166,12 +165,12 @@ const AppContent: React.FC = () => {
   }
 
   // Staff accounts (ownerProfile.role === 'staff') get day-to-day operational
-  // tabs only - Money, Google Forms config, and Settings are owner-only, both
+  // tabs only - Money, Reports, Activity and Settings are owner-only, both
   // hidden here AND enforced server-side (firestore.rules restricts property
   // settings writes to role 'owner'; api/_lib/app.ts already requires 'owner'
   // for inviting more team members).
   const isOwnerRole = ownerProfile?.role !== 'staff';
-  const OWNER_ONLY_TABS: OwnerTab[] = ['finance', 'reports', 'activity', 'googleforms', 'settings'];
+  const OWNER_ONLY_TABS: OwnerTab[] = ['finance', 'reports', 'activity', 'settings'];
   if (!isOwnerRole && OWNER_ONLY_TABS.includes(ownerTab) && ownerTab !== 'dashboard') {
     // Direct-navigate guard, in case a staff account lands on a hidden tab
     // (e.g. stale state) - the sidebar itself never links to these.
@@ -219,7 +218,6 @@ const AppContent: React.FC = () => {
             {ownerTab === 'reports' && isOwnerRole && <ReportsPage />}
             {ownerTab === 'activity' && isOwnerRole && <ActivityLogPage />}
             {ownerTab === 'notices' && <NoticesAndTickets />}
-            {ownerTab === 'googleforms' && isOwnerRole && <GoogleFormsIntegration />}
             {ownerTab === 'settings' && isOwnerRole && <SettingsPage />}
           </div>
         )}

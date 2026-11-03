@@ -22,6 +22,7 @@ import {
 import confetti from 'canvas-confetti';
 import { TenantAvatar } from '../common/TenantAvatar';
 import { auth } from '../../lib/firebase';
+import { maskAadhaar } from '../../lib/aadhaar';
 
 interface OwnerDashboardProps {
   onNavigateToMatrix: () => void;
@@ -238,7 +239,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
                     <div>
                       <h4 className="font-bold text-xs text-slate-900">{t.name}</h4>
                       <p className="text-[11px] text-brand-800 font-semibold">
-                        Aadhaar: {t.kyc?.aadhaar?.aadhaarNumber || 'Attached'}
+                        Aadhaar: {maskAadhaar(t.kyc?.aadhaar) || 'Attached'}
                       </p>
                       <p className="text-[10px] text-slate-500">
                         Room {t.roomNumber} ({t.bedLabel}) • +91 {t.phone.replace(/\D/g, '')}

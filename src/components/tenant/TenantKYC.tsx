@@ -17,6 +17,7 @@ import {
   Utensils,
 } from 'lucide-react';
 import { AadhaarKYCModal } from './AadhaarKYCModal';
+import { maskAadhaar } from '../../lib/aadhaar';
 
 export const TenantKYC: React.FC = () => {
   const { activeTenant, settings } = usePG();
@@ -104,7 +105,7 @@ export const TenantKYC: React.FC = () => {
           <div className="bg-brand-50/60 p-5 rounded-2xl border border-brand-200 space-y-2">
             <span className="text-brand-900 uppercase text-[10px] font-bold">Aadhaar 12-Digit Number</span>
             <p className="text-lg font-mono font-black text-brand-950">
-              {kyc?.aadhaar?.aadhaarNumber || 'Not provided'}
+              {maskAadhaar(kyc?.aadhaar) || 'Not provided'}
             </p>
             <span className="text-slate-500 uppercase text-[10px] font-bold block pt-2">Full Name on Aadhaar</span>
             <p className="text-sm font-bold text-slate-900 uppercase">

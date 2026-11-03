@@ -18,7 +18,7 @@ import {
 import confetti from 'canvas-confetti';
 import { TenantAvatar } from '../common/TenantAvatar';
 import { auth } from '../../lib/firebase';
-import { newInviteToken, saveTenant } from '../../services/firestoreService';
+import { inviteTokenExpired, newInviteToken, nowIso, saveTenant } from '../../services/firestoreService';
 
 interface TenantInviteModalProps {
   tenant: Tenant;
@@ -37,7 +37,9 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
   // The live record carries the invite token; the `tenant` prop can be a
   // placeholder built right after "Add tenant", before Firestore echoes it.
   const liveTenant = tenants.find((t) => t.id === tenant.id);
-  const [inviteToken, setInviteToken] = useState<string>(tenant.inviteToken || '');
+  const [inviteToken, setInviteToken] = useState<string>(
+    tenant.inviteToken && !inviteTokenExpired(tenant) ? tenant.inviteToken : ''
+  );
   const [tokenError, setTokenError] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState(false);
@@ -48,16 +50,18 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
   }>({ type: 'idle', msg: '' });
 
   // Every invite link carries the tenant's secret token - without it the
-  // KYC page refuses the link. Older tenants get one the first time.
+  // KYC page refuses the link. Links expire 7 days after the token was
+  // issued, so a tenant without one, or with an expired one, gets a new one.
   useEffect(() => {
     if (!isOpen) return;
-    if (liveTenant?.inviteToken) {
+    if (liveTenant?.inviteToken && !inviteTokenExpired(liveTenant)) {
       setInviteToken(liveTenant.inviteToken);
       return;
     }
-    if (inviteToken || !liveTenant) return;
+    if (!liveTenant) return;
     const token = newInviteToken();
-    saveTenant(tenant.id, { inviteToken: token })
+    setInviteToken('');
+    saveTenant(tenant.id, { inviteToken: token, inviteTokenIssuedAt: nowIso() })
       .then(() => setInviteToken(token))
       .catch((e) => setTokenError(e?.message || 'Could not create the invite link.'));
   }, [isOpen, liveTenant?.inviteToken, !!liveTenant]);
