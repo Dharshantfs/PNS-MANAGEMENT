@@ -232,7 +232,7 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
             </div>
           </div>
 
-          {/* Twilio Status Feedback */}
+          {/* WhatsApp API Status Feedback */}
           {twilioStatus.msg && (
             <div
               className={`p-3 rounded-xl text-xs font-medium border flex items-center space-x-2 ${
@@ -260,7 +260,7 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
               <ExternalLink className="w-3.5 h-3.5 opacity-80" />
             </a>
 
-            {/* Twilio WhatsApp Automated Dispatch */}
+            {/* WhatsApp Cloud API Automated Dispatch */}
             <button
               type="button"
               onClick={handleSendTwilioWhatsApp}
@@ -275,7 +275,7 @@ export const TenantInviteModal: React.FC<TenantInviteModalProps> = ({
               ) : (
                 <>
                   <Send className="w-4 h-4" />
-                  <span>Send via Twilio Gateway</span>
+                  <span>Send via WhatsApp API</span>
                 </>
               )}
             </button>

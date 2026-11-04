@@ -1,6 +1,5 @@
 import crypto from "node:crypto";
 import express from "express";
-import twilio from "twilio";
 import admin from "firebase-admin";
 
 // ---------------------------------------------------------------------------
@@ -1207,33 +1206,72 @@ export function createApiApp() {
   });
 
   // ----------------------------------------------------
-  // WhatsApp (Twilio): rent reminders & KYC invites. Owner/staff only; the
-  // phone number, name, amount and link all come from the database, never
-  // from the request, so the sender can't be used to message anyone else.
+  // WhatsApp (Meta WhatsApp Cloud API): rent reminders & KYC invites.
+  // Owner/staff only; the phone number, name, amount and link all come from
+  // the database, never from the request, so the sender can't be used to
+  // message anyone else.
+  //
+  // Meta only delivers business-initiated messages that use a pre-approved
+  // template, so each message is sent as a template with its values as body
+  // parameters ({{1}}, {{2}}, ...). The full text is still built here, only
+  // as the copy-and-send preview when the API isn't configured.
   // ----------------------------------------------------
-  const getTwilioClient = () => {
-    const sid = process.env.TWILIO_ACCOUNT_SID;
-    const token = process.env.TWILIO_AUTH_TOKEN;
-    return sid && token ? twilio(sid, token) : null;
-  };
+  type WhatsAppTemplate = { name: string; params: string[] };
 
-  const sendWhatsApp = async (res: express.Response, phone: string, body: string, okMessage: string) => {
-    const client = getTwilioClient();
-    const from = process.env.TWILIO_WHATSAPP_NUMBER;
-    if (!client || !from) {
+  // Meta rejects template parameters containing new lines, tabs or more than
+  // four spaces in a row.
+  const waParam = (v: unknown) => String(v ?? "").replace(/[\r\n\t]+/g, " ").replace(/ {4,}/g, "   ").trim() || "-";
+
+  const sendWhatsApp = async (
+    res: express.Response,
+    phone: string,
+    template: WhatsAppTemplate,
+    previewBody: string,
+    okMessage: string
+  ) => {
+    const token = process.env.META_WA_TOKEN;
+    const phoneNumberId = process.env.META_WA_PHONE_NUMBER_ID;
+    if (!token || !phoneNumberId || !template.name) {
       return res.json({
         success: false,
         simulated: true,
-        error: "WhatsApp sending isn't set up yet (Twilio keys missing). Copy the message and send it from WhatsApp instead.",
-        previewMessage: body,
+        error: "WhatsApp sending isn't set up yet (Meta WhatsApp keys missing). Copy the message and send it from WhatsApp instead.",
+        previewMessage: previewBody,
       });
     }
+    const version = process.env.META_WA_API_VERSION || "v21.0";
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
     try {
-      await client.messages.create({ body, from, to: `whatsapp:+91${last10(phone)}` });
-      res.json({ success: true, message: okMessage });
+      const resp = await fetch(`https://graph.facebook.com/${version}/${phoneNumberId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: `91${last10(phone)}`,
+          type: "template",
+          template: {
+            name: template.name,
+            language: { code: process.env.META_WA_TEMPLATE_LANG || "en" },
+            components: [
+              { type: "body", parameters: template.params.map((p) => ({ type: "text", text: waParam(p) })) },
+            ],
+          },
+        }),
+        signal: controller.signal,
+      });
+      const data: any = await resp.json().catch(() => ({}));
+      if (!resp.ok || data?.error) {
+        console.error("WhatsApp send error:", resp.status, JSON.stringify(data?.error || data));
+        return res.status(502).json({ success: false, error: "WhatsApp could not deliver the message." });
+      }
+      res.json({ success: true, message: okMessage, messageId: data?.messages?.[0]?.id });
     } catch (error: any) {
-      console.error("WhatsApp send error:", error);
+      console.error("WhatsApp send error:", error?.name === "AbortError" ? "timeout" : error);
       res.status(502).json({ success: false, error: "WhatsApp could not deliver the message." });
+    } finally {
+      clearTimeout(timer);
     }
   };
 
@@ -1262,10 +1300,16 @@ export function createApiApp() {
       const amount = Number(tenant.dueAmount || 0);
       if (amount <= 0) return res.status(400).json({ success: false, error: "This tenant has nothing due." });
       const pgName = (await db.collection("properties").doc(tenant.propertyId).get()).data()?.name || "your PG";
-      const body = `Hi ${tenant.name}, this is a reminder from ${pgName} that your rent/dues of Rs. ${amount.toLocaleString(
-        "en-IN"
-      )} are pending. Please pay at your earliest convenience.`;
-      await sendWhatsApp(res, tenant.phone, body, "WhatsApp reminder sent.");
+      const amountText = amount.toLocaleString("en-IN");
+      const body = `Hi ${tenant.name}, this is a reminder from ${pgName} that your rent/dues of Rs. ${amountText} are pending. Please pay at your earliest convenience.`;
+      // Template body: {{1}} name, {{2}} PG name, {{3}} amount
+      await sendWhatsApp(
+        res,
+        tenant.phone,
+        { name: process.env.META_WA_TEMPLATE_RENT_REMINDER || "", params: [tenant.name, pgName, amountText] },
+        body,
+        "WhatsApp reminder sent."
+      );
     } catch (err: any) {
       console.error("WhatsApp reminder error:", err);
       res.status(500).json({ success: false, error: "Could not send the reminder." });
@@ -1290,7 +1334,17 @@ export function createApiApp() {
         : `https://${req.headers.host}`;
       const inviteUrl = `${origin}/?onboard=${id}&t=${token}`;
       const body = `Hello ${tenant.name}! You have been assigned Room ${tenant.roomNumber || "TBD"}.\nPlease complete your Digital KYC via the secure link below:\n\n${inviteUrl}\n\nAfter submitting, you'll get an email to set your password for the Tenant Portal.`;
-      await sendWhatsApp(res, tenant.phone, body, "WhatsApp invitation sent.");
+      // Template body: {{1}} name, {{2}} room number, {{3}} KYC link
+      await sendWhatsApp(
+        res,
+        tenant.phone,
+        {
+          name: process.env.META_WA_TEMPLATE_KYC_INVITE || "",
+          params: [tenant.name, tenant.roomNumber || "TBD", inviteUrl],
+        },
+        body,
+        "WhatsApp invitation sent."
+      );
     } catch (err: any) {
       console.error("WhatsApp invite error:", err);
       res.status(500).json({ success: false, error: "Could not send the invitation." });
