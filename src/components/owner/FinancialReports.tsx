@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { usePG } from '../../context/PGContext';
+import React, { useEffect, useMemo, useState } from 'react';
+import { usePG, usePaymentsInRange } from '../../context/PGContext';
 import { PaymentRecord, Tenant } from '../../types';
 import {
   IndianRupee,
@@ -27,13 +27,20 @@ import { auth } from '../../lib/firebase';
 import { monthLabelIST, todayIST } from '../../services/firestoreService';
 
 export const FinancialReports: React.FC = () => {
-  const { payments, tenants, settings, activeProperty, getStats, recordPayment, confirmPendingPayment, addDueCharge, charges } = usePG();
-  const pendingPayments = payments.filter((p) => p.status === 'pending');
+  const { payments, tenants, settings, activeProperty, activePropertyId, paymentsLiveFrom, getStats, recordPayment, confirmPendingPayment, addDueCharge, charges } = usePG();
+  const pendingPayments = useMemo(() => payments.filter((p) => p.status === 'pending'), [payments]);
   const stats = getStats();
   const activeDuesCategories = (activeProperty?.duesCategories || []).filter((c) => c.active);
+  const unpaidTenants = useMemo(() => tenants.filter((t) => t.dueAmount > 0), [tenants]);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  // Ledger date range (payment date, inclusive). Default: last 12 months, no end date.
+  const [fromDate, setFromDate] = useState(paymentsLiveFrom);
+  const [toDate, setToDate] = useState('');
+  const { payments: rangePayments, loading: rangeLoading, error: rangeError } = usePaymentsInRange(fromDate, toDate);
+  const PAGE_SIZE = 50;
+  const [ledgerLimit, setLedgerLimit] = useState(PAGE_SIZE);
+  useEffect(() => setLedgerLimit(PAGE_SIZE), [fromDate, toDate, searchTerm, activePropertyId]);
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
   const [selectedReceiptPayment, setSelectedReceiptPayment] = useState<PaymentRecord | null>(null);
 
@@ -60,19 +67,17 @@ export const FinancialReports: React.FC = () => {
   const [sendingWa, setSendingWa] = useState<string | null>(null);
   const [waToast, setWaToast] = useState<string | null>(null);
 
-  // Filtered payments ledger
-  const filteredPayments = payments.filter((p) => {
-    if (selectedMonth !== 'all' && p.month !== selectedMonth) return false;
-    if (
-      searchTerm &&
-      !p.tenantName.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      !p.roomNumber.includes(searchTerm) &&
-      !p.receiptNumber.toLowerCase().includes(searchTerm.toLowerCase())
-    ) {
-      return false;
-    }
-    return true;
-  });
+  // Filtered payments ledger (date range + search), newest first.
+  const filteredPayments = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    if (!term) return rangePayments;
+    return rangePayments.filter(
+      (p) =>
+        (p.tenantName || '').toLowerCase().includes(term) ||
+        (p.roomNumber || '').includes(searchTerm) ||
+        (p.receiptNumber || '').toLowerCase().includes(term)
+    );
+  }, [rangePayments, searchTerm]);
 
   const handleCreatePayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,7 +239,7 @@ export const FinancialReports: React.FC = () => {
               ₹{stats.totalDueRevenue.toLocaleString('en-IN')}
             </div>
             <p className="text-[11px] text-rose-700 font-medium mt-0.5">
-              {tenants.filter((t) => t.dueAmount > 0).length} tenants pending
+              {unpaidTenants.length} tenants pending
             </p>
           </div>
 
@@ -272,14 +277,13 @@ export const FinancialReports: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {tenants.filter((t) => t.dueAmount > 0).length === 0 ? (
+          {unpaidTenants.length === 0 ? (
             <div className="col-span-full p-6 bg-slate-50 rounded-2xl text-center text-xs text-slate-500 border border-slate-200">
               <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto mb-1" />
               <span>All tenants are fully paid!</span>
             </div>
           ) : (
-            tenants
-              .filter((t) => t.dueAmount > 0)
+            unpaidTenants
               .map((t) => (
                 <div
                   key={t.id}
@@ -378,7 +382,26 @@ export const FinancialReports: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <input
+              type="date"
+              aria-label="From date"
+              title="From date"
+              value={fromDate}
+              max={toDate || undefined}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
+            />
+            <span className="text-xs text-slate-500">to</span>
+            <input
+              type="date"
+              aria-label="To date"
+              title="To date"
+              value={toDate}
+              min={fromDate || undefined}
+              onChange={(e) => setToDate(e.target.value)}
+              className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
+            />
             <div className="relative flex-1 sm:w-64">
               <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
               <input
@@ -391,6 +414,9 @@ export const FinancialReports: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {rangeLoading && <p className="text-xs text-slate-500">Loading older payments...</p>}
+        {rangeError && <p className="text-xs text-rose-600">{rangeError}</p>}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
@@ -407,7 +433,7 @@ export const FinancialReports: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {filteredPayments.map((p) => (
+              {filteredPayments.slice(0, ledgerLimit).map((p) => (
                 <tr key={p.id} className="hover:bg-brand-50/30 transition">
                   <td className="py-3.5 px-3 font-mono font-bold text-brand-900">{p.receiptNumber || 'Pending'}</td>
                   <td className="py-3.5 px-3">
@@ -444,6 +470,15 @@ export const FinancialReports: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {filteredPayments.length > ledgerLimit && (
+          <button
+            type="button"
+            onClick={() => setLedgerLimit((n) => n + PAGE_SIZE)}
+            className="w-full py-2 bg-white hover:bg-slate-50 text-brand-700 border border-brand-200 rounded-xl text-xs font-bold"
+          >
+            Show more ({filteredPayments.length - ledgerLimit} more)
+          </button>
+        )}
       </div>
 
       {/* Record Payment Modal */}

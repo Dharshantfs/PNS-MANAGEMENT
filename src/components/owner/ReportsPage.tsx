@@ -1,7 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { floorLabel } from '../../lib/floors';
-import { usePG } from '../../context/PGContext';
-import { Tenant } from '../../types';
+import { usePG, usePaymentsInRange } from '../../context/PGContext';
+import { PaymentRecord, Tenant } from '../../types';
+import { fetchTenantPayments } from '../../services/firestoreService';
 import { downloadCsv } from '../../lib/exportCsv';
 import { TenantStatementModal } from '../common/TenantStatementModal';
 import {
@@ -22,10 +24,38 @@ const TABS: Array<{ key: ReportTab; label: string; icon: React.ElementType }> = 
 ];
 
 export const ReportsPage: React.FC = () => {
-  const { rooms, tenants, payments, charges, settings, activeProperty, getStats } = usePG();
+  const { rooms, tenants, charges, settings, activeProperty, activePropertyId, paymentsLiveFrom, getStats } = usePG();
   const stats = getStats();
   const [tab, setTab] = useState<ReportTab>('financial');
   const [statementTenant, setStatementTenant] = useState<Tenant | null>(null);
+
+  // Date range for the Financial tab (payment date, inclusive). Default: the
+  // last 12 months, no end date (so payments recorded later still show).
+  const [fromDate, setFromDate] = useState(paymentsLiveFrom);
+  const [toDate, setToDate] = useState('');
+  const { payments, loading: paymentsLoading, error: paymentsError } = usePaymentsInRange(fromDate, toDate);
+
+  // Ledger shows PAGE_SIZE rows at a time; printing shows every row.
+  const PAGE_SIZE = 50;
+  const [ledgerLimit, setLedgerLimit] = useState(PAGE_SIZE);
+  useEffect(() => setLedgerLimit(PAGE_SIZE), [fromDate, toDate, activePropertyId]);
+
+  // Tenant statement: the tenant's full payment history in this property
+  // (not only the date range above).
+  const [statementPayments, setStatementPayments] = useState<PaymentRecord[]>([]);
+  useEffect(() => {
+    setStatementPayments([]);
+    if (!statementTenant || !activePropertyId) return;
+    let cancelled = false;
+    fetchTenantPayments(activePropertyId, statementTenant.id)
+      .then((list) => {
+        if (!cancelled) setStatementPayments(list);
+      })
+      .catch((e) => console.warn('Statement payments load failed', e));
+    return () => {
+      cancelled = true;
+    };
+  }, [statementTenant, activePropertyId]);
 
   const generatedOn = new Date().toLocaleString('en-IN');
 
@@ -49,11 +79,15 @@ export const ReportsPage: React.FC = () => {
   const roomTypeName = (id: string) => activeProperty?.roomTypes.find((rt) => rt.id === id)?.name || '-';
   const sharingLabel = (id: string) => activeProperty?.sharingOptions.find((s) => s.id === id)?.label || '-';
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    // Render every ledger row before the print dialog opens.
+    flushSync(() => setLedgerLimit(Infinity));
+    window.print();
+  };
 
   const exportFinancialCsv = () => {
     downloadCsv(
-      `financial-report-${activeProperty?.name || 'property'}`,
+      `financial-report-${activeProperty?.name || 'property'}-${fromDate || 'start'}-to-${toDate || 'today'}`,
       ['Receipt No', 'Tenant', 'Room', 'Month', 'Amount', 'Mode', 'Status', 'Date'],
       payments.map((p) => [p.receiptNumber, p.tenantName, p.roomNumber, p.month, p.amount, p.paymentMode, p.status, p.paymentDate])
     );
@@ -127,7 +161,8 @@ export const ReportsPage: React.FC = () => {
       <div className="hidden print:block mb-4">
         <h1 className="text-lg font-black">{settings.pgName}</h1>
         <p className="text-xs text-slate-500">
-          {TABS.find((t) => t.key === tab)?.label} Report - Generated {generatedOn}
+          {TABS.find((t) => t.key === tab)?.label} Report
+          {tab === 'financial' ? ` (${fromDate || 'start'} to ${toDate || 'today'})` : ''} - Generated {generatedOn}
         </p>
       </div>
 
@@ -147,6 +182,34 @@ export const ReportsPage: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            <div className="flex flex-wrap items-end gap-3 text-xs print:hidden">
+              <label className="flex flex-col gap-1">
+                <span className="font-bold text-slate-700">From</span>
+                <input
+                  type="date"
+                  value={fromDate}
+                  max={toDate || undefined}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="font-bold text-slate-700">To</span>
+                <input
+                  type="date"
+                  value={toDate}
+                  min={fromDate || undefined}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-brand-600"
+                />
+              </label>
+              {paymentsLoading && <span className="text-slate-500 pb-2">Loading older payments...</span>}
+              {paymentsError && <span className="text-rose-600 pb-2">{paymentsError}</span>}
+            </div>
+            <p className="text-[11px] text-slate-500">
+              The month-wise table, the payment ledger and the CSV cover payments dated {fromDate || 'from the start'} to {toDate || 'today'}. The four boxes show the current position.
+            </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
@@ -199,7 +262,7 @@ export const ReportsPage: React.FC = () => {
           </div>
 
           <div className="bg-white border border-brand-100 rounded-3xl p-6 shadow-sm space-y-3">
-            <h3 className="font-bold text-sm text-slate-900">Full Payment Ledger</h3>
+            <h3 className="font-bold text-sm text-slate-900">Payment Ledger ({payments.length} payments)</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
@@ -214,7 +277,7 @@ export const ReportsPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
-                  {payments.map((p) => (
+                  {payments.slice(0, ledgerLimit).map((p) => (
                     <tr key={p.id}>
                       <td className="py-2.5 px-3 font-mono font-bold text-brand-900">{p.receiptNumber}</td>
                       <td className="py-2.5 px-3">
@@ -231,6 +294,15 @@ export const ReportsPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            {payments.length > ledgerLimit && (
+              <button
+                type="button"
+                onClick={() => setLedgerLimit((n) => n + PAGE_SIZE)}
+                className="w-full py-2 bg-white hover:bg-slate-50 text-brand-700 border border-brand-200 rounded-xl text-xs font-bold print:hidden"
+              >
+                Show more ({payments.length - ledgerLimit} more)
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -401,7 +473,7 @@ export const ReportsPage: React.FC = () => {
 
       <TenantStatementModal
         tenant={statementTenant}
-        payments={payments}
+        payments={statementPayments}
         charges={charges}
         settings={settings}
         isOpen={!!statementTenant}

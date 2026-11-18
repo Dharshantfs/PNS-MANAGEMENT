@@ -98,6 +98,12 @@ match /databases/{database}/documents {
     );
   }
 
+  // Is `tenantId` a tenant of `propertyId`? Uses getAfter so it also works
+  // when the tenant is created in the same transaction as the record.
+  function tenantInProperty(tenantId, propertyId) {
+    return getAfter(/databases/$(database)/documents/tenants/$(tenantId)).data.propertyId == propertyId;
+  }
+
   // Does the signed-in tenant live in `propertyId`?
   function isTenantOfProperty(propertyId) {
     return isTenantAccount() && myTenant().propertyId == propertyId;
@@ -163,9 +169,12 @@ match /databases/{database}/documents {
   // Payments: owner/staff manage them. A tenant may read their own and
   // report a UPI payment for themself - only as 'pending', for their own
   // property. Only owner/staff can confirm it (mark it 'paid').
+  // A payment always belongs to a tenant of the same property, and can never
+  // be moved to another tenant or property afterwards.
   match /payments/{paymentId} {
     allow read: if isOwnerOfProperty(resource.data.propertyId) || isTenantSelf(resource.data.tenantId);
-    allow create: if isOwnerOfProperty(request.resource.data.propertyId) ||
+    allow create: if (isOwnerOfProperty(request.resource.data.propertyId) &&
+        tenantInProperty(request.resource.data.tenantId, request.resource.data.propertyId)) ||
       (isTenantAccount() &&
         request.resource.data.tenantId == tokenTenantId() &&
         request.resource.data.propertyId == myTenant().propertyId &&
@@ -176,7 +185,8 @@ match /databases/{database}/documents {
         request.resource.data.amount is number &&
         request.resource.data.amount > 0);
     allow update: if isOwnerOfProperty(resource.data.propertyId) &&
-      request.resource.data.propertyId == resource.data.propertyId;
+      request.resource.data.propertyId == resource.data.propertyId &&
+      request.resource.data.tenantId == resource.data.tenantId;
     allow delete: if isOwnerOfProperty(resource.data.propertyId);
   }
 
@@ -204,11 +214,14 @@ match /databases/{database}/documents {
   }
 
   // Dues charges: owner/staff create and manage; a tenant can read their own.
+  // Same as payments: always a tenant of the same property, never moved.
   match /charges/{chargeId} {
     allow read: if isOwnerOfProperty(resource.data.propertyId) || isTenantSelf(resource.data.tenantId);
-    allow create: if isOwnerOfProperty(request.resource.data.propertyId);
+    allow create: if isOwnerOfProperty(request.resource.data.propertyId) &&
+      tenantInProperty(request.resource.data.tenantId, request.resource.data.propertyId);
     allow update: if isOwnerOfProperty(resource.data.propertyId) &&
-      request.resource.data.propertyId == resource.data.propertyId;
+      request.resource.data.propertyId == resource.data.propertyId &&
+      request.resource.data.tenantId == resource.data.tenantId;
     allow delete: if isOwnerOfProperty(resource.data.propertyId);
   }
 

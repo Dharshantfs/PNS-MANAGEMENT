@@ -156,6 +156,73 @@ export const subscribeTenants = (propertyId: string, cb: (tenants: Tenant[]) => 
 export const subscribePayments = (propertyId: string, cb: (payments: PaymentRecord[]) => void) =>
   subscribeScoped<PaymentRecord>('payments', propertyId, cb);
 
+// Payments are only kept live for a recent window (see PAYMENTS_LIVE_MONTHS in
+// PGContext) - the full history grows forever and every record would
+// otherwise stream into the browser. Older payments are fetched once, on
+// demand, for a report's date range or a tenant's statement.
+//
+// The date-window query needs the composite index (propertyId, paymentDate)
+// in firestore.indexes.json. Until that index exists in Firebase the query
+// fails with `failed-precondition`; we then fall back to the old
+// whole-property subscription so nothing disappears from the screen.
+export function subscribePaymentsSince(
+  propertyId: string,
+  sinceDate: string,
+  cb: (payments: PaymentRecord[]) => void
+): () => void {
+  let fallbackUnsub: (() => void) | null = null;
+  const q = query(collection(db, 'payments'), where('propertyId', '==', propertyId), where('paymentDate', '>=', sinceDate));
+  const unsub = onSnapshot(
+    q,
+    (snap) => cb(fromDocs<PaymentRecord>(snap)),
+    (err) => {
+      console.warn('payments (recent) subscription failed - falling back to all payments', err);
+      if (!fallbackUnsub) fallbackUnsub = subscribePayments(propertyId, cb);
+    }
+  );
+  return () => {
+    unsub();
+    fallbackUnsub?.();
+  };
+}
+
+// Tenant-reported payments waiting for confirmation - always live, whatever
+// their date (equality-only query, no composite index needed).
+export function subscribePendingPayments(propertyId: string, cb: (payments: PaymentRecord[]) => void): () => void {
+  const q = query(collection(db, 'payments'), where('propertyId', '==', propertyId), where('status', '==', 'pending'));
+  return onSnapshot(q, (snap) => cb(fromDocs<PaymentRecord>(snap)), (err) => console.warn('pending payments subscription failed', err));
+}
+
+// One-time read of a property's payments dated from..to (YYYY-MM-DD,
+// inclusive). Falls back to reading the whole property if the index is missing.
+export async function fetchPaymentsInRange(propertyId: string, from: string, to: string): Promise<PaymentRecord[]> {
+  const inRange = (p: PaymentRecord) => (p.paymentDate || '') >= from && (p.paymentDate || '') <= to;
+  try {
+    const snap = await getDocs(
+      query(
+        collection(db, 'payments'),
+        where('propertyId', '==', propertyId),
+        where('paymentDate', '>=', from),
+        where('paymentDate', '<=', to)
+      )
+    );
+    return fromDocs<PaymentRecord>(snap);
+  } catch (err) {
+    console.warn('payments range query failed - reading all payments instead', err);
+    const snap = await getDocs(query(collection(db, 'payments'), where('propertyId', '==', propertyId)));
+    return fromDocs<PaymentRecord>(snap).filter(inRange);
+  }
+}
+
+// One-time read of one tenant's full payment history in a property (for the
+// tenant statement). Equality-only query, no composite index needed.
+export async function fetchTenantPayments(propertyId: string, tenantId: string): Promise<PaymentRecord[]> {
+  const snap = await getDocs(
+    query(collection(db, 'payments'), where('propertyId', '==', propertyId), where('tenantId', '==', tenantId))
+  );
+  return fromDocs<PaymentRecord>(snap);
+}
+
 export const subscribeNotices = (propertyId: string, cb: (notices: Notice[]) => void) =>
   subscribeScoped<Notice>('notices', propertyId, cb);
 
@@ -235,10 +302,17 @@ export async function saveTenant(tenantId: string, updates: Partial<Tenant>): Pr
 
 export const receiptCounterRef = (propertyId: string) => doc(db, 'properties', propertyId, 'counters', 'receipts');
 
-// Receipt number for counter value `seq`, dated in India time.
-export function formatReceiptNumber(seq: number): string {
+// Short, fixed code for a property (first 4 characters of its id), so two
+// properties never issue the same receipt number.
+export const propertyReceiptCode = (propertyId: string): string =>
+  (propertyId || 'XXXX').slice(0, 4).toUpperCase();
+
+// Receipt number for counter value `seq`, dated in India time, e.g.
+// PG-REC-AB12-2026-11-001. Receipts issued before this change keep their
+// old PG-REC-2026-11-001 numbers.
+export function formatReceiptNumber(seq: number, propertyId: string): string {
   const [year, month] = todayIST().split('-');
-  return `PG-REC-${year}-${month}-${String(seq).padStart(3, '0')}`;
+  return `PG-REC-${propertyReceiptCode(propertyId)}-${year}-${month}-${String(seq).padStart(3, '0')}`;
 }
 
 export async function nextReceiptNumber(propertyId: string): Promise<string> {
@@ -250,7 +324,7 @@ export async function nextReceiptNumber(propertyId: string): Promise<string> {
     tx.set(counterRef, { value: next }, { merge: true });
     return next;
   });
-  return formatReceiptNumber(seq);
+  return formatReceiptNumber(seq, propertyId);
 }
 
 export async function createPayment(payment: Omit<PaymentRecord, 'id'>): Promise<string> {

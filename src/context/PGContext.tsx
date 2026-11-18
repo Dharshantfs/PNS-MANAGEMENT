@@ -29,7 +29,9 @@ import {
   subscribeOwnerProperties,
   subscribeRooms,
   subscribeTenants,
-  subscribePayments,
+  subscribePaymentsSince,
+  subscribePendingPayments,
+  fetchPaymentsInRange,
   subscribeNotices,
   subscribeTickets,
   subscribeCharges,
@@ -62,6 +64,24 @@ import {
 } from '../services/firestoreService';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+// Owner/staff screens keep payments live only from the 1st of the month
+// (PAYMENTS_LIVE_MONTHS - 1) months ago (India time) - 12 months including
+// the current one. Older payments are fetched on demand (usePaymentsInRange,
+// tenant statement). Pending payments are always live, whatever their date.
+export const PAYMENTS_LIVE_MONTHS = 12;
+const paymentsLiveFromDate = (): string => {
+  const [y, m] = todayIST().split('-').map(Number);
+  const total = y * 12 + (m - 1) - (PAYMENTS_LIVE_MONTHS - 1);
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}-01`;
+};
+
+const byPaymentDateDesc = (a: PaymentRecord, b: PaymentRecord) =>
+  (b.paymentDate || '').localeCompare(a.paymentDate || '') || (b.receiptNumber || '').localeCompare(a.receiptNumber || '');
+
+// Thrown when a record from one property is about to be written against
+// another (e.g. a stale screen right after switching property).
+const PROPERTY_MISMATCH = 'This tenant belongs to a different property. Reload the page and try again.';
 
 // How a payment changes a tenant's balances. Rent/dues payments reduce
 // dueAmount, and anything paid beyond the due becomes advance credit
@@ -214,7 +234,10 @@ interface PGContextType {
 
   rooms: Room[];
   tenants: Tenant[];
+  // Owner/staff: payments dated on/after `paymentsLiveFrom` plus every
+  // pending one, newest first. Use usePaymentsInRange for older dates.
   payments: PaymentRecord[];
+  paymentsLiveFrom: string;
   notices: Notice[];
   tickets: MaintenanceTicket[];
 
@@ -335,6 +358,8 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
   const [charges, setCharges] = useState<DueCharge[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  // Fixed for the session (a page reload moves it forward).
+  const [paymentsLiveFrom] = useState(paymentsLiveFromDate);
   // Tenant logins carry their tenant id as a custom claim.
   const [tenantClaimId, setTenantClaimId] = useState('');
   const [tenantRoommates, setTenantRoommates] = useState<Tenant[]>([]);
@@ -531,17 +556,54 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       setActivityLogs([]);
       return;
     }
+    // Switching property: clear the previous property's data at once, so no
+    // screen shows (or writes against) property A's tenants/rooms/payments
+    // while property B's first snapshot is still loading.
+    setRooms([]);
+    setTenants([]);
+    setPayments([]);
+    setNotices([]);
+    setTickets([]);
+    setCharges([]);
+    setActivityLogs([]);
+
+    // Ignore any snapshot that arrives after this property was switched away.
+    let active = true;
+    const guard = <T,>(set: (v: T) => void) => (v: T) => {
+      if (active) set(v);
+    };
+
+    // Recent payments + all pending ones, merged and newest first.
+    let recent: PaymentRecord[] = [];
+    let pending: PaymentRecord[] = [];
+    const publishPayments = () => {
+      const merged = new Map<string, PaymentRecord>();
+      recent.forEach((p) => merged.set(p.id, p));
+      pending.forEach((p) => merged.set(p.id, p));
+      setPayments(Array.from(merged.values()).sort(byPaymentDateDesc));
+    };
+
     const unsubs = [
-      subscribeRooms(activePropertyId, setRooms),
-      subscribeTenants(activePropertyId, setTenants),
-      subscribePayments(activePropertyId, setPayments),
-      subscribeNotices(activePropertyId, setNotices),
-      subscribeTickets(activePropertyId, setTickets),
-      subscribeCharges(activePropertyId, setCharges),
-      subscribeActivityLogs(activePropertyId, setActivityLogs),
+      subscribeRooms(activePropertyId, guard(setRooms)),
+      subscribeTenants(activePropertyId, guard(setTenants)),
+      subscribePaymentsSince(activePropertyId, paymentsLiveFrom, guard((list: PaymentRecord[]) => {
+        recent = list;
+        publishPayments();
+      })),
+      subscribePendingPayments(activePropertyId, guard((list: PaymentRecord[]) => {
+        pending = list;
+        publishPayments();
+      })),
+      subscribeNotices(activePropertyId, guard(setNotices)),
+      subscribeTickets(activePropertyId, guard(setTickets)),
+      subscribeCharges(activePropertyId, guard(setCharges)),
+      subscribeActivityLogs(activePropertyId, guard(setActivityLogs)),
     ];
-    return () => unsubs.forEach((u) => u());
-  }, [activePropertyId, role, authUser]);
+    return () => {
+      active = false;
+      unsubs.forEach((u) => u());
+    };
+  }, [activePropertyId, role, authUser, paymentsLiveFrom]);
 
   useEffect(() => {
     if (authUser?.uid && activePropertyId) {
@@ -769,6 +831,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const snap = await tx.get(tenantRef);
       if (!snap.exists()) throw new Error('Tenant not found.');
       const t = { id: snap.id, ...snap.data() } as Tenant;
+      if (t.propertyId !== activePropertyId) throw new Error(PROPERTY_MISMATCH);
       const advance = Number(t.advanceBalance) || 0;
       // Advance credit pays rent/fees first - never a security deposit.
       fromAdvance = isDeposit ? 0 : Math.min(advance, value);
@@ -957,6 +1020,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       if (!tSnap.exists() || !rSnap.exists()) throw new Error('Tenant or room not found.');
       const t = { id: tSnap.id, ...tSnap.data() } as Tenant;
       const room = { id: rSnap.id, ...rSnap.data() } as Room;
+      if (t.propertyId !== room.propertyId) throw new Error('This tenant and room belong to different properties.');
       const bed = room.beds.find((b) => b.id === bedId);
       if (!bed) throw new Error('Bed not found.');
       if (bed.status !== 'vacant') throw new Error(`${bed.bedLabel} in Room ${room.roomNumber} is no longer vacant.`);
@@ -1314,6 +1378,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const cSnap = await tx.get(counterRef);
       if (!tSnap.exists()) throw new Error('Tenant not found.');
       const t = { id: tSnap.id, ...tSnap.data() } as Tenant;
+      if (t.propertyId !== propertyId) throw new Error(PROPERTY_MISMATCH);
       const seq = (cSnap.exists() ? Number(cSnap.data().value) || 0 : 0) + 1;
       const { newDue, updates } = settlePayment(t, amount, purpose, depositBilledFallback);
       const record: Omit<PaymentRecord, 'id'> = {
@@ -1333,7 +1398,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         verificationSource: 'manual',
         transactionId: paymentData.transactionId || `TXN-${Date.now().toString().slice(-6)}`,
         paymentDate: today,
-        receiptNumber: formatReceiptNumber(seq),
+        receiptNumber: formatReceiptNumber(seq, propertyId),
         ...(paymentData.notes ? { notes: paymentData.notes } : {}),
       };
       tx.set(counterRef, { value: seq }, { merge: true });
@@ -1397,6 +1462,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const confirmPendingPayment = async (paymentId: string): Promise<void> => {
     const payment = payments.find((p) => p.id === paymentId);
     if (!payment) throw new Error('Payment not found.');
+    if (payment.propertyId !== activePropertyId) throw new Error('This payment belongs to a different property. Reload the page and try again.');
     const paymentRef = doc(db, 'payments', paymentId);
     const tenantRef = doc(db, 'tenants', payment.tenantId);
     const counterRef = receiptCounterRef(payment.propertyId);
@@ -1408,12 +1474,14 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       const cSnap = await tx.get(counterRef);
       if (!pSnap.exists() || pSnap.data().status !== 'pending') throw new Error('This payment was already confirmed.');
       const p = pSnap.data() as PaymentRecord;
+      if (p.propertyId !== payment.propertyId) throw new Error('This payment belongs to a different property.');
       // Always our own receipt number - never one supplied with the claim.
       const seq = (cSnap.exists() ? Number(cSnap.data().value) || 0 : 0) + 1;
-      const receiptNumber = formatReceiptNumber(seq);
+      const receiptNumber = formatReceiptNumber(seq, payment.propertyId);
       let newDue = 0;
       if (tSnap.exists()) {
         const t = { id: tSnap.id, ...tSnap.data() } as Tenant;
+        if (t.propertyId !== p.propertyId) throw new Error(PROPERTY_MISMATCH);
         const settled = settlePayment(t, Number(p.amount) || 0, 'rent', depositBilledFallback);
         newDue = settled.newDue;
         tx.update(tenantRef, { ...settled.updates, lastPaymentDate: p.paymentDate, updatedAt: nowIso() });
@@ -1480,7 +1548,9 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     return tenants.filter((t) => t.roomId === targetTenant.roomId && t.id !== tenantId && !t.checkOutDate);
   };
 
-  const getStats = useCallback(() => {
+  // Worked out once per data change (not on every screen redraw) - every
+  // getStats() call returns this same object.
+  const stats = useMemo(() => {
     let totalBeds = 0;
     let occupiedBeds = 0;
     let totalExpectedRevenue = 0;
@@ -1511,6 +1581,11 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const pendingKYCCount = current.filter((t) => t.kyc?.status === 'pending').length;
     const unsubmittedKYCCount = current.filter((t) => !t.kyc || t.kyc?.status === 'unsubmitted' || t.kyc?.status === 'rejected').length;
 
+    // Rent per room in one pass, instead of scanning all tenants per room.
+    const rentByRoom = new Map<string, number>();
+    staying.forEach((t) => {
+      if (t.roomId) rentByRoom.set(t.roomId, (rentByRoom.get(t.roomId) || 0) + (Number(t.monthlyRent) || 0));
+    });
     const floorCount = activeProperty?.totalFloors || 4;
     const floorSummaries: FloorSummary[] = Array.from({ length: floorCount }, (_, i) => i + 1).map((floorNum) => {
       const floorRooms = rooms.filter((r) => r.floor === floorNum);
@@ -1522,7 +1597,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         r.beds.forEach((b) => {
           if (b.status === 'occupied') fOccupiedBeds++;
         });
-        fTotalRent += staying.filter((t) => t.roomId === r.id).reduce((s, t) => s + (Number(t.monthlyRent) || 0), 0);
+        fTotalRent += rentByRoom.get(r.id) || 0;
       });
       return {
         floor: floorNum,
@@ -1550,6 +1625,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       floorSummaries,
     };
   }, [rooms, tenants, payments, activeProperty]);
+  const getStats = useCallback(() => stats, [stats]);
 
   const refreshStateFromServer = async () => {
     // Intentional no-op - Firestore onSnapshot listeners keep state live.
@@ -1597,6 +1673,7 @@ export const PGProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         rooms,
         tenants,
         payments,
+        paymentsLiveFrom,
         notices,
         tickets,
         addRoom,
@@ -1635,4 +1712,49 @@ export const usePG = () => {
     throw new Error('usePG must be used within a PGProvider');
   }
   return context;
+};
+
+// Payments of the active property dated from..to (YYYY-MM-DD, inclusive;
+// empty = open-ended), newest first. Inside the live window this filters the
+// live list; a `from` older than the window reads that range from Firestore
+// once (always within the active property only).
+export const usePaymentsInRange = (from: string, to: string) => {
+  const { payments, paymentsLiveFrom, activePropertyId } = usePG();
+  const needsFetch = !!activePropertyId && (!from || from < paymentsLiveFrom);
+  const rangeKey = `${activePropertyId}|${from}|${to}`;
+  const [older, setOlder] = useState<{ key: string; data: PaymentRecord[] } | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!needsFetch || !activePropertyId) return;
+    let cancelled = false;
+    setError('');
+    fetchPaymentsInRange(activePropertyId, from || '0000-01-01', to || '9999-12-31')
+      .then((data) => {
+        if (!cancelled) setOlder({ key: rangeKey, data });
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e?.message || 'Could not load older payments.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsFetch, activePropertyId, from, to, rangeKey]);
+
+  const loading = needsFetch && older?.key !== rangeKey && !error;
+  const list = useMemo(() => {
+    // Older part from the one-time read, recent part (and anything pending)
+    // from the live list - so a payment recorded now still shows up.
+    const merged = new Map<string, PaymentRecord>();
+    if (needsFetch && older?.key === rangeKey) {
+      older.data.filter((p) => (p.paymentDate || '') < paymentsLiveFrom).forEach((p) => merged.set(p.id, p));
+    }
+    payments.forEach((p) => merged.set(p.id, p));
+    return Array.from(merged.values())
+      .filter((p) => p.propertyId === activePropertyId)
+      .filter((p) => (!from || (p.paymentDate || '') >= from) && (!to || (p.paymentDate || '') <= to))
+      .sort(byPaymentDateDesc);
+  }, [needsFetch, older, rangeKey, payments, paymentsLiveFrom, activePropertyId, from, to]);
+
+  return { payments: list, loading, error };
 };
